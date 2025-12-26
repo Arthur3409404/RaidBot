@@ -26,6 +26,7 @@ import data.lib.utils.file_tools as file_tools
 
 
 import data.lib.modes.arena_tools as arena_tools
+import data.lib.modes.dungeon_tools as dungeon_tools
 
 class RSL_Bot_Mainframe():
     def __init__(self, title_substring="Raid: Shadow Legends"):
@@ -153,10 +154,12 @@ class RSL_Bot_Mainframe():
         params_classic_arena = self.params['classic_arena']
         params_tagteam_arena = self.params['tagteam_arena']
         params_live_arena = self.params['live_arena']
+        params_dungeons = self.params['dungeons']
         
         self.classic_arena_bot = arena_tools.RSL_Bot_ClassicArena(**params_classic_arena)
         self.tagteam_arena_bot = arena_tools.RSL_Bot_TagTeamArena(**params_tagteam_arena)
         self.live_arena_bot = arena_tools.RSL_Bot_LiveArena(**params_live_arena)
+        self.dungeon_bot = dungeon_tools.RSL_Bot_Dungeons(**params_dungeons)
         
         self.handler_init_time = time.time()
         # ...to be continued
@@ -468,12 +471,13 @@ if __name__ == "__main__":
     print('ALWAYS RUN THE PROGRAM IN 1280 x 1024')
     bot = RSL_Bot_Mainframe()
     
-    #bot.test_logic()
-    bot.live_arena_bot.check_arena_coins()
+    bot.test_logic()
+    #bot.live_arena_bot.check_arena_coins()
     # bot.tagteam_arena_bot.run_tagteam_arena_once()
 
-
-    # num = 20
+        
+    
+    # num = 1
     # for i in range(num):
     #     ul_click, lr_click = window_tools.get_two_clicks()
     #     search_area = window_tools.compile_search_area_from_clicks(
