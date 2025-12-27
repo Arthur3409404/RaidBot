@@ -20,9 +20,12 @@ from data.lib.logic.ai_networks import EnemyDataset, EvaluationNetwork
 
 class RSL_Bot_FactionWars:
     
-    def __init__(self, title_substring="Raid: Shadow Legends", verbose = True, farm_stages = {"Banner Lords":[17,"normal"],"Barbarians":[17,"normal"],"Dark Elves":[17,"normal"],"Demonspawn":[17,"normal"],"Dwarves":[17,"normal"],"High Elves":[17,"normal"],"Knight Revenant":[17,"normal"],"Lizardmen":[17,"normal"],"Ogryn Tribes":[17,"normal"],"Orcs":[17,"normal"],"Sacred Order":[17,"normal"],"Undead Hordes":[17,"normal"],"Shadowkin":[17,"normal"],"Skinwalkers":[17,"normal"],"Sylvan Watchers":[17,"normal"]}, farm_superraid = True):
+    def __init__(self, title_substring="Raid: Shadow Legends", reader = None, verbose = True, farm_stages = {"Banner Lords":[17,"normal"],"Barbarians":[17,"normal"],"Dark Elves":[17,"normal"],"Demonspawn":[17,"normal"],"Dwarves":[17,"normal"],"High Elves":[17,"normal"],"Knight Revenant":[17,"normal"],"Lizardmen":[17,"normal"],"Ogryn Tribes":[17,"normal"],"Orcs":[17,"normal"],"Sacred Order":[17,"normal"],"Undead Hordes":[17,"normal"],"Shadowkin":[17,"normal"],"Skinwalkers":[17,"normal"],"Sylvan Watchers":[17,"normal"]}, farm_superraid = True):
 
-        self.reader = easyocr.Reader(['en'])  # You can add 'de' if you expect German text
+        if reader is None:
+            print('Error When Loading Reader')
+            
+        self.reader = reader
         
         self.running = True
         
@@ -199,7 +202,6 @@ class RSL_Bot_FactionWars:
                         if int(obj.text)==53 or int(obj.text)==63:
                             window_tools.click_at(obj.mean_pos_x, obj.mean_pos_y, delay = 4)
                             faction_name = image_tools.get_text_in_relative_area(self.reader, self.window, self.search_areas['faction_name'], powerdetection=False)[0]
-                            print(faction_name.text)
                             faction_name = faction_name.text.replace("Cripta: ", "")
                             
                             if faction_name in self.faction_menu_names.values():
@@ -209,7 +211,7 @@ class RSL_Bot_FactionWars:
                                 
                                 # Check fw_keys
                                 current_fw_keys = self.check_fw_keys()
-                                if (int(current_fw_keys) < 8 and self.current_difficulty=='normal' ) or (int(current_fw_keys) < 12 and self.current_difficulty=='hard' ):
+                                if (int(current_fw_keys) < 4*self.multiplier and self.current_difficulty=='normal' ) or (int(current_fw_keys) < 6*self.multiplier and self.current_difficulty=='hard' ):
                                     window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
                                     continue
 

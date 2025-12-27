@@ -21,9 +21,12 @@ from data.lib.logic.ai_networks import EnemyDataset, EvaluationNetwork
 
 class RSL_Bot_Dungeons:
     
-    def __init__(self, title_substring="Raid: Shadow Legends", verbose = True, iron_twins_priority = True, essence_priority = 'shogun', defaults_available = ["fire_knight","dragon",'sand_devil', 'shogun'], default_difficulty = 'hard', default_level = 8 ,default_dungeon = 'fire_knight'):
+    def __init__(self, title_substring="Raid: Shadow Legends", reader = None, verbose = True, iron_twins_priority = True, essence_priority = 'shogun', defaults_available = ["fire_knight","dragon",'sand_devil', 'shogun'], default_difficulty = 'hard', default_level = 8 ,default_dungeon = 'fire_knight'):
 
-        self.reader = easyocr.Reader(['en'])  # You can add 'de' if you expect German text
+        if reader is None:
+            print('Error When Loading Reader')
+            
+        self.reader = reader
         
         self.running = True
         

@@ -38,9 +38,12 @@ from data.lib.logic.ai_networks import EnemyDataset, EvaluationNetwork
 
 class RSL_Bot_ClassicArena:
     
-    def __init__(self, title_substring="Raid: Shadow Legends", verbose = True, num_multi_refresh = 0, multi_refresh = False, power_threshold = 70000, use_gems = True, enemies_lost= [0]):
+    def __init__(self, title_substring="Raid: Shadow Legends", reader = None, verbose = True, num_multi_refresh = 0, multi_refresh = False, power_threshold = 70000, use_gems = True, enemies_lost= [0]):
 
-        self.reader = easyocr.Reader(['en'])  # You can add 'de' if you expect German text
+        if reader is None:
+            print('Error When Loading Reader')
+            
+        self.reader = reader  
         
         self.running = True
         #"data/database_champions/datasets/enemy_dataset_classic_arena.npz"
@@ -416,9 +419,12 @@ class RSL_Bot_ClassicArena:
 
 class RSL_Bot_TagTeamArena:
     
-    def __init__(self, title_substring="Raid: Shadow Legends", verbose = True, num_multi_refresh = 0, multi_refresh = False, power_threshold = 70000, use_gems = True, enemies_lost= [0]):
+    def __init__(self, title_substring="Raid: Shadow Legends", reader = None, verbose = True, num_multi_refresh = 0, multi_refresh = False, power_threshold = 70000, use_gems = True, enemies_lost= [0]):
 
-        self.reader = easyocr.Reader(['en'])  # You can add 'de' if you expect German text
+        if reader is None:
+            print('Error When Loading Reader')
+            
+        self.reader = reader
         
         self.running = True
         #"data/database_champions/datasets/enemy_dataset_tagteam_arena.npz"
@@ -800,9 +806,12 @@ class RSL_Bot_TagTeamArena:
 
 class RSL_Bot_LiveArena:
     
-    def __init__(self, title_substring="Raid: Shadow Legends", verbose = True, use_gems = True, use_gems_max_amount = 0, memory = dict()):
+    def __init__(self, title_substring="Raid: Shadow Legends", reader = None, verbose = True, use_gems = True, use_gems_max_amount = 0, memory = dict()):
 
-        self.reader = easyocr.Reader(['en'])  # You can add 'de' if you expect German text
+        if reader is None:
+            print('Error When Loading Reader')
+            
+        self.reader = reader
         
         self.running = True
         

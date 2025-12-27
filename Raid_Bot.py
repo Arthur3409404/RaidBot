@@ -64,6 +64,18 @@ class RSL_Bot_Mainframe():
             "monthly_quest_menu":      [0.036, 0.313, 0.147, 0.067],
             "advanced_quest_menu":      [0.033, 0.417, 0.15, 0.073],
             "claim_quest_rewards":      [0.455, 0.924, 0.3, 0.054],
+
+            "time_gated_reward_menu" : [0.894, 0.817, 0.051, 0.067], 
+            "time_gated_reward_menu_name" : [0.707, 0.733, 0.142, 0.04], 
+
+            "guardian_faction_menu_name" : [0.01, 0.033, 0.24, 0.039],
+            "guardian_faction_character_1" : [0.194, 0.797, 0.147, 0.073],
+            "guardian_faction_character_2" : [0.353, 0.797, 0.15, 0.071],
+            "guardian_faction_character_3" : [0.513, 0.796, 0.148, 0.073],
+            "guardian_faction_character_4" : [0.673, 0.797, 0.147, 0.071],
+            "guardian_faction_character_5" : [0.833, 0.798, 0.146, 0.071],
+
+            'pov' : [0, 0, 1, 1],
             
             
             "main_menu_labels":      [0.007, 0.27, 0.984, 0.044],
@@ -121,7 +133,7 @@ class RSL_Bot_Mainframe():
             "FactionWars": "Guerras de Facciones",
             "Arena": "Arena",
             "ClanBoss1": "Jefes",
-            "ClanBoss1": "e Clan",
+            "ClanBoss2": "e Clan",
             "DoomTower": "Torre del Destino",
             "CursedCity": "Ciudad Maldita",
             "Siege": "Asedio",
@@ -158,11 +170,11 @@ class RSL_Bot_Mainframe():
         params_dungeons = self.params['dungeons']
         params_factionwars = self.params['faction_wars']
         
-        self.classic_arena_bot = arena_tools.RSL_Bot_ClassicArena(**params_classic_arena)
-        self.tagteam_arena_bot = arena_tools.RSL_Bot_TagTeamArena(**params_tagteam_arena)
-        self.live_arena_bot = arena_tools.RSL_Bot_LiveArena(**params_live_arena)
-        self.dungeon_bot = dungeon_tools.RSL_Bot_Dungeons(**params_dungeons)
-        self.factionwars_bot = factionwars_tools.RSL_Bot_FactionWars(**params_factionwars)
+        self.classic_arena_bot = arena_tools.RSL_Bot_ClassicArena(reader = self.reader, **params_classic_arena)
+        self.tagteam_arena_bot = arena_tools.RSL_Bot_TagTeamArena(reader = self.reader, **params_tagteam_arena)
+        self.live_arena_bot = arena_tools.RSL_Bot_LiveArena(reader = self.reader, **params_live_arena)
+        self.dungeon_bot = dungeon_tools.RSL_Bot_Dungeons(reader = self.reader, **params_dungeons)
+        self.factionwars_bot = factionwars_tools.RSL_Bot_FactionWars(reader = self.reader, **params_factionwars)
         
         self.handler_init_time = time.time()
         # ...to be continued
@@ -276,6 +288,38 @@ class RSL_Bot_Mainframe():
             
             window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
             
+            # Time Gated Rewards
+            quest_menu_found = self.manouver_bastion(self.search_areas["time_gated_reward_menu"], self.search_areas["time_gated_reward_menu_name"], 'Reclamar todo')
+            window_tools.click_center(self.window, self.search_areas["time_gated_reward_menu_name"])
+            window_tools.click_center(self.window, self.search_areas["time_gated_reward_menu"])
+
+            # Guardian Faction Ring
+            obj_found = False
+            for i in range(2):
+                objects = image_tools.get_text_in_relative_area(self.reader, self.window, self.search_areas['pov'], powerdetection=False)
+                for obj in objects:
+                    if obj.text == 'Ring de Guardianes':
+                        obj_found = True
+                        break
+                if obj_found:
+                    window_tools.click_at(obj.mean_pos_x, obj.mean_pos_y, delay = 2)
+
+                    # menu_name = image_tools.get_text_in_relative_area(self.reader, self.window, self.search_areas["guardian_faction_menu_name"], powerdetection=False)[0]
+                    # if menu_name == 'Ring de Guardianes'
+                    #     in_menu = True
+                    
+                    for i in range(5):
+                        string = "guardian_faction_character_" + str(i+1)
+                        window_tools.click_center(self.window, self.search_areas[string])
+                    window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
+
+                    break
+                window_tools.move_left(self.window, strength = 1.2)
+
+            
+
+
+
             main_menu_found = self.manouver_bastion(self.search_areas["bastion_to_main_menu"], self.search_areas["menu_name"], 'Modos de juego')
             if main_menu_found:
                 return
@@ -363,92 +407,110 @@ class RSL_Bot_Mainframe():
         REFRESH_INTERVAL = 15.1 * 60  # 15.1 minutes in seconds
     
         while run:
-    
+
             # =========================
             # 1. CLASSIC ARENA
             # =========================
-            self.go_to_menu(self.main_menu_names['Arena'])
-            
-            window_tools.click_center(self.window, self.search_areas['classic_arena'])
-    
-            if start_time_classic_arena is None:
-                start_time_classic_arena = time.time()
-                # If handler was initialized earlier, refresh once
-                if start_time_classic_arena - self.handler_init_time > REFRESH_INTERVAL:
+            if self.params['run']['classic_arena']:
+                self.go_to_menu(self.main_menu_names['Arena'])
+                
+                window_tools.click_center(self.window, self.search_areas['classic_arena'])
+        
+                if start_time_classic_arena is None:
+                    start_time_classic_arena = time.time()
+                    # If handler was initialized earlier, refresh once
+                    if start_time_classic_arena - self.handler_init_time > REFRESH_INTERVAL:
+                        self.classic_arena_bot.refresh()
+        
+                elif time.time() - start_time_classic_arena > REFRESH_INTERVAL:
+                    start_time_classic_arena = time.time()
                     self.classic_arena_bot.refresh()
-    
-            elif time.time() - start_time_classic_arena > REFRESH_INTERVAL:
-                start_time_classic_arena = time.time()
-                self.classic_arena_bot.refresh()
-    
-            self.classic_arena_bot.run_classic_arena_once()
-            window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
+        
+                self.classic_arena_bot.run_classic_arena_once()
+                window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
             
             
             # =========================
             # 2. TAG TEAM ARENA
             # =========================
-            self.go_to_menu(self.main_menu_names['Arena'])
-            window_tools.click_center(self.window, self.search_areas['tagteam_arena'])
-    
-            if start_time_tagteam_arena is None:
-                start_time_tagteam_arena = time.time()
-                if start_time_tagteam_arena - self.handler_init_time > REFRESH_INTERVAL:
+            if self.params['run']['tagteam_arena']:
+                self.go_to_menu(self.main_menu_names['Arena'])
+                window_tools.click_center(self.window, self.search_areas['tagteam_arena'])
+        
+                if start_time_tagteam_arena is None:
+                    start_time_tagteam_arena = time.time()
+                    if start_time_tagteam_arena - self.handler_init_time > REFRESH_INTERVAL:
+                        self.tagteam_arena_bot.refresh()
+
+        
+                elif time.time() - start_time_tagteam_arena > REFRESH_INTERVAL:
+                    start_time_tagteam_arena = time.time()
                     self.tagteam_arena_bot.refresh()
 
-    
-            elif time.time() - start_time_tagteam_arena > REFRESH_INTERVAL:
-                start_time_tagteam_arena = time.time()
-                self.tagteam_arena_bot.refresh()
-
-    
-            self.tagteam_arena_bot.run_tagteam_arena_once()
-            window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
+        
+                self.tagteam_arena_bot.run_tagteam_arena_once()
+                window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
             
     
             # =========================
             # 3. LIVE ARENA
             # =========================
-            self.go_to_menu(self.main_menu_names['Arena'])
-            window_tools.click_center(self.window, self.search_areas['live_arena'])
-    
-            if start_time_live_arena is None:
-                start_time_live_arena = time.time()
+            if self.params['run']['live_arena']:
+                self.go_to_menu(self.main_menu_names['Arena'])
+                window_tools.click_center(self.window, self.search_areas['live_arena'])
+        
+                if start_time_live_arena is None:
+                    start_time_live_arena = time.time()
 
-            self.live_arena_bot.run_live_arena()
-            window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
+                self.live_arena_bot.run_live_arena()
+                window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
             
             
             # =========================
             # 4. Dungeons
-            # =========================     
-            self.go_to_menu(self.main_menu_names['Dungeons'])     
-            self.dungeon_bot.run_dungeons()
-            window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
+            # =========================   
+            if self.params['run']['dungeons'] and not self.params['run']['effective_unit_leveling']:  
+                self.go_to_menu(self.main_menu_names['Dungeons'])     
+                self.dungeon_bot.run_dungeons()
+                window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
                 
             # =========================
             # 5. Faction Wars
             # =========================
-            self.go_to_menu(self.main_menu_names['FactionWars'])     
-            self.factionwars_bot.run_factionwars()
-            window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
-            
-            # for encounter in encounters:
-            #     window_tools.click_center(self.window, encounter)
-            #     self.faction_wars_bot.run_faction_wars(encounter)
-            # window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
+            if self.params['run']['factionwars']:
+                self.go_to_menu(self.main_menu_names['FactionWars'])     
+                self.factionwars_bot.run_factionwars()
+                window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
+        
             
             # =========================
             # 6. DemonLord Clanboss
             # =========================
+            if self.params['run']['demonlord']:
+                self.go_to_menu(self.main_menu_names['ClanBoss1'])     
+                # self.demonlord_bot.run_demonlord()
+                window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
             # Check demonlord_keys
             #     if not enough demonlord_keys -> skip
             # self.go_to_menu(self.main_menu_names['clanboss'])
             # self.demonlord_bot.run_demonlord()
             # window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
             
+
+            # run_classic_arena = True
+            # run_tagteam_arena = True
+            # run_live_arena = True
+            # run_dungeons = True
+            # run_factionwars = True
+            # run_demonlord = True
+            # run_doomtower = True
+            # run_cursedcity = True
+            # run_grimforest = True
+            # run_effective_unit_leveling = False
+
+
             # =========================
-            # 7. QuestRewards
+            # 99. QuestRewards
             # =========================
             self.check_quest_rewards()
 
@@ -462,6 +524,7 @@ if __name__ == "__main__":
     print('ALWAYS RUN THE PROGRAM IN 1280 x 1024')
     bot = RSL_Bot_Mainframe()
     #bot.factionwars_bot.run_factionwars()
+
     bot.test_logic()
     #bot.live_arena_bot.check_arena_coins()
     # bot.tagteam_arena_bot.run_tagteam_arena_once()
