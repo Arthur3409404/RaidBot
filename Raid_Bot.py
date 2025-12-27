@@ -27,6 +27,7 @@ import data.lib.utils.file_tools as file_tools
 
 import data.lib.modes.arena_tools as arena_tools
 import data.lib.modes.dungeon_tools as dungeon_tools
+import data.lib.modes.factionwars_tools as factionwars_tools
 
 class RSL_Bot_Mainframe():
     def __init__(self, title_substring="Raid: Shadow Legends"):
@@ -155,11 +156,13 @@ class RSL_Bot_Mainframe():
         params_tagteam_arena = self.params['tagteam_arena']
         params_live_arena = self.params['live_arena']
         params_dungeons = self.params['dungeons']
+        params_factionwars = self.params['faction_wars']
         
         self.classic_arena_bot = arena_tools.RSL_Bot_ClassicArena(**params_classic_arena)
         self.tagteam_arena_bot = arena_tools.RSL_Bot_TagTeamArena(**params_tagteam_arena)
         self.live_arena_bot = arena_tools.RSL_Bot_LiveArena(**params_live_arena)
         self.dungeon_bot = dungeon_tools.RSL_Bot_Dungeons(**params_dungeons)
+        self.factionwars_bot = factionwars_tools.RSL_Bot_FactionWars(**params_factionwars)
         
         self.handler_init_time = time.time()
         # ...to be continued
@@ -418,29 +421,17 @@ class RSL_Bot_Mainframe():
             
             # =========================
             # 4. Dungeons
-            # =========================          
-            # Check Energy
-            #     if not enough energy -> skip
-                
-            # Check IT keys
-            #     if not enough ITkeys -> skip IT and do Fire Knight
-            # self.go_to_menu(self.main_menu_names['dungeon'])
-            # if IronTwins:
-            # encounter_found = self.find_encounter_on_map(self.main_menu_names['IronTwins'])   
-            # else:
-            # encounter_found = self.find_encounter_on_map(self.main_menu_names['Fire Knight'])
-            # window_tools.click_center(self.window, encounter_found)
-
-            # self.dungeon_bot.run_dungeon()
-            # window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
+            # =========================     
+            self.go_to_menu(self.main_menu_names['Dungeons'])     
+            self.dungeon_bot.run_dungeons()
+            window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
                 
             # =========================
             # 5. Faction Wars
             # =========================
-            # Check fw_keys
-            #     if not enough fw_keys -> skip
-            # self.go_to_menu(self.main_menu_names['faction wars'])
-            # encounters = self.find_faction_war_encounter()
+            self.go_to_menu(self.main_menu_names['FactionWars'])     
+            self.factionwars_bot.run_factionwars()
+            window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
             
             # for encounter in encounters:
             #     window_tools.click_center(self.window, encounter)
@@ -470,12 +461,11 @@ class RSL_Bot_Mainframe():
 if __name__ == "__main__":
     print('ALWAYS RUN THE PROGRAM IN 1280 x 1024')
     bot = RSL_Bot_Mainframe()
-    
+    #bot.factionwars_bot.run_factionwars()
     bot.test_logic()
     #bot.live_arena_bot.check_arena_coins()
     # bot.tagteam_arena_bot.run_tagteam_arena_once()
 
-        
     
     # num = 1
     # for i in range(num):

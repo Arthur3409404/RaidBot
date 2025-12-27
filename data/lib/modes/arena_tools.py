@@ -665,7 +665,8 @@ class RSL_Bot_TagTeamArena:
             window_tools.click_at(confirm_text.mean_pos_x,confirm_text.mean_pos_y)
             time.sleep(3)
             
-        pass
+        else:
+            self.no_coin_status = False
 
     def print_status(self):
         elapsed = time.time() - self.init_time

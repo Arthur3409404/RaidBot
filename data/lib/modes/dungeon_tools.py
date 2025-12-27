@@ -17,10 +17,6 @@ import ast
 import data.lib.utils.image_tools as image_tools
 import data.lib.utils.window_tools as window_tools
 
-
-import data.lib.modes.arena_tools as arena_tools
-import data.lib.modes.hydra_tools as hydra_tools
-
 from data.lib.logic.ai_networks import EnemyDataset, EvaluationNetwork
 
 class RSL_Bot_Dungeons:
@@ -62,7 +58,7 @@ class RSL_Bot_Dungeons:
             
             "energy":   [0.599, 0.038, 0.069, 0.027],
             "iron_twins_keys":   [0.51, 0.038, 0.035, 0.025],
-            'pov' : [0.1, 0.1, 0.8, 0.8],
+            'pov' : [0, 0, 1, 1],
             #"fire_knight_hard_8":   [0.238, 0.659, 0.222, 0.025],
             #"iron_twins_15":   [0.238, 0.659, 0.222, 0.025],
             #"shogun_25":   [0.238, 0.659, 0.222, 0.025],
@@ -200,6 +196,7 @@ class RSL_Bot_Dungeons:
                         continue
             except:
                 pass
+            window_tools.move_right(self.window, strength = 1.2)
 
 
         if obj_found:
