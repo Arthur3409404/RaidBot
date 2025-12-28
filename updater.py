@@ -4,10 +4,46 @@ import sys
 import shutil
 import time
 import traceback
+import re
 
 REPO_URL = "https://github.com/Arthur3409404/RaidBot.git"
 TEMP_DIR = "RaidBot_update_tmp"
 ENTRY_POINT = "main.py"
+
+# Files / folders that should never be replaced
+EXCLUDE = {
+    TEMP_DIR,
+    ".git",
+    ".env",
+    "__pycache__",
+    "updater.py",
+}
+
+VERSION_BRANCH_REGEX = re.compile(r"refs/heads/(v\d+\.\d+\.\d+)$")
+
+
+def get_latest_version_branch():
+    output = subprocess.check_output(
+        ["git", "ls-remote", "--heads", REPO_URL],
+        text=True
+    )
+
+    versions = []
+
+    for line in output.splitlines():
+        match = VERSION_BRANCH_REGEX.search(line)
+        if match:
+            versions.append(match.group(1))
+
+    if not versions:
+        raise RuntimeError("No version branches found (vX.Y.Z)")
+
+    versions.sort(
+        key=lambda v: tuple(map(int, v[1:].split("."))),
+        reverse=True
+    )
+
+    return versions[0]
 
 
 def main():
@@ -15,16 +51,28 @@ def main():
     temp_path = os.path.join(base_dir, TEMP_DIR)
 
     try:
-        print("[UPDATE] Cloning latest repository...")
+        print("[UPDATE] Checking latest version branch...")
+        branch = get_latest_version_branch()
+        print(f"[UPDATE] Latest version: {branch}")
 
         if os.path.exists(temp_path):
             shutil.rmtree(temp_path)
 
-        subprocess.check_call(["git", "clone", REPO_URL, TEMP_DIR])
+        print("[UPDATE] Cloning repository...")
+        subprocess.check_call([
+            "git", "clone",
+            "--branch", branch,
+            "--single-branch",
+            REPO_URL,
+            TEMP_DIR
+        ])
 
-        print("[UPDATE] Replacing old files...")
+        print("[UPDATE] Applying update...")
 
         for item in os.listdir(temp_path):
+            if item in EXCLUDE:
+                continue
+
             src = os.path.join(temp_path, item)
             dst = os.path.join(base_dir, item)
 
@@ -36,16 +84,16 @@ def main():
 
             shutil.move(src, dst)
 
-        shutil.rmtree(temp_path)
+        shutil.rmtree(temp_path, ignore_errors=True)
 
         print("[UPDATE] Restarting bot...")
-
         time.sleep(1)
-        os.chdir(base_dir)
 
         subprocess.Popen(
             [sys.executable, ENTRY_POINT],
+            cwd=base_dir,
             creationflags=subprocess.DETACHED_PROCESS
+            if os.name == "nt" else 0
         )
 
         print("[UPDATE] Update completed successfully.")
