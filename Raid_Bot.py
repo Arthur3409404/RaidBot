@@ -18,6 +18,10 @@ from datetime import datetime, timedelta
 import os
 import ast
 from collections import defaultdict
+import threading
+import subprocess
+import sys
+import os
 
 import data.lib.gui.gui_tools as gui_tools
 
@@ -25,6 +29,7 @@ import data.lib.utils.image_tools as image_tools
 import data.lib.utils.window_tools as window_tools
 import data.lib.utils.file_tools as file_tools
 
+import data.lib.handlers.error_handler as error_handler 
 
 import data.lib.modes.arena_tools as arena_tools
 import data.lib.modes.dungeon_tools as dungeon_tools
@@ -176,10 +181,30 @@ class RSL_Bot_Mainframe():
         self.live_arena_bot = arena_tools.RSL_Bot_LiveArena(reader = self.reader, **params_live_arena)
         self.dungeon_bot = dungeon_tools.RSL_Bot_Dungeons(reader = self.reader, **params_dungeons)
         self.factionwars_bot = factionwars_tools.RSL_Bot_FactionWars(reader = self.reader, **params_factionwars)
+
+        self.error_handler = error_handler.RSL_Bot_ErrorHandler(reader = self.reader)
         
         self.handler_init_time = time.time()
         # ...to be continued
+
+        
      
+    def _start_error_checker(self):
+        """Start a background thread to call self.check_for_errors() every 15 seconds."""
+        def run_loop():
+            while self.running:  # stops when self.running = False
+                try:
+                    self.error_handler.run_once()
+                except Exception as e:
+                    print(f"Error in check_for_errors: {e}")
+                
+                if not self.running:
+                    break
+                time.sleep(1)
+
+        thread = threading.Thread(target=run_loop, daemon=True)
+        thread.start()
+
     def group_params(self, params: dict, min_shared_keys: int = 3):
         """
         Groups params by common prefixes.
@@ -399,7 +424,7 @@ class RSL_Bot_Mainframe():
             
     def test_logic(self):
         run = True
-    
+        self._start_error_checker()
         # Track first-time entry + timers
         start_time_classic_arena = None
         start_time_tagteam_arena = None

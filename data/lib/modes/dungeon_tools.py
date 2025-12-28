@@ -17,7 +17,7 @@ import ast
 import data.lib.utils.image_tools as image_tools
 import data.lib.utils.window_tools as window_tools
 
-from data.lib.logic.ai_networks import EnemyDataset, EvaluationNetwork
+from data.lib.handlers.ai_networks_handler import EnemyDataset, EvaluationNetwork
 
 class RSL_Bot_Dungeons:
     

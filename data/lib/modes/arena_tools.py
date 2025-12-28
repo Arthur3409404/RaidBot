@@ -27,7 +27,7 @@ import data.lib.utils.window_tools as window_tools
 import data.lib.modes.arena_tools as arena_tools
 import data.lib.modes.hydra_tools as hydra_tools
 
-from data.lib.logic.ai_networks import EnemyDataset, EvaluationNetwork
+from data.lib.handlers.ai_networks_handler import EnemyDataset, EvaluationNetwork
 
 
 

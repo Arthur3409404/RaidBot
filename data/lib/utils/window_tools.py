@@ -13,6 +13,7 @@ import time
 import matplotlib.pyplot as plt
 import re
 
+
 class WindowObject:
     def __init__(self, window):
         self.left = window[0]

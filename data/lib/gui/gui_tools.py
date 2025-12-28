@@ -177,28 +177,22 @@ class BotGUI:
         try:
             self.log_message("[INFO] Starting bot...")
 
-            # Start the bot process WITHOUT capturing stdout/stderr
+            # Start the bot process
             self.bot_process = subprocess.Popen(
-                [sys.executable, "run_bot.py"]  # adjust your bot script path
+                [sys.executable, "run_bot.py"]
             )
 
             self.start_btn.config(state="disabled")
             self.stop_btn.config(state="normal")
 
-            # Start a thread to wait for bot to finish
-            threading.Thread(target=self.wait_for_bot, daemon=True).start()
+            # Start a thread to wait for the bot to finish
+            # threading.Thread(target=self.wait_for_bot, daemon=True).start()
+
+            # Start the error handler subprocess
+            #self.start_error_handler()
 
         except Exception as e:
             messagebox.showerror("Bot Error", str(e))
-
-
-    def wait_for_bot(self):
-        """Wait for the bot process to finish without reading stdout/stderr."""
-        self.bot_process.wait()
-        self.bot_process = None
-        self.root.after(0, lambda: self.start_btn.config(state="normal"))
-        self.root.after(0, lambda: self.stop_btn.config(state="disabled"))
-        self.root.after(0, lambda: self.log_message("[INFO] Bot stopped."))
 
 
     def stop_bot(self):
@@ -207,8 +201,33 @@ class BotGUI:
             self.bot_process.terminate()
             self.bot_process = None
 
+            # Stop the error handler subprocess
+            #self.stop_error_handler()
+
             self.start_btn.config(state="normal")
             self.stop_btn.config(state="disabled")
+
+
+    # -----------------------------
+    # ERROR HANDLER
+    # -----------------------------
+    def start_error_handler(self):
+        """Start the error handler as a separate subprocess."""
+        if getattr(self, "error_process", None):
+            return
+
+        self.log_message("[INFO] Starting error handler...")
+        self.error_process = subprocess.Popen(
+            [sys.executable, "run_error_handler.py"]
+        )
+
+
+    def stop_error_handler(self):
+        """Stop the error handler subprocess."""
+        if getattr(self, "error_process", None):
+            self.log_message("[INFO] Stopping error handler...")
+            self.error_process.terminate()
+            self.error_process = None
 
     # -------------------------------------------------
     # UPDATE LOGIC
