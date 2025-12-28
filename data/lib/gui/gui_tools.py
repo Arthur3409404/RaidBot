@@ -177,50 +177,29 @@ class BotGUI:
         try:
             self.log_message("[INFO] Starting bot...")
 
-            # Start the bot process
+            # Start the bot process WITHOUT capturing stdout/stderr
             self.bot_process = subprocess.Popen(
-                [sys.executable, "run_bot.py"],  # adjust your bot script path
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,             # makes stdout/stderr return str instead of bytes
-                encoding="utf-8",      # <-- fix Unicode issues
-                bufsize=1              # line-buffered for live output
+                [sys.executable, "run_bot.py"]  # adjust your bot script path
             )
 
             self.start_btn.config(state="disabled")
             self.stop_btn.config(state="normal")
 
-            # Start a thread to read stdout/stderr live
-            threading.Thread(target=self.monitor_bot_output, daemon=True).start()
+            # Start a thread to wait for bot to finish
+            threading.Thread(target=self.wait_for_bot, daemon=True).start()
 
         except Exception as e:
             messagebox.showerror("Bot Error", str(e))
 
 
-    def monitor_bot_output(self):
-        """Read stdout/stderr line by line, display in GUI, handle Unicode safely."""
-        def enqueue_line(line, is_error=False):
-            self.root.after(0, lambda l=line, err=is_error: self.log_message(l, err))
-
-        # Read stdout
-        try:
-            for line in self.bot_process.stdout:
-                enqueue_line(line.rstrip())
-        except UnicodeDecodeError as e:
-            enqueue_line(f"[ERROR] Unicode decode error in stdout: {e}", is_error=True)
-
-        # Read stderr
-        try:
-            for line in self.bot_process.stderr:
-                enqueue_line(line.rstrip(), is_error=True)
-        except UnicodeDecodeError as e:
-            enqueue_line(f"[ERROR] Unicode decode error in stderr: {e}", is_error=True)
-
+    def wait_for_bot(self):
+        """Wait for the bot process to finish without reading stdout/stderr."""
         self.bot_process.wait()
         self.bot_process = None
         self.root.after(0, lambda: self.start_btn.config(state="normal"))
         self.root.after(0, lambda: self.stop_btn.config(state="disabled"))
         self.root.after(0, lambda: self.log_message("[INFO] Bot stopped."))
+
 
     def stop_bot(self):
         if self.bot_process:
