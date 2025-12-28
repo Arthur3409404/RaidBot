@@ -196,10 +196,11 @@ class RSL_Bot_Dungeons:
                     if obj.text == name_string:
                         window_tools.click_at(obj.mean_pos_x, obj.mean_pos_y, delay = 4)
                         obj_found = True
-                        continue
+                        break
             except:
                 pass
-            window_tools.move_right(self.window, strength = 1.2)
+            if not obj_found:
+                window_tools.move_right(self.window, strength = 1.2)
 
 
         if obj_found:
@@ -208,7 +209,7 @@ class RSL_Bot_Dungeons:
 
                 window_tools.move_down(self.window, strength = 1)
 
-                if self.default_difficulty == 'Hard':
+                if self.default_difficulty == 'hard':
                     stage = np.clip(self.default_level-3,0,7)
                 else:
                     stage = np.clip(self.default_level-18,2,7)
@@ -255,32 +256,28 @@ class RSL_Bot_Dungeons:
         return keys
                     
     def run_dungeons(self):
-        
         time.sleep(5)
-        time_start = time.time()
-        last_refresh_time = time_start
-        self.start_time = time_start
+        self.start_time = time.time()
         self.running = True
         time.sleep(5)
-        
-        while self.running:
-            
-            # Check energy and IronTwins
-            current_energy = self.check_energy()
-            if int(current_energy) < 60:
-                self.running = False
-                continue
 
-            if self.iron_twins_priority:
-                current_keys = self.check_iron_twins_keys()
-                if int(current_keys)>0:
-                    encounter_found = self.select_encounter('iron_twins')
+        while self.running:
+            # Stop if not enough energy
+            if int(self.check_energy()) < 60:
+                self.running = False
+                break
+            encounter = None
+
+            # Decide which encounter to run
+            if self.iron_twins_priority and int(self.check_iron_twins_keys()) > 0 :
+                encounter = "iron_twins"
             else:
-                encounter_found = self.select_encounter(self.default_dungeon)
-            if encounter_found:
+                encounter = self.default_dungeon
+
+            # Try to select and run encounter
+            if self.select_encounter(encounter):
                 self.run_encounter()
             else:
-                print('Could not find encounter')
+                print("Could not find encounter")
+
             self.print_status()
-            
-        return 

@@ -1,4 +1,0 @@
-verbose = True
-live_arena_use_gems = True
-live_arena_use_gems_max_amount = 20
-live_arena_memory = {"champion_pick_order": ['Armanz','Arbiter','Leonardo','Raphael','Yumeko','Donatello','Elva','Geomancer'],"champion_ban_order_modes": ['SpeedLead','FirstUnit'],"champion_lead_order_modes": ['SpeedLead','FirstUnit']}
