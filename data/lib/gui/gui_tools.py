@@ -116,7 +116,7 @@ class BotGUI:
         log_frame.pack(padx=10, pady=(0,10), fill="both", expand=True)
 
         # Text widget
-        self.log_text = tk.Text(log_frame, height=30, state="disabled", wrap="word")
+        self.log_text = tk.Text(log_frame, height=3, state="disabled", wrap="word")
         self.log_text.pack(side="left", fill="both", expand=True)
 
         # Scrollbar attached to frame, not to Text itself
