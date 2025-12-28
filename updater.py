@@ -6,7 +6,7 @@ import time
 import traceback
 import re
 
-REPO_URL = "https://github.com/Arthur3409404/RaidBot.git"
+REPO_URL = "https://Arthur3409404:iJ987LVNsadfüi=(/cf@github.com/Arthur3409404/RaidBot.git"
 TEMP_DIR = "RaidBot_update_tmp"
 ENTRY_POINT = "main.py"
 
