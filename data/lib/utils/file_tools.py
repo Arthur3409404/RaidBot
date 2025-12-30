@@ -7,6 +7,16 @@ Created on Sat Dec 20 23:44:21 2025
 
 import ast
 
+def apply_global_drift(search_areas: dict, drift: list):
+    """
+    Adds a global drift [dx, dy, dw, dh] to all search areas.
+    """
+    for key, values in search_areas.items():
+        search_areas[key] = [
+            values[i] + drift[i]
+            for i in range(4)
+        ]
+
 def read_params(param_file):
     params = {}
     with open(param_file, "r") as f:

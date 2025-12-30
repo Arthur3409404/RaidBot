@@ -52,6 +52,13 @@ class RSL_Bot_Mainframe():
         if self.window:
             self.window = window_tools.WindowObject(self.window)
             self.coords = (self.window.left, self.window.top, self.window.width, self.window.height)
+            drift = self.params['mainframe']['screen_drift']
+            self.window.left += drift[0]
+            self.window.top += drift[1]
+            # Drift is different for each screen. Drift for main station is 0
+            # Drift for Omen Laptop is 0.07,0.07,0,0
+
+            self
             print(f"Window Coordinates: {self.coords}")
         else:
             self.coords = None
@@ -132,7 +139,8 @@ class RSL_Bot_Mainframe():
             "Grim_Forest":     [0.55, 0.225, 0.429, 0.762],
 
         }
-        
+
+             
         self.main_menu_names = {
             "Campaign": "Campana",
             "Dungeons": "Mazmorras",
@@ -176,13 +184,13 @@ class RSL_Bot_Mainframe():
         params_dungeons = self.params['dungeons']
         params_factionwars = self.params['faction_wars']
         
-        self.classic_arena_bot = arena_tools.RSL_Bot_ClassicArena(reader = self.reader, **params_classic_arena)
-        self.tagteam_arena_bot = arena_tools.RSL_Bot_TagTeamArena(reader = self.reader, **params_tagteam_arena)
-        self.live_arena_bot = arena_tools.RSL_Bot_LiveArena(reader = self.reader, **params_live_arena)
-        self.dungeon_bot = dungeon_tools.RSL_Bot_Dungeons(reader = self.reader, **params_dungeons)
-        self.factionwars_bot = factionwars_tools.RSL_Bot_FactionWars(reader = self.reader, **params_factionwars)
+        self.classic_arena_bot = arena_tools.RSL_Bot_ClassicArena(reader = self.reader, window = self.window, **params_classic_arena)
+        self.tagteam_arena_bot = arena_tools.RSL_Bot_TagTeamArena(reader = self.reader, window = self.window, **params_tagteam_arena)
+        self.live_arena_bot = arena_tools.RSL_Bot_LiveArena(reader = self.reader, window = self.window, **params_live_arena)
+        self.dungeon_bot = dungeon_tools.RSL_Bot_Dungeons(reader = self.reader, window = self.window, **params_dungeons)
+        self.factionwars_bot = factionwars_tools.RSL_Bot_FactionWars(reader = self.reader, window = self.window, **params_factionwars)
 
-        self.error_handler = error_handler.RSL_Bot_ErrorHandler(reader = self.reader)
+        self.error_handler = error_handler.RSL_Bot_ErrorHandler(reader = self.reader, window = self.window)
         
         self.handler_init_time = time.time()
         # ...to be continued
@@ -550,7 +558,7 @@ if __name__ == "__main__":
     print('ALWAYS RUN THE PROGRAM IN 1280 x 1024')
     bot = RSL_Bot_Mainframe()
     #bot.factionwars_bot.run_factionwars()
-    gui_tools.BotGUI(bot).run()
+    #gui_tools.BotGUI(bot).run()
     #bot.test_logic()
 
     #bot.live_arena_bot.check_arena_coins()

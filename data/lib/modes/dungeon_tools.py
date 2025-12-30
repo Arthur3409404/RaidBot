@@ -21,7 +21,7 @@ from data.lib.handlers.ai_networks_handler import EnemyDataset, EvaluationNetwor
 
 class RSL_Bot_Dungeons:
     
-    def __init__(self, title_substring="Raid: Shadow Legends", reader = None, verbose = True, iron_twins_priority = True, essence_priority = 'shogun', defaults_available = ["fire_knight","dragon",'sand_devil', 'shogun'], default_difficulty = 'hard', default_level = 8 ,default_dungeon = 'fire_knight'):
+    def __init__(self, title_substring="Raid: Shadow Legends", reader = None,window =None, verbose = True, iron_twins_priority = True, essence_priority = 'shogun', defaults_available = ["fire_knight","dragon",'sand_devil', 'shogun'], default_difficulty = 'hard', default_level = 8 ,default_dungeon = 'fire_knight'):
 
         if reader is None:
             print('Error When Loading Reader')
@@ -42,7 +42,7 @@ class RSL_Bot_Dungeons:
         self.default_level = default_level
         self.default_dungeon = default_dungeon
 
-        self.window = window_tools.find_window(title_substring)
+        self.window = window
         self.init_time = time.time()
         
         self.battle_status = 'menu'
@@ -50,7 +50,6 @@ class RSL_Bot_Dungeons:
         
         
         if self.window:
-            self.window = window_tools.WindowObject(self.window)
             self.coords = (self.window.left, self.window.top, self.window.width, self.window.height)
             print(f"Window Coordinates: {self.coords}")
         else:

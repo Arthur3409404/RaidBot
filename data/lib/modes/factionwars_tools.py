@@ -20,7 +20,7 @@ from data.lib.handlers.ai_networks_handler import EnemyDataset, EvaluationNetwor
 
 class RSL_Bot_FactionWars:
     
-    def __init__(self, title_substring="Raid: Shadow Legends", reader = None, verbose = True, farm_stages = {"Banner Lords":[17,"normal"],"Barbarians":[17,"normal"],"Dark Elves":[17,"normal"],"Demonspawn":[17,"normal"],"Dwarves":[17,"normal"],"High Elves":[17,"normal"],"Knight Revenant":[17,"normal"],"Lizardmen":[17,"normal"],"Ogryn Tribes":[17,"normal"],"Orcs":[17,"normal"],"Sacred Order":[17,"normal"],"Undead Hordes":[17,"normal"],"Shadowkin":[17,"normal"],"Skinwalkers":[17,"normal"],"Sylvan Watchers":[17,"normal"]}, farm_superraid = True):
+    def __init__(self, title_substring="Raid: Shadow Legends", reader = None, window =None, verbose = True, farm_stages = {"Banner Lords":[17,"normal"],"Barbarians":[17,"normal"],"Dark Elves":[17,"normal"],"Demonspawn":[17,"normal"],"Dwarves":[17,"normal"],"High Elves":[17,"normal"],"Knight Revenant":[17,"normal"],"Lizardmen":[17,"normal"],"Ogryn Tribes":[17,"normal"],"Orcs":[17,"normal"],"Sacred Order":[17,"normal"],"Undead Hordes":[17,"normal"],"Shadowkin":[17,"normal"],"Skinwalkers":[17,"normal"],"Sylvan Watchers":[17,"normal"]}, farm_superraid = True):
 
         if reader is None:
             print('Error When Loading Reader')
@@ -40,7 +40,7 @@ class RSL_Bot_FactionWars:
         if self.farm_superraid:
             self.multiplier+=1
 
-        self.window = window_tools.find_window(title_substring)
+        self.window = window
         self.init_time = time.time()
         
         self.battle_status = 'menu'
@@ -48,7 +48,6 @@ class RSL_Bot_FactionWars:
         
         
         if self.window:
-            self.window = window_tools.WindowObject(self.window)
             self.coords = (self.window.left, self.window.top, self.window.width, self.window.height)
             print(f"Window Coordinates: {self.coords}")
         else:

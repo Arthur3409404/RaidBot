@@ -38,7 +38,7 @@ from data.lib.handlers.ai_networks_handler import EnemyDataset, EvaluationNetwor
 
 class RSL_Bot_ClassicArena:
     
-    def __init__(self, title_substring="Raid: Shadow Legends", reader = None, verbose = True, num_multi_refresh = 0, multi_refresh = False, power_threshold = 70000, use_gems = True, enemies_lost= [0]):
+    def __init__(self, title_substring="Raid: Shadow Legends", reader = None, window =None, verbose = True, num_multi_refresh = 0, multi_refresh = False, power_threshold = 70000, use_gems = True, enemies_lost= [0]):
 
         if reader is None:
             print('Error When Loading Reader')
@@ -55,12 +55,11 @@ class RSL_Bot_ClassicArena:
         self.classic_arena_enemies_lost = enemies_lost
         self.classic_arena_use_gems = use_gems
         self.offset_wins = len(self.classic_arena_enemies_lost)
-        self.window = window_tools.find_window(title_substring)
+        self.window = window
         
         self.init_time = time.time()
         
         if self.window:
-            self.window = window_tools.WindowObject(self.window)
             self.coords = (self.window.left, self.window.top, self.window.width, self.window.height)
             print(f"Window Coordinates: {self.coords}")
         else:
@@ -419,7 +418,7 @@ class RSL_Bot_ClassicArena:
 
 class RSL_Bot_TagTeamArena:
     
-    def __init__(self, title_substring="Raid: Shadow Legends", reader = None, verbose = True, num_multi_refresh = 0, multi_refresh = False, power_threshold = 70000, use_gems = True, enemies_lost= [0]):
+    def __init__(self, title_substring="Raid: Shadow Legends", reader = None, window =None, verbose = True, num_multi_refresh = 0, multi_refresh = False, power_threshold = 70000, use_gems = True, enemies_lost= [0]):
 
         if reader is None:
             print('Error When Loading Reader')
@@ -436,12 +435,11 @@ class RSL_Bot_TagTeamArena:
         self.tagteam_arena_enemies_lost = enemies_lost
         self.tagteam_arena_use_gems = use_gems
         self.offset_wins = len(self.tagteam_arena_enemies_lost)
-        self.window = window_tools.find_window(title_substring)
+        self.window = window
         self.init_time = time.time()
         
         
         if self.window:
-            self.window = window_tools.WindowObject(self.window)
             self.coords = (self.window.left, self.window.top, self.window.width, self.window.height)
             print(f"Window Coordinates: {self.coords}")
         else:
@@ -806,7 +804,7 @@ class RSL_Bot_TagTeamArena:
 
 class RSL_Bot_LiveArena:
     
-    def __init__(self, title_substring="Raid: Shadow Legends", reader = None, verbose = True, use_gems = True, use_gems_max_amount = 0, memory = dict()):
+    def __init__(self, title_substring="Raid: Shadow Legends", reader = None, window =None, verbose = True, use_gems = True, use_gems_max_amount = 0, memory = dict()):
 
         if reader is None:
             print('Error When Loading Reader')
@@ -823,7 +821,7 @@ class RSL_Bot_LiveArena:
         self.live_arena_memory = memory
         self.live_arena_use_gems = use_gems
         self.live_arena_use_gems_max_amount = use_gems_max_amount
-        self.window = window_tools.find_window(title_substring)
+        self.window = window
         self.init_time = time.time()
         
         self.battle_status = 'menu'
@@ -831,7 +829,6 @@ class RSL_Bot_LiveArena:
         
         
         if self.window:
-            self.window = window_tools.WindowObject(self.window)
             self.coords = (self.window.left, self.window.top, self.window.width, self.window.height)
             print(f"Window Coordinates: {self.coords}")
         else:

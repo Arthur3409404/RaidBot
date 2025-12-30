@@ -25,15 +25,14 @@ import data.lib.utils.window_tools as window_tools
 import data.lib.utils.file_tools as file_tools
 
 class RSL_Bot_ErrorHandler():
-    def __init__(self, reader = None, title_substring="Raid: Shadow Legends"):
+    def __init__(self, reader = None, window =None, title_substring="Raid: Shadow Legends"):
         self.reader = reader  # You can add 'de' if you expect German text
         
         self.running = True
 
-        self.window = window_tools.find_window(title_substring)
+        self.window = window
         
         if self.window:
-            self.window = window_tools.WindowObject(self.window)
             self.coords = (self.window.left, self.window.top, self.window.width, self.window.height)
             print(f"Window Coordinates: {self.coords}")
         else:
