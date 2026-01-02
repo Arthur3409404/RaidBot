@@ -53,8 +53,11 @@ class RSL_Bot_Mainframe():
             self.window = window_tools.WindowObject(self.window)
             self.coords = (self.window.left, self.window.top, self.window.width, self.window.height)
             drift = self.params['mainframe']['screen_drift']
-            self.window.left += drift[0]
-            self.window.top += drift[1]
+            self.window.left += drift[0] * self.window.width
+            self.window.top += drift[1] * self.window.height
+            self.window.left = int(self.window.left)
+            self.windw.top = int(self.window.height)
+
             # Drift is different for each screen. Drift for main station is 0
             # Drift for Omen Laptop is 0.07,0.07,0,0
 
