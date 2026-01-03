@@ -53,10 +53,10 @@ class RSL_Bot_Mainframe():
             self.window = window_tools.WindowObject(self.window)
             self.coords = (self.window.left, self.window.top, self.window.width, self.window.height)
             drift = self.params['mainframe']['screen_drift']
-            self.window.left += drift[0] * self.window.width
-            self.window.top += drift[1] * self.window.height
-            self.window.left = int(self.window.left)
-            self.windw.top = int(self.window.height)
+            #self.window.left += drift[0] * self.window.width
+            #self.window.top += drift[1] * self.window.height
+            #self.window.left = int(self.window.left)
+            #self.window.top = int(self.window.top)
 
             # Drift is different for each screen. Drift for main station is 0
             # Drift for Omen Laptop is 0.07,0.07,0,0
@@ -394,7 +394,7 @@ class RSL_Bot_Mainframe():
     
                 first_text = objects[0].text.strip()
     
-                if first_text == 'Modos de juego':
+                if 'Modos de' in first_text:
                     # Found the main menu
                     break
                 else:
@@ -560,8 +560,8 @@ class RSL_Bot_Mainframe():
 if __name__ == "__main__":
     print('ALWAYS RUN THE PROGRAM IN 1280 x 1024')
     bot = RSL_Bot_Mainframe()
-    #bot.factionwars_bot.run_factionwars()
-    #gui_tools.BotGUI(bot).run()
+    gui_tools.BotGUI(bot).run()
+
     #bot.test_logic()
 
     #bot.live_arena_bot.check_arena_coins()
