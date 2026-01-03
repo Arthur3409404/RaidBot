@@ -167,7 +167,7 @@ def get_text_in_full_area(reader, coords):
     return get_text_from_image(reader, screenshot)
 
 
-def get_text_in_relative_area(reader, window, search_area, powerdetection=False):
+def get_text_in_relative_area(reader, window, search_area, powerdetection=False, factiondetection = False):
     """
     Takes a screenshot of a relative area within the game window and extracts text using OCR.
 
@@ -197,6 +197,9 @@ def get_text_in_relative_area(reader, window, search_area, powerdetection=False)
 
     if powerdetection:
         results = reader.readtext(image_np, allowlist='0123456789.,KkMmLUCHARluchar ')
+
+    if factiondetection:
+        results = reader.readtext(image_np, allowlist='36')
     else:
         results = reader.readtext(image_np)
 

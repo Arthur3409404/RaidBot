@@ -56,7 +56,7 @@ class RSL_Bot_FactionWars:
         # Search Areas
         self.search_areas = {
             
-            "faction_wars_keys":   [0.604, 0.036, 0.052, 0.028],
+            "faction_wars_keys":   [0.611, 0.041, 0.072, 0.036],
             "faction_name":   [0.01, 0.034, 0.448, 0.041],
             'pov' : [0, 0, 1, 1],
             "go_to_higher_menu":   [0.928, 0.031, 0.046, 0.039],
@@ -193,7 +193,7 @@ class RSL_Bot_FactionWars:
             attempts+=1
 
             time.sleep(2)
-            objects = image_tools.get_text_in_relative_area(self.reader, self.window, self.search_areas['pov'], powerdetection=False)
+            objects = image_tools.get_text_in_relative_area(self.reader, self.window, self.search_areas['pov'], factiondetection=True)
 
             try:
                 for obj in objects:
