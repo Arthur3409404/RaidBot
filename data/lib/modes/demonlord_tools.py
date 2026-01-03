@@ -46,7 +46,7 @@ class RSL_Bot_DemonLord():
             "clanboss_DemonLord":   [0.007, 0.307, 0.072, 0.196],
             "clanboss_DemonLord_Keys":   [0.554, 0.036, 0.039, 0.027],
             
-            "DemonLord_Keys":   [0.732, 0.036, 0.042, 0.029],
+            "DemonLord_Keys":   [0.72, 0.038, 0.048, 0.035],
 
             "DemonLord_Easy":   [0.599, 0.140, 0.384, 0.105],
             "DemonLord_Normal":   [0.599, 0.260, 0.384, 0.105],
@@ -74,9 +74,11 @@ class RSL_Bot_DemonLord():
             DemonLord_Keys = image_tools.get_text_in_relative_area(self.reader, self.window, search_area=self.search_areas['DemonLord_Keys'])
             num_of_keys = re.findall(r"\d+", DemonLord_Keys[0].text)[0]
             self.num_of_keys = int(num_of_keys)
+            print(self.num_of_keys)
 
         except:
             self.num_of_keys = 0
+        
 
     def check_list_of_names(self, max_attempts = 3):
         """Validate or refresh the list of demon lord names."""

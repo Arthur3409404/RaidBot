@@ -59,7 +59,7 @@ class RSL_Bot_Dungeons:
         self.search_areas = {
             
             "energy":   [0.599, 0.038, 0.069, 0.027],
-            "iron_twins_keys":   [0.51, 0.038, 0.035, 0.025],
+            "iron_twins_keys":  [0.510, 0.039, 0.045, 0.04],
             'pov' : [0, 0, 1, 1],
             #"fire_knight_hard_8":   [0.238, 0.659, 0.222, 0.025],
             #"iron_twins_15":   [0.238, 0.659, 0.222, 0.025],
@@ -249,7 +249,13 @@ class RSL_Bot_Dungeons:
     def check_iron_twins_keys(self):
         try:
             keys = image_tools.get_text_in_relative_area(self.reader, self.window,search_area=self.search_areas['iron_twins_keys'])[0]
-            keys = re.findall(r"\d+", keys.text)[0]
+            keys_matches = re.findall(r"\d+", keys.text)[0]
+            if keys_matches:
+                # Take the first match and ensure it's just digits
+                keys_number = ''.join(filter(str.isdigit, keys_matches[0]))
+                return int(keys_number)
+            else:
+                return 0
         except:
             keys = 0
         return keys
