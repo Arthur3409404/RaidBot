@@ -61,3 +61,39 @@ class RSL_Bot_DemonLord():
 
 
         }
+
+        self.demonlord_encounter_difficulty = None 
+
+    def check_demonlord_keys(self):
+        """Check if demon lord keys are available."""
+        pass
+
+    def check_list_of_names(self):
+        """Validate or refresh the list of demon lord names."""
+        pass
+
+    def set_difficulty(self):
+        """Set the next demon lord difficulty."""
+        pass
+
+    def handle_demonlord_encounter(self):
+        """Execute the demon lord fight logic."""
+        pass
+
+    def run_demonlord(self):
+        self.check_demonlord_keys()
+
+        if self.no_keys_available:
+            return
+        
+        self.check_list_of_names()
+        
+        if self.demonlord_difficulties_done =! self.demon_lord_difficulty_order:
+            self.set_difficulty()
+            self.handle_demonlord_encounter()
+            
+
+        window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
+
+
+        pass
