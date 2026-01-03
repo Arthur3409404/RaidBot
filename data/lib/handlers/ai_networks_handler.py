@@ -94,7 +94,7 @@ class EnemyDataset(Dataset):
         image_np = image_np.astype(np.float32) / 255.0
 
         # Normalize power
-        power_val = min(max(power_val, 0.0), self.max_power) / self.max_power
+        power_val = power_val / self.max_power
 
         # Append to arrays
         self.images = np.concatenate([self.images, image_np[np.newaxis, ...]], axis=0)
