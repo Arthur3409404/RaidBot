@@ -193,20 +193,20 @@ class RSL_Bot_FactionWars:
             attempts+=1
 
             time.sleep(2)
-            objects = image_tools.get_text_in_relative_area(self.reader, self.window, self.search_areas['pov'], factiondetection=True)
+            objects = image_tools.get_text_in_relative_area(self.reader, self.window, self.search_areas['pov'])
 
             try:
                 for obj in objects:
                     try:
-                        if int(obj.text)==53 or int(obj.text)==63:
-                            window_tools.click_at(obj.mean_pos_x, obj.mean_pos_y, delay = 4)
+                        if 'Cripta' in obj.text:
+                            window_tools.click_at(obj.mean_pos_x, obj.mean_pos_y - int(0.05*self.window.height), delay = 4)
                             faction_name = image_tools.get_text_in_relative_area(self.reader, self.window, self.search_areas['faction_name'], powerdetection=False)[0]
                             try:
                                 faction_name_alternative = faction_name.text.replace("Cripta de ", "")
                             except:
                                 faction_name_alternative ='Test'
                             faction_name = faction_name.text.replace("Cripta: ", "")
-                            
+                            print(faction_name)
                             if faction_name in self.faction_menu_names.values() or faction_name_alternative in self.faction_menu_names.values():
                                 if faction_name_alternative in self.faction_menu_names.values():
                                     faction_name = faction_name_alternative
