@@ -40,8 +40,8 @@ dungeons_default_level = 8
 dungeons_default_dungeon = 'fire_knight'
 
 demon_lord_verbose = True
-demon_lord_player_name = 'TrollPatroll69'
-demon_lord_difficulty_order = ['UNM','NM','Brutal']
+demon_lord_player_names = ["TrollPatroll69", "TrollPetrol3"]
+demon_lord_difficulty_order = ['Easy', 'Normal']
 
 faction_wars_verbose = True
 faction_wars_farm_stages = {"Banner Lords":[21,"normal"],"Barbarians":[21,"normal"],"Dark Elves":[17,"normal"],"Demonspawn":[17,"normal"],"Dwarves":[21,"normal"],"High Elves":[21,"normal"],"Knight Revenant":[17,"normal"],"Lizardmen":[21,"normal"],"Ogryn Tribes":[21,"normal"],"Orcs":[21,"normal"],"Sacred Order":[21,"normal"],"Undead Hordes":[21,"normal"],"Shadowkin":[21,"normal"],"Skinwalkers":[17,"normal"],"Sylvan Watchers":[21,"normal"]}

@@ -268,7 +268,7 @@ class RSL_Bot_Dungeons:
             encounter = None
 
             # Decide which encounter to run
-            if self.iron_twins_priority and int(self.check_iron_twins_keys()) > 0 :
+            if self.iron_twins_priority and int(self.check_iron_twins_keys()) != 0 :
                 encounter = "iron_twins"
             else:
                 encounter = self.default_dungeon

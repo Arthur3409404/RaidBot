@@ -109,7 +109,7 @@ def click_center(window, coords, clicks=1, delay=2):
     time.sleep(delay)
 
 
-def move_up(window, strength = 1):
+def move_up(window, strength = 1, relative_x_pos = 0.5, relative_y_pos = 0.5):
     """
     Click and drag from the center downward.
     
@@ -119,8 +119,8 @@ def move_up(window, strength = 1):
     if not window:
         return
 
-    start_x = window.left + window.width // 2
-    start_y = window.top + window.height // 2
+    start_x = window.left + window.width *relative_x_pos
+    start_y = window.top + window.height *relative_y_pos
     end_y = start_y + int(window.height * 0.49 * strength)  # Drag ~49% of height downward
 
     pyautogui.moveTo(start_x, start_y)
@@ -133,7 +133,7 @@ def move_up(window, strength = 1):
 
 
 
-def move_down(window, strength = 1):
+def move_down(window, strength = 1, relative_x_pos = 0.5, relative_y_pos = 0.5):
     """
     Click and drag from the center upward.
     
@@ -143,8 +143,8 @@ def move_down(window, strength = 1):
     if not window:
         return
 
-    start_x = window.left + window.width // 2
-    start_y = window.top + window.height // 2
+    start_x = window.left + window.width *relative_x_pos
+    start_y = window.top + window.height *relative_y_pos
     end_y = start_y - int(window.height * 0.49 * strength)  # Drag ~49% of height upward
 
     pyautogui.moveTo(start_x, start_y)
@@ -155,7 +155,7 @@ def move_down(window, strength = 1):
     time.sleep(5)
     
     
-def move_left(window, strength = 1):
+def move_left(window, strength = 1, relative_x_pos = 0.5, relative_y_pos = 0.5):
     """
     Click and drag from the center downward.
     
@@ -165,8 +165,8 @@ def move_left(window, strength = 1):
     if not window:
         return
 
-    start_x = window.left + window.width // 2
-    start_y = window.top + window.height // 2
+    start_x = window.left + window.width *relative_x_pos
+    start_y = window.top + window.height *relative_y_pos
     end_x = start_x + int(window.width * 0.49 * strength)  # Drag ~49% of height downward
 
     pyautogui.moveTo(start_x, start_y)
@@ -177,7 +177,7 @@ def move_left(window, strength = 1):
     time.sleep(5)
     
     
-def move_right(window, strength = 1):
+def move_right(window, strength = 1, relative_x_pos = 0.5, relative_y_pos = 0.5):
     """
     Click and drag from the center downward.
     
@@ -187,8 +187,8 @@ def move_right(window, strength = 1):
     if not window:
         return
 
-    start_x = window.left + window.width // 2
-    start_y = window.top + window.height // 2
+    start_x = window.left + window.width *relative_x_pos
+    start_y = window.top + window.height *relative_y_pos
     end_x = start_x - int(window.width * 0.49 * strength)  # Drag ~49% of height downward
 
     pyautogui.moveTo(start_x, start_y)

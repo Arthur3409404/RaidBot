@@ -34,6 +34,7 @@ import data.lib.handlers.error_handler as error_handler
 import data.lib.modes.arena_tools as arena_tools
 import data.lib.modes.dungeon_tools as dungeon_tools
 import data.lib.modes.factionwars_tools as factionwars_tools
+import data.lib.modes.demonlord_tools as demonlord_tools
 
 class RSL_Bot_Mainframe():
     def __init__(self, title_substring="Raid: Shadow Legends"):
@@ -123,7 +124,7 @@ class RSL_Bot_Mainframe():
             "tagteam_arena":   [0.829, 0.409, 0.105, 0.177],
             
             
-            "clanboss_DemonLord":   [0.394, 0.615, 0.208, 0.083],
+            "clanboss_DemonLord":   [0.007, 0.307, 0.072, 0.196],
             "clanboss_DemonLord_Keys":   [0.394, 0.615, 0.208, 0.083],
             
             "clanboss_Hydra":   [0.394, 0.615, 0.208, 0.083],
@@ -186,12 +187,14 @@ class RSL_Bot_Mainframe():
         params_live_arena = self.params['live_arena']
         params_dungeons = self.params['dungeons']
         params_factionwars = self.params['faction_wars']
+        params_demonlord = self.params['demon_lord']
         
         self.classic_arena_bot = arena_tools.RSL_Bot_ClassicArena(reader = self.reader, window = self.window, **params_classic_arena)
         self.tagteam_arena_bot = arena_tools.RSL_Bot_TagTeamArena(reader = self.reader, window = self.window, **params_tagteam_arena)
         self.live_arena_bot = arena_tools.RSL_Bot_LiveArena(reader = self.reader, window = self.window, **params_live_arena)
         self.dungeon_bot = dungeon_tools.RSL_Bot_Dungeons(reader = self.reader, window = self.window, **params_dungeons)
         self.factionwars_bot = factionwars_tools.RSL_Bot_FactionWars(reader = self.reader, window = self.window, **params_factionwars)
+        self.demonlord_bot = demonlord_tools.RSL_Bot_DemonLord(reader = self.reader, window = self.window, **params_demonlord)
 
         self.error_handler = error_handler.RSL_Bot_ErrorHandler(reader = self.reader, window = self.window)
         
@@ -524,8 +527,9 @@ class RSL_Bot_Mainframe():
             # 6. DemonLord Clanboss
             # =========================
             if self.params['run']['demonlord']:
-                self.go_to_menu(self.main_menu_names['ClanBoss1'])     
-                # self.demonlord_bot.run_demonlord()
+                self.go_to_menu(self.main_menu_names['ClanBoss1'])    
+                window_tools.click_center(self.window, self.search_areas["clanboss_DemonLord"]) 
+                self.demonlord_bot.run_demonlord()
                 window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
             # Check demonlord_keys
             #     if not enough demonlord_keys -> skip
@@ -560,6 +564,7 @@ class RSL_Bot_Mainframe():
 if __name__ == "__main__":
     print('ALWAYS RUN THE PROGRAM IN 1280 x 1024')
     bot = RSL_Bot_Mainframe()
+    bot.demonlord_bot.test()
     gui_tools.BotGUI(bot).run()
 
     #bot.test_logic()
