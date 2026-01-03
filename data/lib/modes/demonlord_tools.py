@@ -119,6 +119,12 @@ class RSL_Bot_DemonLord():
         """Execute the demon lord fight logic."""
         string = 'DemonLord_'+ self.demonlord_encounter_difficulty
         window_tools.click_center(self.window, self.search_areas[string])
+        reclaim_status = image_tools.get_text_in_relative_area(self.reader, self.window, search_area=self.search_areas['DemonLord_EnterEncounter'])
+        if reclaim_status[0].text == 'Reclamar':
+            window_tools.click_center(self.window, self.search_areas["DemonLord_EnterEncounter"])
+            window_tools.click_center(self.window, self.search_areas["DemonLord_NameList"])
+            window_tools.click_center(self.window, self.search_areas["DemonLord_NameList"])
+
         window_tools.click_center(self.window, self.search_areas["DemonLord_EnterEncounter"])
         window_tools.click_center(self.window, self.search_areas["DemonLord_StartEncounter"])
 

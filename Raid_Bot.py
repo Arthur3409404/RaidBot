@@ -564,7 +564,6 @@ class RSL_Bot_Mainframe():
 if __name__ == "__main__":
     print('ALWAYS RUN THE PROGRAM IN 1280 x 1024')
     bot = RSL_Bot_Mainframe()
-    bot.demonlord_bot.test()
     gui_tools.BotGUI(bot).run()
 
     #bot.test_logic()
