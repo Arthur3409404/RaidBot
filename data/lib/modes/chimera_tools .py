@@ -26,7 +26,7 @@ import data.lib.utils.file_tools as file_tools
 
 
 import data.lib.modes.arena_tools as arena_tools
-import data.lib.modes.hydra_tools_old as hydra_tools_old
+import data.lib.modes.hydra_tools as hydra_tools
 
 class RSL_Bot_DemonLord():
     def __init__(self, title_substring="Raid: Shadow Legends", reader = None, window = None, verbose = True, player_names = None, difficulty_order = None):

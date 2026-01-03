@@ -25,16 +25,11 @@ import os
 
 import data.lib.gui.gui_tools as gui_tools
 
-import data.lib.utils.image_tools as image_tools
-import data.lib.utils.window_tools as window_tools
-import data.lib.utils.file_tools as file_tools
+from data.lib.utils import *
 
 import data.lib.handlers.error_handler as error_handler 
 
-import data.lib.modes.arena_tools as arena_tools
-import data.lib.modes.dungeon_tools as dungeon_tools
-import data.lib.modes.factionwars_tools as factionwars_tools
-import data.lib.modes.demonlord_tools as demonlord_tools
+from data.lib.modes import *
 
 class RSL_Bot_Mainframe():
     def __init__(self, title_substring="Raid: Shadow Legends"):
@@ -531,11 +526,17 @@ class RSL_Bot_Mainframe():
                 window_tools.click_center(self.window, self.search_areas["clanboss_DemonLord"]) 
                 self.demonlord_bot.run_demonlord()
                 window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
-            # Check demonlord_keys
-            #     if not enough demonlord_keys -> skip
-            # self.go_to_menu(self.main_menu_names['clanboss'])
-            # self.demonlord_bot.run_demonlord()
-            # window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
+
+
+            # =========================
+            # 7. 
+            # =========================
+            # if self.params['run']['demonlord']:
+            #     self.go_to_menu(self.main_menu_names['ClanBoss1'])    
+            #     window_tools.click_center(self.window, self.search_areas["clanboss_DemonLord"]) 
+            #     self.demonlord_bot.run_demonlord()
+            #     window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
+
             
 
             # run_classic_arena = True
