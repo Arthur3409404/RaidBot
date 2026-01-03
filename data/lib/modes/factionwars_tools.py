@@ -88,7 +88,7 @@ class RSL_Bot_FactionWars:
             'High Elves': 'Altos Elfos',
             'Knight Revenant': 'Aparecidos',
             'Lizardmen': 'Hombres Lagarto',
-            'Ogryn Tribes': 'Tribus de Ogretes',
+            'Ogryn Tribes': 'Ogretes',
             'Orcs': 'Orcos',
             'Sacred Order': 'Orden Sagrada',
             'Undead Hordes': 'No Muertos',
@@ -201,9 +201,15 @@ class RSL_Bot_FactionWars:
                         if int(obj.text)==53 or int(obj.text)==63:
                             window_tools.click_at(obj.mean_pos_x, obj.mean_pos_y, delay = 4)
                             faction_name = image_tools.get_text_in_relative_area(self.reader, self.window, self.search_areas['faction_name'], powerdetection=False)[0]
+                            try:
+                                faction_name_alternative = faction_name.text.replace("Cripta de ", "")
+                            except:
+                                faction_name_alternative ='Test'
                             faction_name = faction_name.text.replace("Cripta: ", "")
                             
-                            if faction_name in self.faction_menu_names.values():
+                            if faction_name in self.faction_menu_names.values() or faction_name_alternative in self.faction_menu_names.values():
+                                if faction_name_alternative in self.faction_menu_names.values():
+                                    faction_name = faction_name_alternative
                                 key = [k for k, v in self.faction_menu_names.items() if v == faction_name]
                                 self.current_stage = self.farm_stages[key[0]][0]
                                 self.current_difficulty = self.farm_stages[key[0]][1]
