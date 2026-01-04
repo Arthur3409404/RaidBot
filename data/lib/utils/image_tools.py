@@ -132,6 +132,81 @@ def compare_pngs(path1, path2):
     score, _ = ssim(img1, img2, full=True)
     return score
 
+def get_simliarities_in_relative_area(window, search_area, path_to_tobedetected_object_picture, threshold=0.8, scales=None):
+    """
+    Detects all occurrences of a template object in a relative window area,
+    allowing for uniform scaling of the object.
+
+    Args:
+        reader: unused, kept for compatibility
+        window: object with .left, .top, .width, .height
+        search_area (list[float]): [rel_left, rel_top, rel_width, rel_height]
+        path_to_tobedetected_object_picture (str): template image path
+        threshold (float): template matching threshold (0–1)
+        scales (list[float]): list of scales to try (e.g., [0.5, 0.75, 1, 1.25, 1.5])
+
+    Returns:
+        list[TextObject]: list of TextObjects with .text = None
+    """
+    if not window:
+        return []
+
+    if scales is None:
+        scales = [0.25, 0.5, 0.75, 1.0]
+
+    rel_left, rel_top, rel_width, rel_height = search_area
+
+    # Absolute coordinates
+    abs_left = window.left + int(rel_left * window.width)
+    abs_top = window.top + int(rel_top * window.height)
+    abs_width = int(rel_width * window.width)
+    abs_height = int(rel_height * window.height)
+
+    # Screenshot search area
+    screenshot = pyautogui.screenshot(region=(abs_left, abs_top, abs_width, abs_height))
+    search_img = cv2.cvtColor(np.array(screenshot), cv2.COLOR_RGB2GRAY)
+
+    # Load template
+    template_orig = cv2.imread(path_to_tobedetected_object_picture, cv2.IMREAD_GRAYSCALE)
+    if template_orig is None:
+        raise FileNotFoundError(path_to_tobedetected_object_picture)
+
+    text_objects = []
+    used_points = []
+
+    for scale in scales:
+        # Resize template
+        t_w = int(template_orig.shape[1] * scale)
+        t_h = int(template_orig.shape[0] * scale)
+        if t_w > search_img.shape[1] or t_h > search_img.shape[0]:
+            continue
+        template = cv2.resize(template_orig, (t_w, t_h), interpolation=cv2.INTER_AREA)
+
+        # Match template
+        result = cv2.matchTemplate(search_img, template, cv2.TM_CCOEFF_NORMED)
+        loc = np.where(result >= threshold)
+
+        for pt in zip(*loc[::-1]):  # (x, y)
+            center_x = pt[0] + t_w / 2
+            center_y = pt[1] + t_h / 2
+
+            abs_x = abs_left + center_x
+            abs_y = abs_top + center_y
+
+            # suppress near-duplicates
+            if any(abs(abs_x - ux) < t_w * 0.5 and abs(abs_y - uy) < t_h * 0.5 for ux, uy in used_points):
+                continue
+
+            used_points.append((abs_x, abs_y))
+
+            obj = TextObject(
+                text=None,
+                mean_pos_x=abs_x,
+                mean_pos_y=abs_y
+            )
+            text_objects.append(obj)
+
+    return text_objects
 
 def get_text_from_image(reader, image):
     """

@@ -25,7 +25,7 @@ import data.lib.utils.window_tools as window_tools
 
 
 import data.lib.modes.arena_tools as arena_tools
-import data.lib.modes.hydra_tools_old as hydra_tools_old
+import Backup.hydra_tools_old as hydra_tools_old
 
 from data.lib.handlers.ai_networks_handler import EnemyDataset, EvaluationNetwork
 
@@ -105,6 +105,7 @@ class RSL_Bot_ClassicArena:
         }
 
         self.max_battle_time = 90
+        self.no_coin_status = False
 
 
     def get_battle_outcome(self,power_level):
@@ -634,6 +635,7 @@ class RSL_Bot_TagTeamArena:
 
     def check_arena_coins(self):
         time.sleep(1)
+        self.no_coin_status = False
         coins_text = image_tools.get_text_in_relative_area(self.reader, self.window,self.search_areas["arena_coins"])[0]
         if "0/" in coins_text.text and not coins_text.text == '10/10':
             rel_left, rel_top, rel_width, rel_height = self.search_areas["add_arena_coins"]
@@ -947,6 +949,7 @@ class RSL_Bot_LiveArena:
 
     def check_arena_coins(self):
         time.sleep(1)
+        self.no_coin_status = False
         coins_text = image_tools.get_text_in_relative_area(self.reader, self.window,self.search_areas["live_arena_coins"])[0]
         if "0/" in coins_text.text and not coins_text.text == '5/5':
             rel_left, rel_top, rel_width, rel_height = self.search_areas["live_add_arena_coins"]

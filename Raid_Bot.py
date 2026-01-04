@@ -68,6 +68,7 @@ class RSL_Bot_Mainframe():
             "go_to_higher_menu":   [0.928, 0.031, 0.046, 0.039],
             "go_to_bastion":      [0.903, 0.9, 0.064, 0.059],
             "bastion_to_main_menu":      [0.808, 0.904, 0.168, 0.074],
+            "detect_doomtower_rotation": [0.121, 0.696, 0.189, 0.035],
             
             "quest_menu":      [0.259, 0.911, 0.066, 0.068],
             "quest_menu_name":      [0.013, 0.032, 0.125, 0.038],
@@ -183,6 +184,7 @@ class RSL_Bot_Mainframe():
         params_dungeons = self.params['dungeons']
         params_factionwars = self.params['faction_wars']
         params_demonlord = self.params['demon_lord']
+        params_doomtower = self.params['doom_tower']
         
         self.classic_arena_bot = arena_tools.RSL_Bot_ClassicArena(reader = self.reader, window = self.window, **params_classic_arena)
         self.tagteam_arena_bot = arena_tools.RSL_Bot_TagTeamArena(reader = self.reader, window = self.window, **params_tagteam_arena)
@@ -190,6 +192,8 @@ class RSL_Bot_Mainframe():
         self.dungeon_bot = dungeon_tools.RSL_Bot_Dungeons(reader = self.reader, window = self.window, **params_dungeons)
         self.factionwars_bot = factionwars_tools.RSL_Bot_FactionWars(reader = self.reader, window = self.window, **params_factionwars)
         self.demonlord_bot = demonlord_tools.RSL_Bot_DemonLord(reader = self.reader, window = self.window, **params_demonlord)
+        self.doomtower_bot = doomtower_tools.RSL_Bot_DoomTower(reader = self.reader, window = self.window, **params_doomtower)
+        
 
         self.error_handler = error_handler.RSL_Bot_ErrorHandler(reader = self.reader, window = self.window)
         
@@ -368,9 +372,18 @@ class RSL_Bot_Mainframe():
     def go_to_bastion_from_menu(self):
         self.go_to_menu(self.main_menu_names['Dungeons'])
         window_tools.click_center(self.window, self.search_areas["go_to_bastion"])
+
+    def detect_doomtower_rotation(self):
+        self.current_rotation_name = image_tools.get_text_in_relative_area(self.reader, self.window, search_area=self.search_areas["detect_doomtower_rotation"])[0]
+        if 'Arana' in self.current_rotation_name.text:
+            self.doomtower_bot.current_rotation = '1'
+        if 'Dragon' in self.current_rotation_name.text:
+            self.doomtower_bot.current_rotation = '2'
+        if 'Hada' in self.current_rotation_name.text:
+            self.doomtower_bot.current_rotation = '3'
         
         
-    def go_to_menu(self, menu_name, max_attempts=5):
+    def go_to_menu(self, menu_name, max_attempts=5, detect_doomtower_rotation = False):
         attempts = 0
     
         while attempts < max_attempts:
@@ -414,6 +427,8 @@ class RSL_Bot_Mainframe():
         for obj in objects:
             #print(obj.text)
             if obj.text == menu_name:
+                if detect_doomtower_rotation:
+                    self.detect_doomtower_rotation()
                 window_tools.click_at(obj.mean_pos_x, obj.mean_pos_y)
                 obj_found = True
                 return
@@ -423,6 +438,8 @@ class RSL_Bot_Mainframe():
         for obj in objects:
             #print(obj.text)
             if obj.text == menu_name:
+                if detect_doomtower_rotation:
+                    self.detect_doomtower_rotation()
                 window_tools.click_at(obj.mean_pos_x, obj.mean_pos_y)
                 obj_found = True
                 return
@@ -527,15 +544,13 @@ class RSL_Bot_Mainframe():
                 self.demonlord_bot.run_demonlord()
                 window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
 
-
             # =========================
-            # 7. 
+            # 7. DoomTower
             # =========================
-            # if self.params['run']['demonlord']:
-            #     self.go_to_menu(self.main_menu_names['ClanBoss1'])    
-            #     window_tools.click_center(self.window, self.search_areas["clanboss_DemonLord"]) 
-            #     self.demonlord_bot.run_demonlord()
-            #     window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
+            if self.params['run']['doomtower']:
+                self.go_to_menu(self.main_menu_names['DoomTower'], detect_doomtower_rotation = True)    
+                self.doomtower_bot.run_doomtower()
+                window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
 
             
 
@@ -568,6 +583,9 @@ if __name__ == "__main__":
 
     gui_tools.BotGUI(bot).run()
 
+    # bot.factionwars_bot.select_encounter()
+    # bot.doomtower_bot.current_rotation = '1'
+    # bot.doomtower_bot.test()
     #bot.test_logic()
 
     #bot.live_arena_bot.check_arena_coins()

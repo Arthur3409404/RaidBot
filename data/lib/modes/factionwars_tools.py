@@ -57,7 +57,7 @@ class RSL_Bot_FactionWars:
         self.search_areas = {
             
             "faction_wars_keys":   [0.611, 0.041, 0.072, 0.036],
-            "faction_name":   [0.01, 0.034, 0.448, 0.041],
+            "faction_name":   [0.01, 0.033, 0.448, 0.046],
             'pov' : [0, 0, 1, 1],
             "go_to_higher_menu":   [0.928, 0.031, 0.046, 0.039],
             
@@ -80,7 +80,7 @@ class RSL_Bot_FactionWars:
         }
 
         self.faction_menu_names = {
-            'Banner Lords': 'Hidalgos',
+            'Banner Lords': ['Hidalgos','Hidaldos'],
             'Barbarians': 'Barbaros',
             'Dark Elves': 'Elfos Oscuros',
             'Demonspawn': 'Engendros',
@@ -207,10 +207,20 @@ class RSL_Bot_FactionWars:
                                 faction_name_alternative ='Test'
                             faction_name = faction_name.text.replace("Cripta: ", "")
                             print(faction_name)
-                            if faction_name in self.faction_menu_names.values() or faction_name_alternative in self.faction_menu_names.values():
-                                if faction_name_alternative in self.faction_menu_names.values():
+                            flat_values = sum((v if isinstance(v, list) else [v]for v in self.faction_menu_names.values()),[])
+                            # check against flattened values
+                            if faction_name in flat_values or faction_name_alternative in flat_values:
+
+                                if faction_name_alternative in flat_values:
                                     faction_name = faction_name_alternative
-                                key = [k for k, v in self.faction_menu_names.items() if v == faction_name]
+
+                                # find the key where faction_name is either the value OR inside the list
+                                key = [
+                                    k for k, v in self.faction_menu_names.items()
+                                    if v == faction_name or
+                                    (isinstance(v, list) and faction_name in v)
+                                ]
+
                                 self.current_stage = self.farm_stages[key[0]][0]
                                 self.current_difficulty = self.farm_stages[key[0]][1]
                                 
