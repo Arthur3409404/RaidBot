@@ -62,7 +62,7 @@ class RSL_Bot_DoomTower():
             "doom_tower_check_boss":   [0.905, 0.54, 0.068, 0.09],
             "doom_tower_check_boss_name":   [0.012, 0.032, 0.458, 0.046],
             "doom_tower_start_encounter":   [0.763, 0.877, 0.211, 0.106],
-            "doom_tower_restart_encounter":   [0.463, 0.877, 0.211, 0.106],
+            "doom_tower_restart_encounter":   [0.423, 0.877, 0.211, 0.106],
             "doom_tower_automatic_climb":    [0.373, 0.936, 0.194, 0.036],
 
             "doom_tower_battle_result_automatic_climb":    [0.369, 0.339, 0.263, 0.04],
@@ -70,6 +70,8 @@ class RSL_Bot_DoomTower():
             "doom_tower_battle_result":    [0.396, 0.161, 0.195, 0.056],
             # "doom_tower_battle_result_2":    [0.38, 0.085, 0.224, 0.059],
             "doom_tower_close_encounter":   [0.13, 0.898, 0.064, 0.076],
+
+            "doom_tower_auto_battle_button": [0.026, 0.899, 0.058, 0.07],
             
             
 
@@ -282,6 +284,11 @@ class RSL_Bot_DoomTower():
 
 
         try:
+            battle_status = image_tools.get_text_in_relative_area(self.reader, self.window,search_area=self.search_areas["doom_tower_auto_battle_button"])
+            if len(battle_status) >0:
+                battle_status.text == 'Auto'
+                return
+
             battle_result = image_tools.get_text_in_relative_area(self.reader, self.window,search_area=self.search_areas["doom_tower_battle_result"])[0]
             if (battle_result.text == "VICTORIA" or battle_result.text == "DERROTA") and self.battle_status != 'autoclimb':
                 self.battle_status = 'Done'
@@ -332,22 +339,22 @@ class RSL_Bot_DoomTower():
             window_tools.click_center(self.window, self.search_areas["doom_tower_start_encounter"])
 
 
-    def run_encounter(self, farming = False, max_attempts = 15):
+    def run_encounter(self, farming = False, max_attempts = 50):
         self.setup_encounter()
         run = True
+        self.battle_status == 'Starting'
         window_tools.click_center(self.window, self.search_areas["doom_tower_start_encounter"])
         time.sleep(10)
         attempt = 0
         while run:
-            attempt +=1
-            if max_attempts>attempt:
-                break
 
             self.check_battle_outcome()
             time.sleep(2)
             if self.battle_status == 'Done' and not farming:
                 break
             if self.battle_status == 'Done' and farming:
+                attempt +=1
+
                 window_tools.click_center(self.window, self.search_areas["doom_tower_restart_encounter"])
                 time.sleep(10)
                 self.battle_status == 'Starting'
@@ -360,6 +367,8 @@ class RSL_Bot_DoomTower():
                     pass
 
                 if self.battle_status == 'Done' and not farming:
+                    break
+                if max_attempts<attempts:
                     break
 
         print('Battle_Done')
@@ -493,7 +502,7 @@ class RSL_Bot_DoomTower():
 
 
             for i in range(len(possible_stages)):
-                window_tools.click_at(possible_stages[i].mean_pos_x, possible_stages[i].mean_pos_y)
+                window_tools.click_at(possible_stages[i].mean_pos_x, possible_stages[i].mean_pos_y, delay = 4)
                 
                 try:
                     doom_tower_menu_name = image_tools.get_text_in_relative_area(self.reader, self.window,search_area=self.search_areas["doom_tower_menu_name"])[0]
@@ -501,7 +510,7 @@ class RSL_Bot_DoomTower():
                     try:
                         number = re.findall(r'\d+', doom_tower_menu_name.text)[0]
                     except:
-                        number = 1
+                        number = '10'
 
                     if doom_tower_menu_name.text == 'Torre del Destino':
                         continue 
@@ -521,9 +530,9 @@ class RSL_Bot_DoomTower():
                         stage_completed = image_tools.get_simliarities_in_relative_area(
                         self.window,
                         self.search_areas["doom_tower_check_boss_stage_complete"],
-                        'pic\\doom_tower_locked_stage.png'
+                        'pic\\doom_tower_locked_boss.png'
                         )
-                        if not (stage_completed)==1 and 'Jefe Final' in doom_tower_menu_name.text:
+                        if  not len(stage_completed)==1 and 'Jefe Final' in doom_tower_menu_name.text:
                             self.doomtower_climb_status = 'completed'
                         if 'Jefe Final' in doom_tower_menu_name.text:
                             self.highest_stage_available[self.current_difficulty] = 120

@@ -109,7 +109,7 @@ def analyze_power_label_correlation():
     # -----------------------------
     # Plot win/loss over power
     # -----------------------------
-    plot = False
+    plot = True
     if plot:
         plt.figure(figsize=(10, 6))
 
@@ -157,6 +157,6 @@ def power_only_baseline_accuracy():
 # Main
 # =============================
 if __name__ == "__main__":
-    train_enemy_evaluation_model()
     analyze_power_label_correlation()
-    power_only_baseline_accuracy()
+    # train_enemy_evaluation_model()
+    # power_only_baseline_accuracy()

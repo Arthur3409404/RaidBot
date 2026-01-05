@@ -87,7 +87,7 @@ class RSL_Bot_FactionWars:
             'Dwarves': 'Enanos',
             'High Elves': 'Altos Elfos',
             'Knight Revenant': 'Aparecidos',
-            'Lizardmen': 'Hombres Lagarto',
+            'Lizardmen': ['Hombres Lagarto', "H. Laqarto"],
             'Ogryn Tribes': 'Ogretes',
             'Orcs': 'Orcos',
             'Sacred Order': 'Orden Sagrada',
