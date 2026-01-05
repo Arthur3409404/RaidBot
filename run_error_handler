@@ -1,0 +1,4 @@
+from data.lib.handlers.error_handler import RSL_Bot_ErrorHandler
+if __name__ == "__main__":
+    bot = RSL_Bot_ErrorHandler()
+    bot.run()
