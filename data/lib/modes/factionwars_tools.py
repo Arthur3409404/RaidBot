@@ -67,6 +67,7 @@ class RSL_Bot_FactionWars:
             "battle_status_finished":  [0.362, 0.897, 0.269, 0.081], # check regularly for if enemy quits
             "battle_result":    [0.389, 0.148, 0.204, 0.071],
             "battle_result_2":    [0.38, 0.085, 0.224, 0.059],
+            "restart_encounter":   [0.423, 0.877, 0.211, 0.106],
 
             'get_difficulty':[0.029, 0.924, 0.084, 0.035],
             'change_difficulty_normal':[0.097, 0.803, 0.065, 0.031],
@@ -80,14 +81,14 @@ class RSL_Bot_FactionWars:
         }
 
         self.faction_menu_names = {
-            'Banner Lords': ['Hidalgos','Hidaldos'],
+            'Banner Lords': 'Hidalgos',
             'Barbarians': 'Barbaros',
             'Dark Elves': 'Elfos Oscuros',
             'Demonspawn': 'Engendros',
             'Dwarves': 'Enanos',
             'High Elves': 'Altos Elfos',
             'Knight Revenant': 'Aparecidos',
-            'Lizardmen': ['Hombres Lagarto', "H. Laqarto"],
+            'Lizardmen': "H. Lagarto",
             'Ogryn Tribes': 'Ogretes',
             'Orcs': 'Orcos',
             'Sacred Order': 'Orden Sagrada',
@@ -185,88 +186,205 @@ class RSL_Bot_FactionWars:
         print("🛑 To stop the bot, press 'v'")
         print("=" * 40 + "\n")
 
-                    
-    def select_encounter(self, max_attempts = 6):
+
+
+
+    # def select_encounter(self, max_attempts = 6):
+    #     obj_found = False
+    #     attempts = 0
+    #     while attempts<max_attempts and not obj_found:
+    #         attempts+=1
+
+    #         time.sleep(2)
+    #         objects = image_tools.get_text_in_relative_area(self.reader, self.window, self.search_areas['pov'])
+
+    #         try:
+    #             for obj in objects:
+    #                 try:
+    #                     if 'Cripta' in obj.text:
+    #                         window_tools.click_at(obj.mean_pos_x, obj.mean_pos_y - int(0.05*self.window.height), delay = 4)
+    #                         faction_name = image_tools.get_text_in_relative_area(self.reader, self.window, self.search_areas['faction_name'], powerdetection=False)[0]
+    #                         try:
+    #                             faction_name_alternative = faction_name.text.replace("Cripta de ", "")
+    #                         except:
+    #                             faction_name_alternative ='____________'
+    #                         faction_name = faction_name.text.replace("Cripta: ", "")
+    #                         print(faction_name)
+    #                         flat_values = sum((v if isinstance(v, list) else [v]for v in self.faction_menu_names.values()),[])
+    #                         # check against flattened values
+    #                         if faction_name in flat_values or faction_name_alternative in flat_values:
+
+    #                             if faction_name_alternative in flat_values:
+    #                                 faction_name = faction_name_alternative
+
+    #                             # find the key where faction_name is either the value OR inside the list
+    #                             key = [
+    #                                 k for k, v in self.faction_menu_names.items()
+    #                                 if v == faction_name or
+    #                                 (isinstance(v, list) and faction_name in v)
+    #                             ]
+
+    #                             self.current_stage = self.farm_stages[key[0]][0]
+    #                             self.current_difficulty = self.farm_stages[key[0]][1]
+                                
+    #                             # Check fw_keys
+    #                             current_fw_keys = self.check_fw_keys()
+    #                             if (int(current_fw_keys) < 4*self.multiplier and self.current_difficulty=='normal' ) or (int(current_fw_keys) < 6*self.multiplier and self.current_difficulty=='hard' ):
+    #                                 window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
+    #                                 continue
+
+    #                             obj_found = True
+    #                             break
+    #                 except:
+    #                     pass
+    #         except:
+    #             pass
+
+    #         if attempts<3 and not obj_found:
+    #             window_tools.move_right(self.window, strength = 1.2)
+    #         if attempts>2 and not obj_found:
+    #             window_tools.move_left(self.window, strength = 1.2)
+
+    #     if obj_found:
+    #         self.check_difficulty()
+
+    #         if self.current_difficulty == 'hard':
+    #             stage = np.clip(self.current_stage-14,0,7)
+    #         else:
+    #             stage = np.clip(self.current_stage-14,3,7)
+
+    #         window_tools.click_center(self.window, self.stages_buttons[stage], delay = 2)
+
+    #     return obj_found
+
+
+    def guess_faction_name(self, name, flat_values, cutoff=0.75):
+        """
+        Returns the closest match from flat_values for the given name.
+        If no match is above the cutoff, returns None.
+        """
+        matches = difflib.get_close_matches(name, flat_values, n=1, cutoff=cutoff)
+        return matches[0] if matches else None
+
+    # -----------------------
+    # Main function
+    # -----------------------
+    def select_encounter(self, max_attempts=6):
         obj_found = False
         attempts = 0
-        while attempts<max_attempts and not obj_found:
-            attempts+=1
 
+        # Flatten faction names once
+        #flat_values = sum((v if isinstance(v, list) else [v] for v in self.faction_menu_names.values()), [])
+        flat_values = self.faction_menu_names.values()
+
+        while attempts < max_attempts and not obj_found:
+            attempts += 1
             time.sleep(2)
+
             objects = image_tools.get_text_in_relative_area(self.reader, self.window, self.search_areas['pov'])
 
-            try:
-                for obj in objects:
-                    try:
-                        if 'Cripta' in obj.text:
-                            window_tools.click_at(obj.mean_pos_x, obj.mean_pos_y - int(0.05*self.window.height), delay = 4)
-                            faction_name = image_tools.get_text_in_relative_area(self.reader, self.window, self.search_areas['faction_name'], powerdetection=False)[0]
-                            try:
-                                faction_name_alternative = faction_name.text.replace("Cripta de ", "")
-                            except:
-                                faction_name_alternative ='Test'
-                            faction_name = faction_name.text.replace("Cripta: ", "")
-                            print(faction_name)
-                            flat_values = sum((v if isinstance(v, list) else [v]for v in self.faction_menu_names.values()),[])
-                            # check against flattened values
-                            if faction_name in flat_values or faction_name_alternative in flat_values:
+            for obj in objects:
+                try:
+                    if 'Cripta' not in obj.text:
+                        continue
 
-                                if faction_name_alternative in flat_values:
-                                    faction_name = faction_name_alternative
+                    # Click on the Cripta object
+                    window_tools.click_at(
+                        obj.mean_pos_x,
+                        obj.mean_pos_y - int(0.05 * self.window.height),
+                        delay=4
+                    )
 
-                                # find the key where faction_name is either the value OR inside the list
-                                key = [
-                                    k for k, v in self.faction_menu_names.items()
-                                    if v == faction_name or
-                                    (isinstance(v, list) and faction_name in v)
-                                ]
+                    # Get faction name
+                    raw_faction = image_tools.get_text_in_relative_area(
+                        self.reader, self.window, self.search_areas['faction_name'], powerdetection=False
+                    )[0]
 
-                                self.current_stage = self.farm_stages[key[0]][0]
-                                self.current_difficulty = self.farm_stages[key[0]][1]
-                                
-                                # Check fw_keys
-                                current_fw_keys = self.check_fw_keys()
-                                if (int(current_fw_keys) < 4*self.multiplier and self.current_difficulty=='normal' ) or (int(current_fw_keys) < 6*self.multiplier and self.current_difficulty=='hard' ):
-                                    window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
-                                    continue
+                    faction_name = raw_faction.text.replace("Cripta: ", "")
+                    faction_name_alternative = raw_faction.text.replace("Cripta de ", "") if raw_faction.text else '____________'
 
-                                obj_found = True
-                                break
-                    except:
-                        pass
-            except:
-                pass
+                    
 
-            if attempts<3 and not obj_found:
-                window_tools.move_right(self.window, strength = 1.2)
-            if attempts>2 and not obj_found:
-                window_tools.move_left(self.window, strength = 1.2)
+                    # Continue if the faction is 'Guerras de Facciones'
+                    if faction_name == 'Guerras de Facciones':
+                        continue
+                    else:
+                        print(f"Detected faction: {faction_name}")
 
+                    # -----------------------
+                    # Fuzzy matching
+                    # -----------------------
+                    if faction_name not in flat_values:
+                        faction_name = self.guess_faction_name(faction_name, flat_values)
+                    if not faction_name and faction_name_alternative not in flat_values:
+                        faction_name = self.guess_faction_name(faction_name_alternative, flat_values)
+                    if not faction_name:
+                        print("Could not match faction_name, skipping this object.")
+                        continue
+
+                    # -----------------------
+                    # Find the key in faction_menu_names
+                    # -----------------------
+                    key = [
+                        k for k, v in self.faction_menu_names.items()
+                        if v == faction_name or (isinstance(v, list) and faction_name in v)
+                    ]
+                    if not key:
+                        print("Matched faction_name but could not find corresponding key, skipping.")
+                        continue
+
+                    # Set current stage and difficulty
+                    self.current_stage = self.farm_stages[key[0]][0]
+                    self.current_difficulty = self.farm_stages[key[0]][1]
+
+                    # Check fw_keys
+                    current_fw_keys = self.check_fw_keys()
+                    if (int(current_fw_keys) < 4 * self.multiplier and self.current_difficulty == 'normal') or \
+                       (int(current_fw_keys) < 6 * self.multiplier and self.current_difficulty == 'hard'):
+                        window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
+                        continue
+
+                    # Found a valid object
+                    obj_found = True
+                    break
+
+                except Exception as e:
+                    print(f"Error processing object: {e}")
+                    pass
+
+            # Move POV if nothing found
+            if attempts < 3 and not obj_found:
+                window_tools.move_right(self.window, strength=1.2)
+            if attempts > 2 and not obj_found:
+                window_tools.move_left(self.window, strength=1.2)
+
+        # -----------------------
+        # If a valid encounter was found, select stage
+        # -----------------------
         if obj_found:
             self.check_difficulty()
 
             if self.current_difficulty == 'hard':
-                stage = np.clip(self.current_stage-14,0,7)
+                stage = np.clip(self.current_stage - 14, 0, 7)
             else:
-                stage = np.clip(self.current_stage-14,3,7)
+                stage = np.clip(self.current_stage - 14, 3, 7)
 
-            window_tools.click_center(self.window, self.stages_buttons[stage], delay = 2)
+            window_tools.click_center(self.window, self.stages_buttons[stage], delay=2)
 
         return obj_found
 
 
 
     def run_encounter(self):
-        self.reset_battle_parameters()
         window_tools.click_center(self.window, self.search_areas["confirm_button_champion_selection"])
-        
+        self.reset_battle_parameters()
         while self.battle_status != 'Done':
             
             self.get_battle_outcome()
 
             self.get_battle_status()
+            
         
-        time.sleep(2)
         window_tools.click_center(self.window, self.search_areas["go_to_map"])
 
         return

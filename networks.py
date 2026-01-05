@@ -59,15 +59,15 @@ def train_enemy_evaluation_model():
     # -----------------------------
     # Train the network
     # -----------------------------
-    model = EvaluationNetwork()
+    model = EvaluationNetworkCNN()
 
     model.train_network(
         dataset_path=balanced_dataset_path,
-        epochs=5000,
-        batch_size=32,
-        lr=1e-3,
-        val_split= 0.02,
-        checkpoint_interval=10,
+        epochs=300,
+        batch_size=16,
+        lr=1e-4,
+        val_split= 0.50,
+        checkpoint_interval=50,
         checkpoint_path=CHECKPOINT_PATH,
         device="cuda" if torch.cuda.is_available() else "cpu"
     )
@@ -117,13 +117,6 @@ def analyze_power_label_correlation():
         jitter = np.random.uniform(-0.02, 0.02, size=len(labels))
         plt.scatter(powers_raw, labels + jitter, alpha=0.3, color='blue', label='Samples')
 
-        # Binned win probability
-        bins = np.linspace(powers_raw.min(), powers_raw.max(), 20)
-        bin_indices = np.digitize(powers_raw, bins)
-        bin_win_rate = [labels[bin_indices == i].mean() if np.any(bin_indices == i) else np.nan for i in range(1, len(bins))]
-        bin_centers = (bins[:-1] + bins[1:]) / 2
-        plt.plot(bin_centers, bin_win_rate, color='red', linewidth=2, label='Binned Win Rate')
-
         plt.xlabel("Enemy Power")
         plt.ylabel("Win (1) / Loss (0)")
         plt.title("Win/Loss vs Enemy Power")
@@ -157,6 +150,6 @@ def power_only_baseline_accuracy():
 # Main
 # =============================
 if __name__ == "__main__":
-    analyze_power_label_correlation()
-    # train_enemy_evaluation_model()
-    # power_only_baseline_accuracy()
+    # analyze_power_label_correlation()
+    train_enemy_evaluation_model()
+    power_only_baseline_accuracy()

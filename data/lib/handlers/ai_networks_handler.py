@@ -465,7 +465,7 @@ class EvaluationNetworkCNN(nn.Module):
             nn.ReLU(),
             nn.AdaptiveAvgPool2d((1,1))  # 256x1x1
         )
-        self.image_fc = nn.Linear(256, 1)  # reduce to 1 scalar
+        self.image_fc = nn.Linear(256, 8)  # reduce to 1 scalar
 
         # -----------------------------
         # Power Encoder: simple FC
@@ -473,13 +473,13 @@ class EvaluationNetworkCNN(nn.Module):
         self.power_fc = nn.Sequential(
             nn.Linear(1, 16),
             nn.ReLU(),
-            nn.Linear(16, 1)
+            nn.Linear(16, 8)
         )
 
         # -----------------------------
         # Decision Head
         # -----------------------------
-        self.head = nn.Linear(2, 1)  # combine image scalar + power scalar
+        self.head = nn.Linear(16, 1)  # combine image scalar + power scalar
 
         # Optional weight loading
         if weights_path is not None:
@@ -500,6 +500,21 @@ class EvaluationNetworkCNN(nn.Module):
         # Decision (raw logits)
         return self.head(combined)
 
+    def predict(self, image_np, power_val, threshold=0.5):
+        self.eval()
+        with torch.no_grad():
+            image = (
+                torch.from_numpy(image_np.astype(np.float32) / 255.0)
+                .permute(2, 0, 1)
+                .unsqueeze(0)
+            )
+            power = torch.tensor([[power_val / 350000.0]], dtype=torch.float32)
+
+            logits = self(image, power)
+            prob = torch.sigmoid(logits).item()
+            label = int(prob >= threshold)
+
+        return prob, label
     # -----------------------------
     # Training method same as ANN
     # -----------------------------

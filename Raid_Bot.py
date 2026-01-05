@@ -581,15 +581,15 @@ if __name__ == "__main__":
     print('ALWAYS RUN THE PROGRAM IN 1280 x 1024')
     bot = RSL_Bot_Mainframe()
 
-    #gui_tools.BotGUI(bot).run()
+    gui_tools.BotGUI(bot).run()
 
-    # bot.factionwars_bot.select_encounter()
-    bot.doomtower_bot.current_rotation = '1'
-    bot.doomtower_bot.farm_doomtower()
+    # bot.factionwars_bot.run_encounter()
+    # bot.doomtower_bot.current_rotation = '1'
+    # bot.doomtower_bot.farm_doomtower()
     #bot.test_logic()
 
     #bot.live_arena_bot.check_arena_coins()
-    # bot.tagteam_arena_bot.run_tagteam_arena_once()
+    #bot.tagteam_arena_bot.run_tagteam_arena_once()
 
     
     # num = 1

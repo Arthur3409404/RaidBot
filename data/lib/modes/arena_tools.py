@@ -18,7 +18,7 @@ import re
 from datetime import datetime, timedelta
 import os
 import ast
-
+import torch
 
 import data.lib.utils.image_tools as image_tools
 import data.lib.utils.window_tools as window_tools
@@ -27,7 +27,7 @@ import data.lib.utils.window_tools as window_tools
 import data.lib.modes.arena_tools as arena_tools
 import Backup.hydra_tools_old as hydra_tools_old
 
-from data.lib.handlers.ai_networks_handler import EnemyDataset, EvaluationNetwork
+from data.lib.handlers.ai_networks_handler import EnemyDataset, EvaluationNetworkCNN
 
 
 
@@ -439,6 +439,9 @@ class RSL_Bot_TagTeamArena:
         self.window = window
         self.init_time = time.time()
         
+        weights_path = r"neural_networks\enemy_eval_tagteam_arena\_epoch300.pt"
+        self.evaluation_ai = EvaluationNetworkCNN(weights_path=weights_path)
+        self.evaluation_ai.eval()  # IMPORTANT
         
         if self.window:
             self.coords = (self.window.left, self.window.top, self.window.width, self.window.height)
@@ -547,6 +550,8 @@ class RSL_Bot_TagTeamArena:
             time.sleep(3)
         return
 
+
+
     def evaluate_enemies(self):
         #text_objects = image_tools.get_text_in_relative_area(self.reader, self.window, search_area=self.search_areas["list_enemies"], powerdetection = False)  
         text_objects = image_tools.get_text_from_cluster_area(self.reader, self.window, search_areas=self.corresponding_enemy_positions, powerdetection = False)
@@ -585,9 +590,10 @@ class RSL_Bot_TagTeamArena:
                                 power_val = num 
                             
 
-                            if power_val >= self.tagteam_arena_power_threshold or power_val<500 or power_val in self.tagteam_arena_enemies_lost:
-                                #print(f"Power {power_val} > threshold {self.tagteam_arena_power_threshold}")
-                                pass  # Meets requirement
+
+                            # if power_val >= self.tagteam_arena_power_threshold or power_val<500 or power_val in self.tagteam_arena_enemies_lost:
+                            #     #print(f"Power {power_val} > threshold {self.tagteam_arena_power_threshold}")
+                            #     pass  # Meets requirement
                              
                             # Using an AI network    
                             # evaluation = self.evaluation_network.foreward(enemy_roster , power_val)
@@ -596,13 +602,13 @@ class RSL_Bot_TagTeamArena:
                             # if evaluation is 'Win' and power_val not in self.tagteam_arena_enemies_lost:
                             #     pass
                             
-                            else:
-                                
-                                # Datacollector
-                                screenshot_enemy = pyautogui.screenshot(region=(int(obj.mean_pos_x-540), int(obj.mean_pos_y-65), 440, 130))
-                                image_np_enemy = np.array(screenshot_enemy)
-                                
-                                
+                            # Datacollector
+                            screenshot_enemy = pyautogui.screenshot(region=(int(obj.mean_pos_x-540), int(obj.mean_pos_y-65), 440, 130))
+                            image_np_enemy = np.array(screenshot_enemy).astype(np.float32)
+
+                            prob, label = self.evaluation_ai.predict(image_np_enemy, power_val)
+
+                            if label ==1 and power_val not in self.tagteam_arena_enemies_lost:
                                 print(f"Power {power_val} < threshold {self.tagteam_arena_power_threshold}")
                                 self.battle_enemy(obj, next_obj, power_val)
                                 time.sleep(3)
@@ -610,8 +616,12 @@ class RSL_Bot_TagTeamArena:
                                 self.battles_done += 1
                                 self.dataset.append_entry(image_np_enemy, power_val, self.recent_battle_outcome)
 
+                                outcome_str = "Win" if self.recent_battle_outcome == 1 else "Loss"
+                                print(f'Battle outcome: {outcome_str}  - With Win Probability: {prob:.2f}')
                                 
                                 return self.battle_occured
+                            else:
+                                pass
                                 
                         except Exception as e:
                             print(f"[!] Error parsing '{next_obj.text}': {e}")
