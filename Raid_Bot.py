@@ -581,6 +581,7 @@ if __name__ == "__main__":
     print('ALWAYS RUN THE PROGRAM IN 1280 x 1024')
     bot = RSL_Bot_Mainframe()
 
+    bot.test_logic()
     gui_tools.BotGUI(bot).run()
 
     # bot.factionwars_bot.run_encounter()

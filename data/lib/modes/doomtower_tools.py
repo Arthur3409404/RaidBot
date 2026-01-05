@@ -610,9 +610,10 @@ class RSL_Bot_DoomTower():
         if self.num_of_gold_keys == 0 and self.num_of_silver_keys<2:
             return
         while self.no_run_failed or ((self.doomtower_completed or self.num_of_gold_keys==0) and self.num_of_silver_keys<2):
+            self.stage_found = False
             if self.num_of_gold_keys>0 and self.doomtower_completed == False:
                 self.climb_doomtower()
-            else:
+            if self.num_of_silver_keys>1:
                 self.farm_doomtower()
             if not self.stage_found:
                 break

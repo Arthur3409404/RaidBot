@@ -118,17 +118,19 @@ def move_up(window, strength = 1, relative_x_pos = 0.5, relative_y_pos = 0.5):
     """
     if not window:
         return
+    while strength >0.1:
 
-    start_x = window.left + window.width *relative_x_pos
-    start_y = window.top + window.height *relative_y_pos
-    end_y = start_y + int(window.height * 0.49 * strength)  # Drag ~49% of height downward
+        start_x = window.left + window.width *relative_x_pos
+        start_y = window.top + window.height *relative_y_pos
+        end_y = start_y + int(window.height * 0.49 * min(1,strength))  # Drag ~49% of height downward
 
-    pyautogui.moveTo(start_x, start_y)
-    pyautogui.mouseDown()
-    time.sleep(0.1)
-    pyautogui.moveTo(start_x, end_y, duration=0.2)
-    pyautogui.mouseUp()
-    time.sleep(5)
+        strength -=min(1,strength)
+        pyautogui.moveTo(start_x, start_y)
+        pyautogui.mouseDown()
+        time.sleep(0.1)
+        pyautogui.moveTo(start_x, end_y, duration=0.2)
+        pyautogui.mouseUp()
+        time.sleep(5)
     
 
 
@@ -142,17 +144,19 @@ def move_down(window, strength = 1, relative_x_pos = 0.5, relative_y_pos = 0.5):
     """
     if not window:
         return
+    while strength >0.1:
 
-    start_x = window.left + window.width *relative_x_pos
-    start_y = window.top + window.height *relative_y_pos
-    end_y = start_y - int(window.height * 0.49 * strength)  # Drag ~49% of height upward
+        start_x = window.left + window.width *relative_x_pos
+        start_y = window.top + window.height *relative_y_pos
+        end_y = start_y - int(window.height * 0.49 * min(1,strength))  # Drag ~49% of height upward
 
-    pyautogui.moveTo(start_x, start_y)
-    pyautogui.mouseDown()
-    time.sleep(0.1)
-    pyautogui.moveTo(start_x, end_y, duration=0.2)
-    pyautogui.mouseUp()
-    time.sleep(5)
+        strength-=min(1,strength)
+        pyautogui.moveTo(start_x, start_y)
+        pyautogui.mouseDown()
+        time.sleep(0.1)
+        pyautogui.moveTo(start_x, end_y, duration=0.2)
+        pyautogui.mouseUp()
+        time.sleep(5)
     
     
 def move_left(window, strength = 1, relative_x_pos = 0.5, relative_y_pos = 0.5):
@@ -164,17 +168,19 @@ def move_left(window, strength = 1, relative_x_pos = 0.5, relative_y_pos = 0.5):
     """
     if not window:
         return
+    while strength >0.1:
 
-    start_x = window.left + window.width *relative_x_pos
-    start_y = window.top + window.height *relative_y_pos
-    end_x = start_x + int(window.width * 0.49 * strength)  # Drag ~49% of height downward
+        start_x = window.left + window.width *relative_x_pos
+        start_y = window.top + window.height *relative_y_pos
+        end_x = start_x + int(window.width * 0.49 * min(1,strength))  # Drag ~49% of height downward
 
-    pyautogui.moveTo(start_x, start_y)
-    pyautogui.mouseDown()
-    time.sleep(0.1)
-    pyautogui.moveTo(end_x, start_y, duration=0.2)
-    pyautogui.mouseUp()
-    time.sleep(5)
+        strength -=min(1,strength)
+        pyautogui.moveTo(start_x, start_y)
+        pyautogui.mouseDown()
+        time.sleep(0.1)
+        pyautogui.moveTo(end_x, start_y, duration=0.2)
+        pyautogui.mouseUp()
+        time.sleep(5)
     
     
 def move_right(window, strength = 1, relative_x_pos = 0.5, relative_y_pos = 0.5):
@@ -187,16 +193,18 @@ def move_right(window, strength = 1, relative_x_pos = 0.5, relative_y_pos = 0.5)
     if not window:
         return
 
-    start_x = window.left + window.width *relative_x_pos
-    start_y = window.top + window.height *relative_y_pos
-    end_x = start_x - int(window.width * 0.49 * strength)  # Drag ~49% of height downward
+    while strength >0.1:
 
-    pyautogui.moveTo(start_x, start_y)
-    pyautogui.mouseDown()
-    time.sleep(0.1)
-    pyautogui.moveTo(end_x, start_y, duration=0.2)
-    pyautogui.mouseUp()
-    time.sleep(5)
+        start_x = window.left + window.width *relative_x_pos
+        start_y = window.top + window.height *relative_y_pos
+        end_x = start_x - int(window.width * 0.49 *min(strength,1))  # Drag ~49% of height downward
+        strength -= min(strength,1)
+        pyautogui.moveTo(start_x, start_y)
+        pyautogui.mouseDown()
+        time.sleep(0.1)
+        pyautogui.moveTo(end_x, start_y, duration=0.2)
+        pyautogui.mouseUp()
+        time.sleep(5)
     
     
 def get_mouse_pos():
