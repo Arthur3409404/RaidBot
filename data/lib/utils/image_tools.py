@@ -1,89 +1,99 @@
 # -*- coding: utf-8 -*-
 """
-Created on Sat Oct 25 13:46:00 2025
+Utility library for UI automation, OCR, and image processing.
 
+Created on Sat Oct 25 13:46:00 2025
 @author: Arthur
 """
+
+import re
+from typing import List, Tuple, Optional
 
 import cv2
 import numpy as np
 import pyautogui
 import matplotlib.pyplot as plt
 from skimage.metrics import structural_similarity as ssim
-import re
 
 
 class TextObject:
-    def __init__(self, text, mean_pos_x, mean_pos_y):
+    """Represents a detected text with its approximate screen position."""
+
+    def __init__(self, text: Optional[str], mean_pos_x: float, mean_pos_y: float):
         self.text = text
         self.mean_pos_x = mean_pos_x
         self.mean_pos_y = mean_pos_y
-        
+
+
+# -------------------- Color Detection -------------------- #
+
+def hex_to_bgr(hex_color: str) -> np.ndarray:
+    """Convert HEX color string to BGR NumPy array."""
+    hex_color = hex_color.lstrip("#")
+    r, g, b = (int(hex_color[i:i + 2], 16) for i in (0, 2, 4))
+    return np.array([b, g, r], dtype=np.int16)
+
 
 def detect_red_or_green_circle_stable(
-    region_coords,
-    samples=40,
-    required_ratio=0.75,
-    min_pixels=8,
-    green_hex="3CB043",   # typical UI green
-    red_hex="C0392B",     # typical UI red
-    tolerance=45
-):
+    region_coords: Tuple[int, int, int, int],
+    samples: int = 40,
+    required_ratio: float = 0.75,
+    min_pixels: int = 8,
+    green_hex: str = "3CB043",
+    red_hex: str = "C0392B",
+    tolerance: int = 45
+) -> Optional[str]:
     """
-    Uses rapid sampling + color distance consistency to detect
-    small red/green circles in noisy UI regions.
+    Detect small red or green circles in a region with stable color sampling.
 
-    region_coords: (x, y, w, h)
-    Returns: "red", "green", or None
+    Args:
+        region_coords: (x, y, width, height) of the screen region.
+        samples: Number of screenshots to sample.
+        required_ratio: Fraction of samples that must detect the color.
+        min_pixels: Minimum pixels to consider detection in one sample.
+        green_hex: HEX code of green target color.
+        red_hex: HEX code of red target color.
+        tolerance: Max color distance to match.
+
+    Returns:
+        "red", "green", or None if no reliable detection.
     """
-
-    def hex_to_bgr(hex_color):
-        hex_color = hex_color.lstrip("#")
-        r, g, b = tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
-        return np.array([b, g, r], dtype=np.int16)
-
     green_bgr = hex_to_bgr(green_hex)
     red_bgr = hex_to_bgr(red_hex)
 
-    green_hits = 0
-    red_hits = 0
+    green_hits = red_hits = 0
+    threshold = int(samples * required_ratio)
 
     for _ in range(samples):
         screenshot = pyautogui.screenshot(region=region_coords)
         frame = cv2.cvtColor(np.array(screenshot), cv2.COLOR_RGB2BGR).astype(np.int16)
 
-        # Color distance masks
         green_diff = np.linalg.norm(frame - green_bgr, axis=2)
         red_diff = np.linalg.norm(frame - red_bgr, axis=2)
 
-        green_pixels = np.count_nonzero(green_diff <= tolerance)
-        red_pixels = np.count_nonzero(red_diff <= tolerance)
-
-        if green_pixels >= min_pixels:
+        if np.count_nonzero(green_diff <= tolerance) >= min_pixels:
             green_hits += 1
-        if red_pixels >= min_pixels:
+        if np.count_nonzero(red_diff <= tolerance) >= min_pixels:
             red_hits += 1
 
-    threshold = int(samples * required_ratio)
-
-    if red_hits >= threshold:
-        return "red"
-    if green_hits >= threshold:
-        return "green"
+        # Early exit if threshold met
+        if green_hits >= threshold:
+            return "green"
+        if red_hits >= threshold:
+            return "red"
 
     return None
 
 
-def check_area_color(window, search_area):
+def check_area_color(window, search_area: Tuple[float, float, float, float]) -> str:
     """
-    Recognize the general color of a relative screen area inside a window.
-    
+    Detects the dominant color in a relative screen area.
+
     Returns one of: "grey", "yellow", "green", "red", "black"
-    
-    search_area: (rel_left, rel_top, rel_width, rel_height), values between 0 and 1
-    window: object with .left, .top, .width, .height
     """
-    # Capture the area as numpy array
+    if not window:
+        return "grey"
+
     rel_left, rel_top, rel_width, rel_height = search_area
     abs_left = window.left + int(rel_left * window.width)
     abs_top = window.top + int(rel_top * window.height)
@@ -92,176 +102,131 @@ def check_area_color(window, search_area):
 
     screenshot = pyautogui.screenshot(region=(abs_left, abs_top, abs_width, abs_height))
     img_np = np.array(screenshot)
+    r, g, b = img_np.mean(axis=(0, 1))
 
-    # Compute average color
-    avg_color = img_np.mean(axis=(0, 1))  # RGB
-    r, g, b = avg_color
-    
-    # Simple thresholds for main colors
-    # Thresholds for main colors
-    if 40 < r < 60 and 70< g < 100 and 90 < b < 110:
+    # Threshold rules
+    if 40 < r < 60 and 70 < g < 100 and 90 < b < 110:
         return "grey"
-    if 150 < r < 170 and 110< g < 140 and 0 < b < 30:
+    if 150 < r < 170 and 110 < g < 140 and 0 < b < 30:
         return "yellow"
 
     return "grey"  # fallback
 
 
+# -------------------- Image Comparison -------------------- #
 
-def compare_pngs(path1, path2):
+def compare_pngs(path1: str, path2: str) -> Optional[float]:
     """
-    Compares two PNG images and returns their SSIM (similarity) score.
-
-    Args:
-        path1 (str): Path to the first image.
-        path2 (str): Path to the second image.
+    Compare two PNG images and return SSIM similarity score.
 
     Returns:
-        float | None: SSIM score between 0 and 1, or None if images differ in size.
+        float between 0-1 or None if images cannot be compared.
     """
     img1 = cv2.imread(path1, cv2.IMREAD_GRAYSCALE)
     img2 = cv2.imread(path2, cv2.IMREAD_GRAYSCALE)
     if img1 is None or img2 is None:
-        print("Error: One or both image paths are invalid.")
+        print(f"Error: Invalid image path(s): {path1}, {path2}")
         return None
-
     if img1.shape != img2.shape:
         print("Images have different sizes — cannot compare.")
         return None
-
     score, _ = ssim(img1, img2, full=True)
     return score
 
-def get_simliarities_in_relative_area(window, search_area, path_to_tobedetected_object_picture, threshold=0.8, scales=None):
+
+# -------------------- Template Matching -------------------- #
+
+def get_similarities_in_relative_area(
+    window,
+    search_area: Tuple[float, float, float, float],
+    path_to_template: str,
+    threshold: float = 0.8,
+    scales: Optional[List[float]] = None
+) -> List[TextObject]:
     """
-    Detects all occurrences of a template object in a relative window area,
-    allowing for uniform scaling of the object.
+    Detect occurrences of a template image within a relative window area.
 
-    Args:
-        reader: unused, kept for compatibility
-        window: object with .left, .top, .width, .height
-        search_area (list[float]): [rel_left, rel_top, rel_width, rel_height]
-        path_to_tobedetected_object_picture (str): template image path
-        threshold (float): template matching threshold (0–1)
-        scales (list[float]): list of scales to try (e.g., [0.5, 0.75, 1, 1.25, 1.5])
-
-    Returns:
-        list[TextObject]: list of TextObjects with .text = None
+    Returns a list of TextObjects with positions.
     """
     if not window:
         return []
 
-    if scales is None:
-        scales = [0.25, 0.5, 0.75, 1.0]
-
+    scales = scales or [0.25, 0.5, 0.75, 1.0]
     rel_left, rel_top, rel_width, rel_height = search_area
 
-    # Absolute coordinates
     abs_left = window.left + int(rel_left * window.width)
     abs_top = window.top + int(rel_top * window.height)
     abs_width = int(rel_width * window.width)
     abs_height = int(rel_height * window.height)
 
-    # Screenshot search area
     screenshot = pyautogui.screenshot(region=(abs_left, abs_top, abs_width, abs_height))
     search_img = cv2.cvtColor(np.array(screenshot), cv2.COLOR_RGB2GRAY)
 
-    # Load template
-    template_orig = cv2.imread(path_to_tobedetected_object_picture, cv2.IMREAD_GRAYSCALE)
+    template_orig = cv2.imread(path_to_template, cv2.IMREAD_GRAYSCALE)
     if template_orig is None:
-        raise FileNotFoundError(path_to_tobedetected_object_picture)
+        raise FileNotFoundError(path_to_template)
 
     text_objects = []
     used_points = []
 
     for scale in scales:
-        # Resize template
         t_w = int(template_orig.shape[1] * scale)
         t_h = int(template_orig.shape[0] * scale)
         if t_w > search_img.shape[1] or t_h > search_img.shape[0]:
             continue
         template = cv2.resize(template_orig, (t_w, t_h), interpolation=cv2.INTER_AREA)
 
-        # Match template
         result = cv2.matchTemplate(search_img, template, cv2.TM_CCOEFF_NORMED)
         loc = np.where(result >= threshold)
 
-        for pt in zip(*loc[::-1]):  # (x, y)
-            center_x = pt[0] + t_w / 2
-            center_y = pt[1] + t_h / 2
+        for pt in zip(*loc[::-1]):
+            center_x, center_y = pt[0] + t_w / 2, pt[1] + t_h / 2
+            abs_x, abs_y = abs_left + center_x, abs_top + center_y
 
-            abs_x = abs_left + center_x
-            abs_y = abs_top + center_y
-
-            # suppress near-duplicates
+            # Suppress near-duplicates
             if any(abs(abs_x - ux) < t_w * 0.5 and abs(abs_y - uy) < t_h * 0.5 for ux, uy in used_points):
                 continue
 
             used_points.append((abs_x, abs_y))
-
-            obj = TextObject(
-                text=None,
-                mean_pos_x=abs_x,
-                mean_pos_y=abs_y
-            )
-            text_objects.append(obj)
+            text_objects.append(TextObject(text=None, mean_pos_x=abs_x, mean_pos_y=abs_y))
 
     return text_objects
 
-def get_text_from_image(reader, image):
+
+# -------------------- OCR Text Extraction -------------------- #
+
+def get_text_from_image(reader, image) -> str:
     """
-    Uses EasyOCR to extract text from an image.
+    Extracts text from an image using EasyOCR.
 
-    Args:
-        reader: easyocr.Reader instance.
-        image: PIL image or NumPy array.
-
-    Returns:
-        str: Concatenated detected text with confidence > 0.6.
+    Returns concatenated strings with confidence > 0.6.
     """
     result = reader.readtext(np.array(image))
     return "\n".join([text for (_, text, conf) in result if conf > 0.6])
 
 
-def get_text_in_full_area(reader, coords):
-    """
-    Captures text from the entire window area.
-
-    Args:
-        reader: easyocr.Reader instance.
-        coords (tuple): (left, top, width, height) of the window.
-
-    Returns:
-        str | None: Extracted text or None if coords missing.
-    """
+def get_text_in_full_area(reader, coords: Optional[Tuple[int, int, int, int]]) -> Optional[str]:
+    """Capture text from the entire window area."""
     if not coords:
-        print("No window coordinates found.")
         return None
-
     screenshot = pyautogui.screenshot(region=coords)
     return get_text_from_image(reader, screenshot)
 
 
-def get_text_in_relative_area(reader, window, search_area, powerdetection=False, factiondetection = False):
+def get_text_in_relative_area(
+    reader,
+    window,
+    search_area: Tuple[float, float, float, float],
+    power_detection: bool = False,
+    faction_detection: bool = False
+) -> List[TextObject]:
     """
-    Takes a screenshot of a relative area within the game window and extracts text using OCR.
-
-    Args:
-        reader: easyocr.Reader instance.
-        coords (tuple): (left, top, width, height) of the window.
-        search_area (list[float]): [rel_left, rel_top, rel_width, rel_height].
-        powerdetection (bool): If True, limit OCR allowlist to digits/letters for power levels.
-
-    Returns:
-        list[dict]: Each entry is {"text": str, "mean_pos_x": float, "mean_pos_y": float}.
+    Capture text from a relative area and return as TextObjects.
     """
     if not window:
-        #print("No window coordinates found.")
         return []
 
     rel_left, rel_top, rel_width, rel_height = search_area
-
-    # Convert relative to absolute window coordinates
     abs_left = window.left + int(rel_left * window.width)
     abs_top = window.top + int(rel_top * window.height)
     abs_width = int(rel_width * window.width)
@@ -270,10 +235,9 @@ def get_text_in_relative_area(reader, window, search_area, powerdetection=False,
     screenshot = pyautogui.screenshot(region=(abs_left, abs_top, abs_width, abs_height))
     image_np = np.array(screenshot)
 
-    if powerdetection:
+    if power_detection:
         results = reader.readtext(image_np, allowlist='0123456789.,KkMmLUCHARluchar ')
-
-    if factiondetection:
+    elif faction_detection:
         results = reader.readtext(image_np, allowlist='36')
     else:
         results = reader.readtext(image_np)
@@ -282,156 +246,144 @@ def get_text_in_relative_area(reader, window, search_area, powerdetection=False,
     for bbox, text, confidence in results:
         if confidence < 0.5:
             continue
-        xs = [point[0] for point in bbox]
-        ys = [point[1] for point in bbox]
-
+        xs, ys = zip(*bbox)
         mean_x = sum(xs) / 4
         mean_y = sum(ys) / 4
-
-        abs_x = abs_left + mean_x
-        abs_y = abs_top + mean_y
-
-        text_obj =TextObject(text=text, mean_pos_x=abs_x, mean_pos_y=abs_y)
-        text_objects.append(text_obj)
+        text_objects.append(TextObject(text=text, mean_pos_x=abs_left + mean_x, mean_pos_y=abs_top + mean_y))
 
     return text_objects
 
-def get_text_from_cluster_area(reader, window, search_areas, powerdetection = False):
+def get_text_from_cluster_area(reader, window, search_areas, power_detection=False):
+    """
+    Extract text from multiple cluster areas in a window.
+    Preserves original behavior from old library.
+    
+    Args:
+        reader: EasyOCR Reader
+        window: WindowObject
+        search_areas: dict of {pos: list of relative areas}
+        power_detection: limit OCR to digits/letters for power levels
+    Returns:
+        List[TextObject]
+    """
     if not window:
         return []
 
     all_text_objects = []
 
     for pos in search_areas:
-        for search_area in search_areas[pos]:
-
-            rel_left, rel_top, rel_width, rel_height = search_area
-
-            # Convert relative to absolute window coordinates
-            abs_left = window.left + int(rel_left * window.width)
-            abs_top = window.top + int(rel_top * window.height)
-            abs_width = int(rel_width * window.width)
-            abs_height = int(rel_height * window.height)
-
-            screenshot = pyautogui.screenshot(
-                region=(abs_left, abs_top, abs_width, abs_height)
+        for area in search_areas[pos]:
+            text_objs = get_text_in_relative_area(
+                reader,
+                window,
+                area,
+                power_detection=power_detection
             )
-            image_np = np.array(screenshot)
 
-            if powerdetection:
-                results = reader.readtext(
-                    image_np,
-                    allowlist="0123456789.,KkMmLUCHARluchar "
-                )
-            else:
-                results = reader.readtext(image_np)
-
-            for bbox, text, confidence in results:
-                if confidence < 0.5:
-                    continue
-
-                # Filter: must contain a number OR be 'luchar' (any case)
+            # Optional: filter objects as in old implementation
+            for obj in text_objs:
+                text = obj.text or ""
                 has_number = bool(re.search(r"\d", text))
                 is_luchar = text.strip().lower() == "luchar"
-
                 if not has_number and not is_luchar:
                     continue
+                all_text_objects.append(obj)
 
-                xs = [point[0] for point in bbox]
-                ys = [point[1] for point in bbox]
-
-                mean_x = sum(xs) / 4
-                mean_y = sum(ys) / 4
-
-                abs_x = abs_left + mean_x
-                abs_y = abs_top + mean_y
-
-                text_obj = TextObject(
-                    text=text,
-                    mean_pos_x=abs_x,
-                    mean_pos_y=abs_y
-                )
-
-                all_text_objects.append(text_obj)
-                
     return all_text_objects
 
+# -------------------- TextObject Utilities -------------------- #
 
-def filter_text_objects(text_objects):
-    def has_number(text):
+def filter_text_objects(text_objects: List[TextObject]) -> List[TextObject]:
+    """Clean and structure OCR text objects into expected patterns."""
+    def has_number(text: str) -> bool:
         return bool(re.search(r"\d", text))
 
-    def is_luchar(text):
+    def is_luchar(text: str) -> bool:
         return text.strip().lower() == "luchar"
 
-    # 1. Remove entries with < 2 characters
-    text_objects = [
-        obj for obj in text_objects if len(obj.text.strip()) >= 2
-    ]
+    # Remove short entries
+    text_objects = [obj for obj in text_objects if len(obj.text.strip()) >= 2]
 
     cleaned = []
     i = 0
-
     while i < len(text_objects):
         current = text_objects[i]
-        curr_text = current.text.strip()
         next_obj = text_objects[i + 1] if i + 1 < len(text_objects) else None
+        curr_text = current.text.strip()
 
-        # Case 1: luchar followed by luchar → drop second
         if next_obj and is_luchar(curr_text) and is_luchar(next_obj.text):
             cleaned.append(current)
             i += 2
             continue
 
-        # Case 2 (NEW):
-        # number → keep ONLY if next is luchar
         if has_number(curr_text):
             if next_obj and is_luchar(next_obj.text):
                 cleaned.append(current)
-            # skip number regardless
             i += 1
             continue
 
-        # Keep luchar (handled later by alternation enforcement)
         cleaned.append(current)
         i += 1
 
-    # 2. Enforce alternating pattern: number → luchar → number → luchar
+    # Enforce alternating number → luchar
     structured = []
     expect_number = True
-
     for obj in cleaned:
         text = obj.text.strip()
-
         if expect_number and has_number(text):
             structured.append(obj)
             expect_number = False
-
         elif not expect_number and is_luchar(text):
             structured.append(obj)
             expect_number = True
 
     return structured
 
-def visualize_text_detection(reader, coords):
-    """
-    Visualizes OCR text detection on the full window region.
 
-    Args:
-        reader: easyocr.Reader instance.
-        coords (tuple): (left, top, width, height) of the window.
-    """
+def find_clusters(text_objects: List[TextObject], num_majorities: int = 2, tolerance: int = 8) -> List[TextObject]:
+    """Cluster TextObjects by horizontal position and return top clusters."""
+    text_objects = [obj for obj in text_objects if len(obj.text) >= 3]
+    if not text_objects:
+        return []
+
+    sorted_objs = sorted(text_objects, key=lambda o: o.mean_pos_x)
+    clusters = []
+    current_cluster = []
+    current_x = None
+
+    for obj in sorted_objs:
+        if current_x is None:
+            current_x = obj.mean_pos_x
+            current_cluster = [obj]
+        elif abs(obj.mean_pos_x - current_x) <= tolerance:
+            current_cluster.append(obj)
+            current_x = sum(o.mean_pos_x for o in current_cluster) / len(current_cluster)
+        else:
+            clusters.append(current_cluster)
+            current_cluster = [obj]
+            current_x = obj.mean_pos_x
+    if current_cluster:
+        clusters.append(current_cluster)
+
+    clusters.sort(key=len, reverse=True)
+    top_clusters = clusters[:num_majorities]
+
+    top_objs_set = {obj for cluster in top_clusters for obj in cluster}
+    return [obj for obj in text_objects if obj in top_objs_set]
+
+
+# -------------------- Visualization -------------------- #
+
+def visualize_text_detection(reader, coords: Tuple[int, int, int, int]):
+    """Draw detected OCR text over window region."""
     if not coords:
-        print("No window to capture.")
         return
 
     screenshot = pyautogui.screenshot(region=coords)
-    image_cv = np.array(screenshot)
-    image_cv = cv2.cvtColor(image_cv, cv2.COLOR_RGB2BGR)
+    image_cv = cv2.cvtColor(np.array(screenshot), cv2.COLOR_RGB2BGR)
+    result = reader.readtext(np.array(screenshot))
 
-    result = reader.readtext(image_cv)
-
-    for (bbox, text, conf) in result:
+    for bbox, text, conf in result:
         if conf > 0.6:
             pts = np.array(bbox, dtype=np.int32)
             cv2.polylines(image_cv, [pts], isClosed=True, color=(0, 255, 0), thickness=2)
@@ -445,29 +397,19 @@ def visualize_text_detection(reader, coords):
     plt.show()
 
 
-def visualize_search_area(coords, search_area):
-    """
-    Draws a rectangle over a search area in the window for debugging.
-
-    Args:
-        coords (tuple): (left, top, width, height)
-        search_area (list[float]): [rel_left, rel_top, rel_width, rel_height]
-    """
+def visualize_search_area(coords: Tuple[int, int, int, int], search_area: Tuple[float, float, float, float]):
+    """Draw rectangle over relative search area for debugging."""
     if not coords:
-        print("No window to visualize.")
         return
 
     left, top, width, height = coords
     rel_left, rel_top, rel_width, rel_height = search_area
 
     screenshot = pyautogui.screenshot(region=coords)
-    image_cv = np.array(screenshot)
-    image_cv = cv2.cvtColor(image_cv, cv2.COLOR_RGB2BGR)
+    image_cv = cv2.cvtColor(np.array(screenshot), cv2.COLOR_RGB2BGR)
 
-    x = int(rel_left * width)
-    y = int(rel_top * height)
-    w = int(rel_width * width)
-    h = int(rel_height * height)
+    x, y = int(rel_left * width), int(rel_top * height)
+    w, h = int(rel_width * width), int(rel_height * height)
 
     cv2.rectangle(image_cv, (x, y), (x + w, y + h), (0, 0, 255), 2)
     cv2.putText(image_cv, "Search Area", (x, y - 10),
@@ -478,61 +420,3 @@ def visualize_search_area(coords, search_area):
     plt.title("Relative Search Area")
     plt.axis("off")
     plt.show()
-    
-    
-def find_clusters( text_objects, num_majorities=2, tolerance=8):
-    """
-    Groups text_objects by proximity of mean_pos_x within tolerance,
-    finds top `num_majorities` clusters with most objects,
-    returns a cleaned list of text_objects in original order
-    including only those belonging to the top clusters.
-    """
-
-    # Step 0: Filter out objects with fewer than 3 digits
-    text_objects = [obj for obj in text_objects if len(obj.text) >= 3]
-    
-    if not text_objects:
-        return []  # Early exit if no objects remain
-
-    # Step 1: Sort objects by mean_pos_x to form clusters
-    sorted_objs = sorted(text_objects, key=lambda o: o.mean_pos_x)
-
-    clusters = []
-    current_cluster = []
-    current_x = None
-
-    for obj in sorted_objs:
-        if current_x is None:
-            current_x = obj.mean_pos_x
-            current_cluster = [obj]
-        else:
-            if abs(obj.mean_pos_x - current_x) <= tolerance:
-                current_cluster.append(obj)
-                # Update cluster center to mean of members' mean_pos_x
-                current_x = sum(o.mean_pos_x for o in current_cluster) / len(current_cluster)
-            else:
-                clusters.append(current_cluster)
-                current_cluster = [obj]
-                current_x = obj.mean_pos_x
-    if current_cluster:
-        clusters.append(current_cluster)
-
-    # Step 2: Sort clusters by size descending, take top N
-    clusters.sort(key=len, reverse=True)
-    top_clusters = clusters[:num_majorities]
-
-    # Flatten the top clusters into a set for quick membership checking
-    top_objs_set = set()
-    for cluster in top_clusters:
-        for obj in cluster:
-            top_objs_set.add(obj)
-
-    # Step 3: Filter original list preserving order
-    cleaned_list = [obj for obj in text_objects if obj in top_objs_set]
-
-    # Optional: print cluster info
-    #print()
-    #print(cleaned_list)
-    
-    return cleaned_list    
-    

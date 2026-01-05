@@ -1,22 +1,10 @@
-import pygetwindow as gw
-import pyautogui
-import matplotlib.pyplot as plt
-import cv2
 import numpy as np
-import easyocr
-from skimage.metrics import structural_similarity as ssim
 import time
-import keyboard 
 import re
-from datetime import datetime, timedelta
-import os
-import ast
-
-
+from datetime import  timedelta
 import data.lib.utils.image_tools as image_tools
 import data.lib.utils.window_tools as window_tools
-
-from data.lib.handlers.ai_networks_handler import EnemyDataset, EvaluationNetwork
+import difflib
 
 class RSL_Bot_FactionWars:
     
@@ -113,72 +101,59 @@ class RSL_Bot_FactionWars:
                                ]
         
         
+    # ------------------------- Reset Methods -------------------------
     def reset_battle_parameters(self):
         self.battle_status = 'menu'
 
+    # ------------------------- Difficulty -------------------------
     def check_difficulty(self):
         try:
-            difc_txt = image_tools.get_text_in_relative_area(self.reader, self.window,search_area=self.search_areas["get_difficulty"])[0]
-            if difc_txt.text == self.faction_menu_names[self.current_difficulty]:
-                pass
-            else:
+            difc_txt = image_tools.get_text_in_relative_area(
+                self.reader, self.window, search_area=self.search_areas["get_difficulty"]
+            )[0]
+            if difc_txt.text != self.faction_menu_names[self.current_difficulty]:
                 window_tools.click_center(self.window, self.search_areas["get_difficulty"])
-                string = 'change_difficulty_' + self.current_difficulty
+                string = f'change_difficulty_{self.current_difficulty}'
                 window_tools.click_center(self.window, self.search_areas[string])
-
         except:
             print('Error changing Difficulties')
-        
+
+    # ------------------------- Battle Outcome -------------------------
     def get_battle_outcome(self):
-        try:
-            battle_result = image_tools.get_text_in_relative_area(self.reader, self.window,search_area=self.search_areas["battle_result"])[0]
-            if battle_result.text == "VICTORIA" or battle_result.text == "DERROTA":
-                self.battle_status = 'Done'
-                self.battles_done +=1
-                if battle_result.text =="VICTORIA":
-                    self.battles_won +=1
-                return
-        except:
-            pass
-        
-        try:
-            battle_result = image_tools.get_text_in_relative_area(self.reader, self.window,search_area=self.search_areas["battle_result_2"])[0]
-            if battle_result.text == "VICTORIA" or battle_result.text == "DERROTA":
-                self.battle_status = 'Done'
-                self.battles_done +=1
-                if battle_result.text =="VICTORIA":
-                    self.battles_won +=1
-                return
-        except:
-            pass
-            
-    
-    
+        for result_area in ["battle_result", "battle_result_2"]:
+            try:
+                battle_result = image_tools.get_text_in_relative_area(
+                    self.reader, self.window, search_area=self.search_areas[result_area]
+                )[0]
+                if battle_result.text in ["VICTORIA", "DERROTA"]:
+                    self.battle_status = 'Done'
+                    self.battles_done += 1
+                    if battle_result.text == "VICTORIA":
+                        self.battles_won += 1
+                    return
+            except:
+                continue
+
+    # ------------------------- Battle Status -------------------------
     def get_battle_status(self):
         try:
-            auto_button = image_tools.get_text_in_relative_area(self.reader, self.window,search_area=self.search_areas["auto_battle_button"])[0]
-            if auto_button.text == 'Auto':
-                self.battle_status = 'Battle active'
-                battle_running = True
-
-            else: 
-                self.battle_status = 'Battle inactive'
+            auto_button = image_tools.get_text_in_relative_area(
+                self.reader, self.window, search_area=self.search_areas["auto_battle_button"]
+            )[0]
+            self.battle_status = 'Battle active' if auto_button.text == 'Auto' else 'Battle inactive'
         except:
-            pass      
-        return
+            pass
 
-
-
-
+    # ------------------------- Status Print -------------------------
     def print_status(self):
-        elapsed = time.time() - self.init_time
-        formatted_elapsed = str(timedelta(seconds=int(elapsed)))
-        medals = (self.battles_won) * 70
-    
+        elapsed = int(time.time() - self.init_time)
+        formatted_elapsed = str(timedelta(seconds=elapsed))
+        medals = self.battles_won * 70
+
         print("\n" + "=" * 40)
         print("🛡️  RAID Faction Wars Bot Status")
         print("-" * 40)
-        print(f"🔁 Mode: Simple Pick)")
+        print(f"🔁 Mode: Simple Pick")
         print(f"⏱️  Time Since Start: {formatted_elapsed}")
         print(f"⚔️  Battles Won: {self.battles_won}")
         print(f"⚔️  Battles Lost: {self.battles_done - self.battles_won}")
@@ -186,95 +161,27 @@ class RSL_Bot_FactionWars:
         print("🛑 To stop the bot, press 'v'")
         print("=" * 40 + "\n")
 
+    # ------------------------- FW Keys -------------------------
+    def check_fw_keys(self):
+        try:
+            fw_keys = image_tools.get_text_in_relative_area(
+                self.reader, self.window, search_area=self.search_areas['faction_wars_keys']
+            )[0]
+            fw_keys = re.findall(r"\d+", fw_keys.text)[0]
+        except:
+            fw_keys = 0
+        return fw_keys
 
-
-
-    # def select_encounter(self, max_attempts = 6):
-    #     obj_found = False
-    #     attempts = 0
-    #     while attempts<max_attempts and not obj_found:
-    #         attempts+=1
-
-    #         time.sleep(2)
-    #         objects = image_tools.get_text_in_relative_area(self.reader, self.window, self.search_areas['pov'])
-
-    #         try:
-    #             for obj in objects:
-    #                 try:
-    #                     if 'Cripta' in obj.text:
-    #                         window_tools.click_at(obj.mean_pos_x, obj.mean_pos_y - int(0.05*self.window.height), delay = 4)
-    #                         faction_name = image_tools.get_text_in_relative_area(self.reader, self.window, self.search_areas['faction_name'], powerdetection=False)[0]
-    #                         try:
-    #                             faction_name_alternative = faction_name.text.replace("Cripta de ", "")
-    #                         except:
-    #                             faction_name_alternative ='____________'
-    #                         faction_name = faction_name.text.replace("Cripta: ", "")
-    #                         print(faction_name)
-    #                         flat_values = sum((v if isinstance(v, list) else [v]for v in self.faction_menu_names.values()),[])
-    #                         # check against flattened values
-    #                         if faction_name in flat_values or faction_name_alternative in flat_values:
-
-    #                             if faction_name_alternative in flat_values:
-    #                                 faction_name = faction_name_alternative
-
-    #                             # find the key where faction_name is either the value OR inside the list
-    #                             key = [
-    #                                 k for k, v in self.faction_menu_names.items()
-    #                                 if v == faction_name or
-    #                                 (isinstance(v, list) and faction_name in v)
-    #                             ]
-
-    #                             self.current_stage = self.farm_stages[key[0]][0]
-    #                             self.current_difficulty = self.farm_stages[key[0]][1]
-                                
-    #                             # Check fw_keys
-    #                             current_fw_keys = self.check_fw_keys()
-    #                             if (int(current_fw_keys) < 4*self.multiplier and self.current_difficulty=='normal' ) or (int(current_fw_keys) < 6*self.multiplier and self.current_difficulty=='hard' ):
-    #                                 window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
-    #                                 continue
-
-    #                             obj_found = True
-    #                             break
-    #                 except:
-    #                     pass
-    #         except:
-    #             pass
-
-    #         if attempts<3 and not obj_found:
-    #             window_tools.move_right(self.window, strength = 1.2)
-    #         if attempts>2 and not obj_found:
-    #             window_tools.move_left(self.window, strength = 1.2)
-
-    #     if obj_found:
-    #         self.check_difficulty()
-
-    #         if self.current_difficulty == 'hard':
-    #             stage = np.clip(self.current_stage-14,0,7)
-    #         else:
-    #             stage = np.clip(self.current_stage-14,3,7)
-
-    #         window_tools.click_center(self.window, self.stages_buttons[stage], delay = 2)
-
-    #     return obj_found
-
-
+    # ------------------------- Fuzzy Matching -------------------------
     def guess_faction_name(self, name, flat_values, cutoff=0.75):
-        """
-        Returns the closest match from flat_values for the given name.
-        If no match is above the cutoff, returns None.
-        """
+        """Return closest match from flat_values or None if below cutoff."""
         matches = difflib.get_close_matches(name, flat_values, n=1, cutoff=cutoff)
         return matches[0] if matches else None
 
-    # -----------------------
-    # Main function
-    # -----------------------
+    # ------------------------- Encounter Selection -------------------------
     def select_encounter(self, max_attempts=6):
         obj_found = False
         attempts = 0
-
-        # Flatten faction names once
-        #flat_values = sum((v if isinstance(v, list) else [v] for v in self.faction_menu_names.values()), [])
         flat_values = self.faction_menu_names.values()
 
         while attempts < max_attempts and not obj_found:
@@ -288,43 +195,34 @@ class RSL_Bot_FactionWars:
                     if 'Cripta' not in obj.text:
                         continue
 
-                    # Click on the Cripta object
                     window_tools.click_at(
                         obj.mean_pos_x,
                         obj.mean_pos_y - int(0.05 * self.window.height),
                         delay=4
                     )
 
-                    # Get faction name
                     raw_faction = image_tools.get_text_in_relative_area(
-                        self.reader, self.window, self.search_areas['faction_name'], powerdetection=False
+                        self.reader, self.window, self.search_areas['faction_name'], power_detection=False
                     )[0]
 
                     faction_name = raw_faction.text.replace("Cripta: ", "")
-                    faction_name_alternative = raw_faction.text.replace("Cripta de ", "") if raw_faction.text else '____________'
+                    faction_name_alt = raw_faction.text.replace("Cripta de ", "") if raw_faction.text else '____________'
 
-                    
-
-                    # Continue if the faction is 'Guerras de Facciones'
                     if faction_name == 'Guerras de Facciones':
                         continue
                     else:
                         print(f"Detected faction: {faction_name}")
 
-                    # -----------------------
-                    # Fuzzy matching
-                    # -----------------------
+                    # Fuzzy match if not exact
                     if faction_name not in flat_values:
                         faction_name = self.guess_faction_name(faction_name, flat_values)
-                    if not faction_name and faction_name_alternative not in flat_values:
-                        faction_name = self.guess_faction_name(faction_name_alternative, flat_values)
+                    if not faction_name and faction_name_alt not in flat_values:
+                        faction_name = self.guess_faction_name(faction_name_alt, flat_values)
                     if not faction_name:
                         print("Could not match faction_name, skipping this object.")
                         continue
 
-                    # -----------------------
-                    # Find the key in faction_menu_names
-                    # -----------------------
+                    # Find key in faction_menu_names
                     key = [
                         k for k, v in self.faction_menu_names.items()
                         if v == faction_name or (isinstance(v, list) and faction_name in v)
@@ -333,18 +231,15 @@ class RSL_Bot_FactionWars:
                         print("Matched faction_name but could not find corresponding key, skipping.")
                         continue
 
-                    # Set current stage and difficulty
                     self.current_stage = self.farm_stages[key[0]][0]
                     self.current_difficulty = self.farm_stages[key[0]][1]
 
-                    # Check fw_keys
                     current_fw_keys = self.check_fw_keys()
                     if (int(current_fw_keys) < 4 * self.multiplier and self.current_difficulty == 'normal') or \
                        (int(current_fw_keys) < 6 * self.multiplier and self.current_difficulty == 'hard'):
                         window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
                         continue
 
-                    # Found a valid object
                     obj_found = True
                     break
 
@@ -352,69 +247,42 @@ class RSL_Bot_FactionWars:
                     print(f"Error processing object: {e}")
                     pass
 
-            # Move POV if nothing found
-            if attempts < 3 and not obj_found:
-                window_tools.move_right(self.window, strength=1.2)
-            if attempts > 2 and not obj_found:
-                window_tools.move_left(self.window, strength=1.2)
+            if not obj_found:
+                if attempts < 3:
+                    window_tools.move_right(self.window, strength=1.2)
+                else:
+                    window_tools.move_left(self.window, strength=1.2)
 
-        # -----------------------
-        # If a valid encounter was found, select stage
-        # -----------------------
         if obj_found:
             self.check_difficulty()
-
-            if self.current_difficulty == 'hard':
-                stage = np.clip(self.current_stage - 14, 0, 7)
-            else:
-                stage = np.clip(self.current_stage - 14, 3, 7)
-
+            stage = np.clip(self.current_stage - 14, 0, 7) if self.current_difficulty == 'hard' else np.clip(self.current_stage - 14, 3, 7)
             window_tools.click_center(self.window, self.stages_buttons[stage], delay=2)
 
         return obj_found
 
-
-
+    # ------------------------- Run Encounter -------------------------
     def run_encounter(self):
         window_tools.click_center(self.window, self.search_areas["confirm_button_champion_selection"])
         self.reset_battle_parameters()
-        while self.battle_status != 'Done':
-            
-            self.get_battle_outcome()
 
+        while self.battle_status != 'Done':
+            self.get_battle_outcome()
             self.get_battle_status()
-            
-        
+
         window_tools.click_center(self.window, self.search_areas["go_to_map"])
 
-        return
-
-    def check_fw_keys(self):
-        try:
-            fw_keys = image_tools.get_text_in_relative_area(self.reader, self.window,search_area=self.search_areas['faction_wars_keys'])[0]
-            fw_keys = re.findall(r"\d+", fw_keys.text)[0]
-        except:
-            fw_keys = 0
-        return fw_keys
-
-                    
+    # ------------------------- Main Loop -------------------------
     def run_factionwars(self):
-        
         time.sleep(5)
-        time_start = time.time()
-        last_refresh_time = time_start
-        self.start_time = time_start
+        self.start_time = time.time()
         self.running = True
         time.sleep(5)
-        
+
         while self.running:
             encounter_found = self.select_encounter()
             if encounter_found:
                 self.run_encounter()
                 self.print_status()
-                continue
             else:
                 print('Could not find encounter')
                 self.running = False
-            
-        return 

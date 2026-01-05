@@ -187,7 +187,7 @@ class RSL_Bot_Dungeons:
             attempts+=1
 
             time.sleep(2)
-            objects = image_tools.get_text_in_relative_area(self.reader, self.window, self.search_areas['pov'], powerdetection=False)
+            objects = image_tools.get_text_in_relative_area(self.reader, self.window, self.search_areas['pov'], power_detection=False)
             
             name_string = self.dungeon_menu_names[encounter_name]
 
