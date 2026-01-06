@@ -25,7 +25,7 @@ class WindowObject:
 
 # -------------------- Keyboard & Mouse -------------------- #
 
-def sendkey(key: str, delay: float = 2.0):
+def sendkey(key: str, delay: float = 3.0):
     """
     Sends a single key press and waits for a delay.
     """
@@ -43,7 +43,7 @@ def click_at(x: int, y: int, delay: float = 3.0):
 
 
 def click_center(window: WindowObject, rel_coords: Tuple[float, float, float, float] = (0.5, 0.5, 0, 0),
-                 clicks: int = 1, delay: float = 2.0):
+                 clicks: int = 1, delay: float = 3.0):
     """
     Clicks at the center of a relative rectangle inside a window.
 
@@ -98,7 +98,13 @@ def test_window(window: WindowObject):
 
 # -------------------- Drag / Movement -------------------- #
 
-def _drag(window: WindowObject, start_rel: Tuple[float, float], end_rel: Tuple[float, float], duration: float = 0.2):
+# -------------------- Drag / Movement -------------------- #
+
+# Base relative movement per full "step"
+BASE_DELTA = 0.49
+
+
+def _drag(window: WindowObject, start_rel: tuple[float, float], end_rel: tuple[float, float], duration: float = 0.2, delay: float = 5.0):
     """Generic drag helper: from start_rel to end_rel inside window."""
     if not window:
         return
@@ -113,23 +119,42 @@ def _drag(window: WindowObject, start_rel: Tuple[float, float], end_rel: Tuple[f
     time.sleep(0.1)
     pyautogui.moveTo(end_x, end_y, duration=duration)
     pyautogui.mouseUp()
-    time.sleep(5)
+    time.sleep(delay)  # keep original wait times
+
+
+def _move(window, dx: float, dy: float, strength: float, relative_x: float = 0.5, relative_y: float = 0.5):
+    """Generic move function handling fractional and full strength."""
+    if not window or strength <= 0:
+        return
+
+    full_steps = int(strength)          # number of full moves
+    remainder = strength - full_steps   # fractional part
+
+    # Perform full moves
+    for _ in range(full_steps):
+        _drag(window, start_rel=(relative_x, relative_y),
+              end_rel=(relative_x + dx, relative_y + dy))
+
+    # Perform fractional move if remainder exists
+    if remainder > 0:
+        _drag(window, start_rel=(relative_x, relative_y),
+              end_rel=(relative_x + dx * remainder, relative_y + dy * remainder))
 
 
 def move_up(window: WindowObject, strength: float = 1.0, relative_x: float = 0.5, relative_y: float = 0.5):
-    _drag(window, start_rel=(relative_x, relative_y), end_rel=(relative_x, relative_y + 0.49 * strength))
+    _move(window, dx=0, dy=BASE_DELTA, strength=strength, relative_x=relative_x, relative_y=relative_y)
 
 
 def move_down(window: WindowObject, strength: float = 1.0, relative_x: float = 0.5, relative_y: float = 0.5):
-    _drag(window, start_rel=(relative_x, relative_y), end_rel=(relative_x, relative_y - 0.49 * strength))
+    _move(window, dx=0, dy=-BASE_DELTA, strength=strength, relative_x=relative_x, relative_y=relative_y)
 
 
 def move_left(window: WindowObject, strength: float = 1.0, relative_x: float = 0.5, relative_y: float = 0.5):
-    _drag(window, start_rel=(relative_x, relative_y), end_rel=(relative_x + 0.49 * strength, relative_y))
+    _move(window, dx=-BASE_DELTA, dy=0, strength=strength, relative_x=relative_x, relative_y=relative_y)
 
 
 def move_right(window: WindowObject, strength: float = 1.0, relative_x: float = 0.5, relative_y: float = 0.5):
-    _drag(window, start_rel=(relative_x, relative_y), end_rel=(relative_x - 0.49 * strength, relative_y))
+    _move(window, dx=BASE_DELTA, dy=0, strength=strength, relative_x=relative_x, relative_y=relative_y)
 
 
 # -------------------- Mouse Position & Clicks -------------------- #
