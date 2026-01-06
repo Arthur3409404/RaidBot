@@ -485,7 +485,7 @@ class RSL_Bot_Mainframe():
                 window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
 
             if self.main_loop_running:
-                self.collect_quest_rewards(main_loop_running = self.main_loop_running)
+                self.collect_quest_rewards()
 
         self.main_loop_stopped = True
     # =========================
