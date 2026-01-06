@@ -1,5 +1,6 @@
 verbose = True
 screen_drift = [0.07, 0.07, 0, 0]
+override_timer_minutes = 10
 
 run_classic_arena = True
 run_tagteam_arena = True

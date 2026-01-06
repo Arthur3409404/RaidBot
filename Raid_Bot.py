@@ -196,7 +196,8 @@ class RSL_Bot_Mainframe():
 
         self.handler_init_time = time.time()
         self._start_error_checker()
-        self.remote_override_time_minutes = 0.5
+        self.remote_override_time_minutes = self.params['mainframe']['override_timer_minutes']
+        
         # ...to be continued
 
         
@@ -408,6 +409,8 @@ class RSL_Bot_Mainframe():
                 self.search_areas['pov'],
                 power_detection=False
             )
+            window_tools.move_right(self.window, strength=1.2)
+            window_tools.move_down(self.window, strength=1.2)
             for obj in objs:
                 if obj.text == 'Ring de Guardianes':
                     window_tools.click_at(obj.mean_pos_x, obj.mean_pos_y, delay=2)
@@ -418,7 +421,7 @@ class RSL_Bot_Mainframe():
                         )
                     window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
                     break
-            window_tools.move_left(self.window, strength=1.2)
+
 
         self.navigate_bastion_menu(
             self.search_areas["bastion_to_main_menu"],
