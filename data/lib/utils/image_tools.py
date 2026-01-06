@@ -397,19 +397,29 @@ def visualize_text_detection(reader, coords: Tuple[int, int, int, int]):
     plt.show()
 
 
-def visualize_search_area(coords: Tuple[int, int, int, int], search_area: Tuple[float, float, float, float]):
-    """Draw rectangle over relative search area for debugging."""
+def visualize_search_area(coords, search_area):
+    """
+    Draws a rectangle over a search area in the window for debugging.
+
+    Args:
+        coords (tuple): (left, top, width, height)
+        search_area (list[float]): [rel_left, rel_top, rel_width, rel_height]
+    """
     if not coords:
+        print("No window to visualize.")
         return
 
     left, top, width, height = coords
     rel_left, rel_top, rel_width, rel_height = search_area
 
     screenshot = pyautogui.screenshot(region=coords)
-    image_cv = cv2.cvtColor(np.array(screenshot), cv2.COLOR_RGB2BGR)
+    image_cv = np.array(screenshot)
+    image_cv = cv2.cvtColor(image_cv, cv2.COLOR_RGB2BGR)
 
-    x, y = int(rel_left * width), int(rel_top * height)
-    w, h = int(rel_width * width), int(rel_height * height)
+    x = int(rel_left * width)
+    y = int(rel_top * height)
+    w = int(rel_width * width)
+    h = int(rel_height * height)
 
     cv2.rectangle(image_cv, (x, y), (x + w, y + h), (0, 0, 255), 2)
     cv2.putText(image_cv, "Search Area", (x, y - 10),

@@ -184,13 +184,15 @@ class RSL_Bot_FactionWars:
         attempts = 0
         flat_values = self.faction_menu_names.values()
 
-        while attempts < max_attempts and not obj_found:
+        while self.main_loop_running and (attempts < max_attempts and not obj_found):
             attempts += 1
             time.sleep(2)
 
             objects = image_tools.get_text_in_relative_area(self.reader, self.window, self.search_areas['pov'])
 
             for obj in objects:
+                if not self.main_loop_running:
+                    break
                 try:
                     if 'Cripta' not in obj.text:
                         continue
@@ -265,20 +267,20 @@ class RSL_Bot_FactionWars:
         window_tools.click_center(self.window, self.search_areas["confirm_button_champion_selection"])
         self.reset_battle_state()
 
-        while self.battle_status != 'Done':
+        while self.main_loop_running and (self.battle_status != 'Done'):
             self.update_battle_outcome()
             self.update_battle_activity_status()
 
         window_tools.click_center(self.window, self.search_areas["go_to_map"])
 
     # ------------------------- Main Loop -------------------------
-    def run_factionwars(self):
+    def run_factionwars(self, main_loop_running = True):
         time.sleep(5)
         self.start_time = time.time()
         self.running = True
-        time.sleep(5)
+        self.main_loop_running = main_loop_running
 
-        while self.running:
+        while self.main_loop_running and (self.running):
             encounter_found = self.locate_faction_encounter()
             if encounter_found:
                 self.execute_faction_encounter()

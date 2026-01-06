@@ -130,22 +130,23 @@ class RSL_Bot_DemonLord():
         window_tools.click_center(self.window, self.search_areas["DemonLord_StartEncounter"])
 
         self.battle_status = 'Starting'
-        while self.battle_status != 'Done':
+        while self.main_loop_running and (self.battle_status != 'Done'):
             self.update_battle_status()
 
         window_tools.click_center(self.window, self.search_areas["DemonLord_EndEncounter"])
         window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
 
     # ------------------------- Main Runner -------------------------
-    def run_demonlord(self):
+    def run_demonlord(self, main_loop_running = True):
         """Run Demon Lord encounters."""
         self.update_available_keys()
+        self.main_loop_running = True
         if self.num_of_keys == 0:
             return
 
         self.detect_cleared_difficulties()
 
-        while len(self.demonlord_encounters_cleared) < len(self.difficulty_order):
+        while self.main_loop_running and (len(self.demonlord_encounters_cleared) < len(self.difficulty_order)):
             self.update_available_keys()
             if self.num_of_keys == 0:
                 break

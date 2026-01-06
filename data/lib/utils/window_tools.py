@@ -159,51 +159,57 @@ def move_left(window: WindowObject, strength: float = 1.0, relative_x: float = 0
 
 # -------------------- Mouse Position & Clicks -------------------- #
 
-def get_mouse_pos() -> Tuple[int, int]:
-    """Returns the current mouse cursor position."""
+def get_mouse_pos():
     user32 = ctypes.windll.user32
+    VK_LBUTTON = 0x01
     point = ctypes.wintypes.POINT()
     user32.GetCursorPos(ctypes.byref(point))
     return point.x, point.y
 
 
-def wait_for_click() -> Tuple[int, int]:
-    """Waits for left mouse click and returns the cursor position."""
+def wait_for_click():
     user32 = ctypes.windll.user32
     VK_LBUTTON = 0x01
-
     while True:
         if user32.GetAsyncKeyState(VK_LBUTTON) & 0x8000:
             pos = get_mouse_pos()
+            # wait until released
             while user32.GetAsyncKeyState(VK_LBUTTON) & 0x8000:
                 time.sleep(0.01)
             return pos
         time.sleep(0.01)
 
 
-def get_two_clicks() -> Tuple[Tuple[int, int], Tuple[int, int]]:
-    """Prompt the user for two clicks: upper-left and lower-right corners."""
+def get_two_clicks():
     print("Click UPPER-LEFT corner...")
     ul = wait_for_click()
+
     time.sleep(0.2)
+
     print("Click LOWER-RIGHT corner...")
     lr = wait_for_click()
+
     return ul, lr
 
 
-def compile_search_area_from_clicks(ul_px: Tuple[int, int], lr_px: Tuple[int, int], bot) -> List[float]:
-    """
-    Convert two absolute clicks into relative coordinates inside a bot window.
-
-    Returns: [rel_x, rel_y, rel_width, rel_height]
-    """
+def compile_search_area_from_clicks(ul_px, lr_px, bot):
     left, top, width, height = bot.coords
-    x1, y1 = sorted([ul_px[0], lr_px[0]])
-    x2, y2 = sorted([ul_px[1], lr_px[1]])
+
+    x1, y1 = ul_px
+    x2, y2 = lr_px
+
+    # Ensure correct ordering
+    x1, x2 = sorted([x1, x2])
+    y1, y2 = sorted([y1, y2])
 
     rel_x = (x1 - left) / width
     rel_y = (y1 - top) / height
-    rel_width = (x2 - x1) / width
-    rel_height = (y2 - y1) / height
+    rel_dx = (x2 - x1) / width
+    rel_dy = (y2 - y1) / height
 
-    return [round(rel_x, 3), round(rel_y, 3), round(rel_width, 3), round(rel_height, 3)]
+    return [
+        round(rel_x, 3),
+        round(rel_y, 3),
+        round(rel_dx, 3),
+        round(rel_dy, 3),
+    ]

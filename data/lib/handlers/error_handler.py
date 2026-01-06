@@ -46,13 +46,16 @@ class RSL_Bot_ErrorHandler():
             "bastion_to_main_menu":      [0.808, 0.904, 0.168, 0.074],
 
             "internet_connectivity_error_name":      [0.408, 0.335, 0.179, 0.036],
-            "internet_connectivity_error_continue":      [0.279, 0.529, 0.215, 0.086],
             "internet_connectivity_error_retry_connection":      [0.506, 0.53, 0.211, 0.084],
+
+            "remote_override_error_name":      [0.428, 0.36, 0.121, 0.049],
+            "remote_override_error_retry_connection":      [0.279, 0.539, 0.215, 0.087],
 
 
             'pov' : [0, 0, 1, 1],
 
         }
+        self.remote_override_detected = False
         
         
     def check_for_internet_connectivity_error(self):
@@ -63,12 +66,23 @@ class RSL_Bot_ErrorHandler():
                 window_tools.click_center(self.window, self.search_areas["internet_connectivity_error_retry_connection"], delay = 5)
         except:
             pass
+
+    def check_remote_override(self):
+        try:
+            error_name = image_tools.get_text_in_relative_area(self.reader, self.window, search_area=self.search_areas["remote_override_error_name"])[0]
+            error_retry_connection = image_tools.get_text_in_relative_area(self.reader, self.window, search_area=self.search_areas["remote_override_error_retry_connection"])[0]
+            if error_name.text == 'ERROR' or error_retry_connection.text == 'Reiniciar sesion':
+                self.remote_override_detected = True
+        except:
+            pass
             
     def run_once(self):
         # =========================
         # 1. Internet Connectivity Error
         # =========================
         self.check_for_internet_connectivity_error()
+
+        self.check_remote_override()
 
 
     def run_permanently(self):
@@ -80,3 +94,4 @@ class RSL_Bot_ErrorHandler():
             # 1. Internet Connectivity Error
             # =========================
             self.check_for_internet_connectivity_error()
+            self.check_remote_override()

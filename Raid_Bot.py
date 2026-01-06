@@ -138,6 +138,13 @@ class RSL_Bot_Mainframe():
             
             "Grim_Forest":     [0.55, 0.225, 0.429, 0.762],
 
+
+
+            "internet_connectivity_error_name":      [0.408, 0.335, 0.179, 0.036],
+            "internet_connectivity_error_retry_connection":      [0.506, 0.53, 0.211, 0.084],
+
+            "remote_override_error_name":      [0.428, 0.36, 0.121, 0.049],
+            "remote_override_error_retry_connection":      [0.279, 0.539, 0.215, 0.087],
         }
 
              
@@ -183,8 +190,13 @@ class RSL_Bot_Mainframe():
         
 
         self.error_handler = error_handler.RSL_Bot_ErrorHandler(reader = self.reader, window = self.window)
-        
+        self.main_loop_running = False
+        self.main_loop_thread = None
+        self.main_loop_stopped = False
+
         self.handler_init_time = time.time()
+        self._start_error_checker()
+        self.remote_override_time_minutes = 0.5
         # ...to be continued
 
         
@@ -192,17 +204,43 @@ class RSL_Bot_Mainframe():
     # Error Handling
     # =========================
     def _start_error_checker(self):
-        """Start a background thread to check errors continuously."""
+        """
+        Start a background thread to monitor errors continuously.
+        If a remote override is detected, it stops the main loop, waits,
+        clicks retry, navigates back to menu, and restarts the main loop.
+        """
+
         def run_loop():
             while self.running:
                 try:
+                    # Run the error handler once
                     self.error_handler.run_once()
+
+                    # Check for remote override
+                    if getattr(self.error_handler, 'remote_override_detected', True):
+                        print("[ErrorHandler] Remote override detected. Handling...")
+
+                        # Stop main loop safely
+                        print("[ErrorHandler] Stopping current run_main_loop thread...")
+                        self.main_loop_running = False  # signal main loop to exit
+                        while not self.main_loop_stopped:
+                            time.sleep(1)
+
+                        time.sleep((self.remote_override_time_minutes+1)*60)
+                        print("[ErrorHandler] Restarted Errorhandler")
+                        self.main_loop_running = True
+                        self.main_loop_stopped = False
+                        self.error_handler.remote_override_detected = False
+
+
                 except Exception as e:
-                    print(f"[ErrorHandler] {e}")
+                    print(f"[ErrorHandler] Exception in error checker: {e}")
+
+                # Check every second
                 time.sleep(1)
 
+        # Start the error checker in a background daemon thread
         threading.Thread(target=run_loop, daemon=True).start()
-
     # =========================
     # Params Grouping
     # =========================
@@ -235,8 +273,10 @@ class RSL_Bot_Mainframe():
     # =========================
     # Navigation Helpers
     # =========================
-    def manouver_bastion(self, button_area, confirm_area, confirm_string, max_attempts=10):
+    def navigate_bastion_menu(self, button_area, confirm_area, confirm_string, max_attempts=10):
         for attempt in range(max_attempts):
+            if not self.main_loop_running:
+                break
             try:
                 if attempt % 2 == 0:
                     window_tools.sendkey("esc")
@@ -267,8 +307,10 @@ class RSL_Bot_Mainframe():
 
         return False
 
-    def go_to_menu(self, menu_name, max_attempts=5, detect_doomtower_rotation=False):
+    def navigate_to_menu(self, menu_name, max_attempts=5, detect_doomtower_rotation=False):
         for _ in range(max_attempts):
+            if not self.main_loop_running:
+                break
             try:
                 texts = image_tools.get_text_in_relative_area(
                     self.reader, self.window,
@@ -284,6 +326,8 @@ class RSL_Bot_Mainframe():
                 window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
 
         for direction in ("left", "right"):
+            if not self.main_loop_running:
+                break
             move = window_tools.move_left if direction == "left" else window_tools.move_right
             move(self.window, strength=2)
             time.sleep(2)
@@ -303,8 +347,8 @@ class RSL_Bot_Mainframe():
 
         print(f"[WARN] Menu '{menu_name}' not found")
 
-    def go_to_bastion_from_menu(self):
-        self.go_to_menu(self.main_menu_names['Dungeons'])
+    def navigate_to_bastion(self):
+        self.navigate_to_menu(self.main_menu_names['Dungeons'])
         window_tools.click_center(self.window, self.search_areas["go_to_bastion"])
 
     # =========================
@@ -326,11 +370,11 @@ class RSL_Bot_Mainframe():
     # =========================
     # Quest Rewards
     # =========================
-    def check_quest_rewards(self, delay=2):
+    def collect_quest_rewards(self, delay=2):
         time.sleep(delay)
-        self.go_to_bastion_from_menu()
+        self.navigate_to_bastion()
 
-        if not self.manouver_bastion(
+        if not self.navigate_bastion_menu(
             self.search_areas["quest_menu"],
             self.search_areas["quest_menu_name"],
             'Misiones'
@@ -350,7 +394,7 @@ class RSL_Bot_Mainframe():
 
         window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
 
-        self.manouver_bastion(
+        self.navigate_bastion_menu(
             self.search_areas["time_gated_reward_menu"],
             self.search_areas["time_gated_reward_menu_name"],
             'Reclamar todo'
@@ -376,7 +420,7 @@ class RSL_Bot_Mainframe():
                     break
             window_tools.move_left(self.window, strength=1.2)
 
-        self.manouver_bastion(
+        self.navigate_bastion_menu(
             self.search_areas["bastion_to_main_menu"],
             self.search_areas["menu_name"],
             'Modos de juego'
@@ -385,9 +429,9 @@ class RSL_Bot_Mainframe():
     # =========================
     # MAIN LOOP
     # =========================
-    def test_logic(self):
-        self._start_error_checker()
-
+    def run_main_loop(self):
+        print('Starting Main Loop...')
+        self.main_loop_stopped = False
         timers = {
             "classic": None,
             "tagteam": None,
@@ -395,52 +439,55 @@ class RSL_Bot_Mainframe():
         }
 
         REFRESH_INTERVAL = 15.1 * 60
+        self.main_loop_running = True
+        while self.main_loop_running:
+            print(self.main_loop_running)
 
-        while True:
-
-            if self.params['run']['classic_arena']:
-                self.go_to_menu(self.main_menu_names['Arena'])
+            if self.params['run']['classic_arena'] and self.main_loop_running:
+                self.navigate_to_menu(self.main_menu_names['Arena'])
                 window_tools.click_center(self.window, self.search_areas['classic_arena'])
                 self._handle_refresh(self.classic_arena_bot, timers, "classic", REFRESH_INTERVAL)
-                self.classic_arena_bot.run_classic_arena_until_empty()
+                self.classic_arena_bot.run_classic_arena_until_empty(main_loop_running = self.main_loop_running)
                 window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
 
-            if self.params['run']['tagteam_arena']:
-                self.go_to_menu(self.main_menu_names['Arena'])
+            if self.params['run']['tagteam_arena'] and self.main_loop_running:
+                self.navigate_to_menu(self.main_menu_names['Arena'])
                 window_tools.click_center(self.window, self.search_areas['tagteam_arena'])
                 self._handle_refresh(self.tagteam_arena_bot, timers, "tagteam", REFRESH_INTERVAL)
-                self.tagteam_arena_bot.run_tagteam_arena_single_cycle()
+                self.tagteam_arena_bot.run_tagteam_arena_single_cycle(main_loop_running = self.main_loop_running)
                 window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
 
-            if self.params['run']['live_arena']:
-                self.go_to_menu(self.main_menu_names['Arena'])
+            if self.params['run']['live_arena'] and self.main_loop_running:
+                self.navigate_to_menu(self.main_menu_names['Arena'])
                 window_tools.click_center(self.window, self.search_areas['live_arena'])
-                self.live_arena_bot.run_live_arena_loop()
+                self.live_arena_bot.run_live_arena_loop(main_loop_running = self.main_loop_running)
                 window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
 
-            if self.params['run']['dungeons'] and not self.params['run']['effective_unit_leveling']:
-                self.go_to_menu(self.main_menu_names['Dungeons'])
-                self.dungeon_bot.run_dungeons()
+            if self.params['run']['dungeons'] and not self.params['run']['effective_unit_leveling'] and self.main_loop_running:
+                self.navigate_to_menu(self.main_menu_names['Dungeons'])
+                self.dungeon_bot.run_dungeons(main_loop_running = self.main_loop_running)
                 window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
 
-            if self.params['run']['factionwars']:
-                self.go_to_menu(self.main_menu_names['FactionWars'])
-                self.factionwars_bot.run_factionwars()
+            if self.params['run']['factionwars'] and self.main_loop_running:
+                self.navigate_to_menu(self.main_menu_names['FactionWars'])
+                self.factionwars_bot.run_factionwars(main_loop_running = self.main_loop_running)
                 window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
 
-            if self.params['run']['demonlord']:
-                self.go_to_menu(self.main_menu_names['ClanBoss1'])
+            if self.params['run']['demonlord'] and self.main_loop_running:
+                self.navigate_to_menu(self.main_menu_names['ClanBoss1'])
                 window_tools.click_center(self.window, self.search_areas["clanboss_DemonLord"])
-                self.demonlord_bot.run_demonlord()
+                self.demonlord_bot.run_demonlord(main_loop_running = self.main_loop_running)
                 window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
 
-            if self.params['run']['doomtower']:
-                self.go_to_menu(self.main_menu_names['DoomTower'], detect_doomtower_rotation=True)
-                self.doomtower_bot.run_doomtower()
+            if self.params['run']['doomtower'] and self.main_loop_running:
+                self.navigate_to_menu(self.main_menu_names['DoomTower'], detect_doomtower_rotation=True)
+                self.doomtower_bot.run_doomtower(main_loop_running = self.main_loop_running)
                 window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
 
-            self.check_quest_rewards()
+            if self.main_loop_running:
+                self.collect_quest_rewards(main_loop_running = self.main_loop_running)
 
+        self.main_loop_stopped = True
     # =========================
     # Refresh Helper
     # =========================
@@ -454,6 +501,34 @@ class RSL_Bot_Mainframe():
             timers[key] = now
             bot.refresh()
 
+    def start_main_loop(self):
+        remote_overide_possible = True
+        while remote_overide_possible:
+            self.run_main_loop()
+            if self.main_loop_stopped:
+                # Wait before retrying
+                time.sleep(self.remote_override_time_minutes*60)
+
+                # Retry internet connectivity (thread-safe for GUI)
+                window_tools.click_center(
+                    self.window,
+                    self.search_areas["remote_override_error_retry_connection"],
+                    delay=60
+                )
+
+                # Navigate back to main menu (thread-safe)
+                self.main_loop_running = True
+                self.navigate_bastion_menu(
+                    self.search_areas["bastion_to_main_menu"],
+                    self.search_areas["menu_name"],
+                    'Modos de juego'
+                )
+
+                # Restart main loop in a new thread
+                print("[ErrorHandler] Restarting run_main_loop after override.")
+                self.start_main_loop() 
+
+
 
 
 
@@ -462,16 +537,17 @@ class RSL_Bot_Mainframe():
 # Run test if script is executed directly
 if __name__ == "__main__":
     print('ALWAYS RUN THE PROGRAM IN 1280 x 1024')
-    bot = RSL_Bot_Mainframe()
 
-    gui_tools.BotGUI(bot).run()
+    gui = gui_tools.BotGUI()
+    gui.run()
 
+
+    # bot = RSL_Bot_Mainframe()
+    # bot.doomtower_bot.current_rotation = '1'
+    # bot.doomtower_bot.run_doomtower()
+    #bot.run_main_loop()
     #bot.classic_arena_bot.run_classic_arena_until_empty()
     # bot.factionwars_bot.run_encounter()
-    # bot.doomtower_bot.current_rotation = '1'
-    # bot.doomtower_bot.farm_doomtower()
-    #bot.test_logic()
-
     #bot.live_arena_bot.check_arena_coins()
     #bot.tagteam_arena_bot.run_tagteam_arena_single_cycle()
 
