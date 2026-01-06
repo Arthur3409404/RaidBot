@@ -421,7 +421,11 @@ class RSL_Bot_Mainframe():
                         )
                     window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
                     break
+<<<<<<< HEAD
 
+=======
+            
+>>>>>>> 869bc07176dcbf37a54289650e6cf78974cd3a40
 
         self.navigate_bastion_menu(
             self.search_areas["bastion_to_main_menu"],
@@ -488,7 +492,7 @@ class RSL_Bot_Mainframe():
                 window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
 
             if self.main_loop_running:
-                self.collect_quest_rewards(main_loop_running = self.main_loop_running)
+                self.collect_quest_rewards()
 
         self.main_loop_stopped = True
     # =========================
@@ -499,10 +503,10 @@ class RSL_Bot_Mainframe():
         if timers[key] is None:
             timers[key] = now
             if now - self.handler_init_time > interval:
-                bot.refresh()
+                bot.refresh_enemy_list()
         elif now - timers[key] > interval:
             timers[key] = now
-            bot.refresh()
+            bot.refresh_enemy_list()
 
     def start_main_loop(self):
         remote_overide_possible = True
