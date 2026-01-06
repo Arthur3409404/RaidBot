@@ -102,11 +102,11 @@ class RSL_Bot_FactionWars:
         
         
     # ------------------------- Reset Methods -------------------------
-    def reset_battle_parameters(self):
+    def reset_battle_state(self):
         self.battle_status = 'menu'
 
     # ------------------------- Difficulty -------------------------
-    def check_difficulty(self):
+    def ensure_correct_difficulty(self):
         try:
             difc_txt = image_tools.get_text_in_relative_area(
                 self.reader, self.window, search_area=self.search_areas["get_difficulty"]
@@ -119,7 +119,7 @@ class RSL_Bot_FactionWars:
             print('Error changing Difficulties')
 
     # ------------------------- Battle Outcome -------------------------
-    def get_battle_outcome(self):
+    def update_battle_outcome(self):
         for result_area in ["battle_result", "battle_result_2"]:
             try:
                 battle_result = image_tools.get_text_in_relative_area(
@@ -135,7 +135,7 @@ class RSL_Bot_FactionWars:
                 continue
 
     # ------------------------- Battle Status -------------------------
-    def get_battle_status(self):
+    def update_battle_activity_status(self):
         try:
             auto_button = image_tools.get_text_in_relative_area(
                 self.reader, self.window, search_area=self.search_areas["auto_battle_button"]
@@ -145,7 +145,7 @@ class RSL_Bot_FactionWars:
             pass
 
     # ------------------------- Status Print -------------------------
-    def print_status(self):
+    def report_run_status(self):
         elapsed = int(time.time() - self.init_time)
         formatted_elapsed = str(timedelta(seconds=elapsed))
         medals = self.battles_won * 70
@@ -162,7 +162,7 @@ class RSL_Bot_FactionWars:
         print("=" * 40 + "\n")
 
     # ------------------------- FW Keys -------------------------
-    def check_fw_keys(self):
+    def get_available_fw_keys(self):
         try:
             fw_keys = image_tools.get_text_in_relative_area(
                 self.reader, self.window, search_area=self.search_areas['faction_wars_keys']
@@ -173,13 +173,13 @@ class RSL_Bot_FactionWars:
         return fw_keys
 
     # ------------------------- Fuzzy Matching -------------------------
-    def guess_faction_name(self, name, flat_values, cutoff=0.75):
+    def match_faction_name_fuzzy(self, name, flat_values, cutoff=0.75):
         """Return closest match from flat_values or None if below cutoff."""
         matches = difflib.get_close_matches(name, flat_values, n=1, cutoff=cutoff)
         return matches[0] if matches else None
 
     # ------------------------- Encounter Selection -------------------------
-    def select_encounter(self, max_attempts=6):
+    def locate_faction_encounter(self, max_attempts=6):
         obj_found = False
         attempts = 0
         flat_values = self.faction_menu_names.values()
@@ -215,9 +215,9 @@ class RSL_Bot_FactionWars:
 
                     # Fuzzy match if not exact
                     if faction_name not in flat_values:
-                        faction_name = self.guess_faction_name(faction_name, flat_values)
+                        faction_name = self.match_faction_name_fuzzy(faction_name, flat_values)
                     if not faction_name and faction_name_alt not in flat_values:
-                        faction_name = self.guess_faction_name(faction_name_alt, flat_values)
+                        faction_name = self.match_faction_name_fuzzy(faction_name_alt, flat_values)
                     if not faction_name:
                         print("Could not match faction_name, skipping this object.")
                         continue
@@ -234,7 +234,7 @@ class RSL_Bot_FactionWars:
                     self.current_stage = self.farm_stages[key[0]][0]
                     self.current_difficulty = self.farm_stages[key[0]][1]
 
-                    current_fw_keys = self.check_fw_keys()
+                    current_fw_keys = self.get_available_fw_keys()
                     if (int(current_fw_keys) < 4 * self.multiplier and self.current_difficulty == 'normal') or \
                        (int(current_fw_keys) < 6 * self.multiplier and self.current_difficulty == 'hard'):
                         window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
@@ -254,20 +254,20 @@ class RSL_Bot_FactionWars:
                     window_tools.move_left(self.window, strength=1.2)
 
         if obj_found:
-            self.check_difficulty()
+            self.ensure_correct_difficulty()
             stage = np.clip(self.current_stage - 14, 0, 7) if self.current_difficulty == 'hard' else np.clip(self.current_stage - 14, 3, 7)
             window_tools.click_center(self.window, self.stages_buttons[stage], delay=2)
 
         return obj_found
 
     # ------------------------- Run Encounter -------------------------
-    def run_encounter(self):
+    def execute_faction_encounter(self):
         window_tools.click_center(self.window, self.search_areas["confirm_button_champion_selection"])
-        self.reset_battle_parameters()
+        self.reset_battle_state()
 
         while self.battle_status != 'Done':
-            self.get_battle_outcome()
-            self.get_battle_status()
+            self.update_battle_outcome()
+            self.update_battle_activity_status()
 
         window_tools.click_center(self.window, self.search_areas["go_to_map"])
 
@@ -279,10 +279,10 @@ class RSL_Bot_FactionWars:
         time.sleep(5)
 
         while self.running:
-            encounter_found = self.select_encounter()
+            encounter_found = self.locate_faction_encounter()
             if encounter_found:
-                self.run_encounter()
-                self.print_status()
+                self.execute_faction_encounter()
+                self.report_run_status()
             else:
                 print('Could not find encounter')
                 self.running = False

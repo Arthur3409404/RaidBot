@@ -402,20 +402,20 @@ class RSL_Bot_Mainframe():
                 self.go_to_menu(self.main_menu_names['Arena'])
                 window_tools.click_center(self.window, self.search_areas['classic_arena'])
                 self._handle_refresh(self.classic_arena_bot, timers, "classic", REFRESH_INTERVAL)
-                self.classic_arena_bot.run_classic_arena_once()
+                self.classic_arena_bot.run_classic_arena_until_empty()
                 window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
 
             if self.params['run']['tagteam_arena']:
                 self.go_to_menu(self.main_menu_names['Arena'])
                 window_tools.click_center(self.window, self.search_areas['tagteam_arena'])
                 self._handle_refresh(self.tagteam_arena_bot, timers, "tagteam", REFRESH_INTERVAL)
-                self.tagteam_arena_bot.run_tagteam_arena_once()
+                self.tagteam_arena_bot.run_tagteam_arena_single_cycle()
                 window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
 
             if self.params['run']['live_arena']:
                 self.go_to_menu(self.main_menu_names['Arena'])
                 window_tools.click_center(self.window, self.search_areas['live_arena'])
-                self.live_arena_bot.run_live_arena()
+                self.live_arena_bot.run_live_arena_loop()
                 window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
 
             if self.params['run']['dungeons'] and not self.params['run']['effective_unit_leveling']:
@@ -466,14 +466,14 @@ if __name__ == "__main__":
 
     gui_tools.BotGUI(bot).run()
 
-    #bot.classic_arena_bot.run_classic_arena_once()
+    #bot.classic_arena_bot.run_classic_arena_until_empty()
     # bot.factionwars_bot.run_encounter()
     # bot.doomtower_bot.current_rotation = '1'
     # bot.doomtower_bot.farm_doomtower()
     #bot.test_logic()
 
     #bot.live_arena_bot.check_arena_coins()
-    #bot.tagteam_arena_bot.run_tagteam_arena_once()
+    #bot.tagteam_arena_bot.run_tagteam_arena_single_cycle()
 
     
     # num = 1

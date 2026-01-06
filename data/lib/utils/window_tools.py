@@ -149,11 +149,11 @@ def move_down(window: WindowObject, strength: float = 1.0, relative_x: float = 0
     _move(window, dx=0, dy=-BASE_DELTA, strength=strength, relative_x=relative_x, relative_y=relative_y)
 
 
-def move_left(window: WindowObject, strength: float = 1.0, relative_x: float = 0.5, relative_y: float = 0.5):
+def move_right(window: WindowObject, strength: float = 1.0, relative_x: float = 0.5, relative_y: float = 0.5):
     _move(window, dx=-BASE_DELTA, dy=0, strength=strength, relative_x=relative_x, relative_y=relative_y)
 
 
-def move_right(window: WindowObject, strength: float = 1.0, relative_x: float = 0.5, relative_y: float = 0.5):
+def move_left(window: WindowObject, strength: float = 1.0, relative_x: float = 0.5, relative_y: float = 0.5):
     _move(window, dx=BASE_DELTA, dy=0, strength=strength, relative_x=relative_x, relative_y=relative_y)
 
 
