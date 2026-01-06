@@ -99,7 +99,7 @@ class RSL_Bot_ClassicArena:
             "Pos10": [[0.583, 0.946, 0.166, 0.02], [0.787, 0.874, 0.181, 0.078]],
         }
 
-    def get_battle_outcome(self, power_level):
+    def evaluate_arena_enemies(self, power_level):
         """
         Determine outcome of a battle and update enemy memory if lost.
         """
@@ -112,11 +112,11 @@ class RSL_Bot_ClassicArena:
             self.recent_battle_outcome = 1
         else:
             self.classic_arena_enemies_lost.append(power_level)
-            self.update_enemy_memory()
+            self.persist_enemy_avoid_list()
             print("Updated Enemy Avoid List")
             self.recent_battle_outcome = 0
 
-    def update_enemy_memory(self):
+    def persist_enemy_avoid_list(self):
         """
         Persist lost enemies to params_mainframe.txt
         """
@@ -132,7 +132,7 @@ class RSL_Bot_ClassicArena:
                 else:
                     f.write(line)
 
-    def battle_enemy(self, obj, next_obj, power_level):
+    def execute_arena_battle(self, obj, next_obj, power_level):
         """
         Engage an enemy and handle the battle loop.
         """
@@ -153,7 +153,7 @@ class RSL_Bot_ClassicArena:
                 if battle_finished.text == "PULSA PARA CONTINUAR":
                     battle_running = False
                     time.sleep(3)
-                    self.get_battle_outcome(power_level)
+                    self.evaluate_arena_enemies(power_level)
                     time.sleep(3)
                     # Multiple clicks to ensure continuation
                     for _ in range(4):
@@ -163,7 +163,7 @@ class RSL_Bot_ClassicArena:
                 pass
             time.sleep(3)
 
-    def evaluate_enemies(self):
+    def evaluate_arena_enemies(self):
         """
         Scan and evaluate all enemies in the arena.
         """
@@ -200,7 +200,7 @@ class RSL_Bot_ClassicArena:
                             )
                             image_np_enemy = np.array(screenshot_enemy)
                             print(f"Power {power_val} < threshold {self.classic_arena_power_threshold}")
-                            self.battle_enemy(obj, next_obj, power_val)
+                            self.execute_arena_battle(obj, next_obj, power_val)
                             time.sleep(3)
                             self.battle_occured = True
                             self.battles_done += 1
@@ -211,15 +211,15 @@ class RSL_Bot_ClassicArena:
             idx += 1
         return getattr(self, "battle_occured", False)
 
-    def end_battle(self):
+    def exit_battle_screen(self):
         window_tools.click_center(self.window, self.search_areas["battle_finished"])
 
-    def refresh(self):
+    def refresh_enemy_list(self):
         if not self.coords or "refresh_timer" not in self.search_areas:
             return
         window_tools.click_center(self.window, self.search_areas["refresh_timer"])
 
-    def check_arena_coins(self):
+    def ensure_arena_coins(self):
         """
         Checks if arena coins are available; if not, attempt to use gems if allowed.
         """
@@ -264,7 +264,7 @@ class RSL_Bot_ClassicArena:
             window_tools.click_at(confirm_text.mean_pos_x, confirm_text.mean_pos_y)
             time.sleep(3)
 
-    def print_status(self):
+    def report_run_status(self):
         elapsed = time.time() - self.init_time
         formatted_elapsed = str(timedelta(seconds=int(elapsed)))
         medals = (self.battles_done - len(self.classic_arena_enemies_lost) + self.offset_wins) * 4
@@ -282,7 +282,7 @@ class RSL_Bot_ClassicArena:
         print("=" * 40 + "\n")
         
 
-    def run_classic_arena_noTimeLimit(self):
+    def run_classic_arena_continuous(self):
         """
         Run the Classic Arena bot indefinitely without a time limit.
         """
@@ -294,18 +294,18 @@ class RSL_Bot_ClassicArena:
         counter_multi_refresh = 0
 
         while self.running:
-            self.print_status()
+            self.report_run_status()
             self.battle_occured = False
 
-            self.check_arena_coins()
+            self.ensure_arena_coins()
 
-            self.battle_occured = self.evaluate_enemies()
+            self.battle_occured = self.evaluate_arena_enemies()
             if self.battle_occured:
                 continue
 
             window_tools.move_down(self.window)
 
-            self.battle_occured = self.evaluate_enemies()
+            self.battle_occured = self.evaluate_arena_enemies()
             if self.battle_occured:
                 continue
 
@@ -313,7 +313,7 @@ class RSL_Bot_ClassicArena:
 
             if self.classic_arena_multi_refresh:
                 if counter_multi_refresh < self.classic_arena_num_multi_refresh:
-                    self.refresh()
+                    self.refresh_enemy_list()
                     counter_multi_refresh += 1
                     continue
                 else:
@@ -327,11 +327,11 @@ class RSL_Bot_ClassicArena:
             elapsed = time.time() - last_refresh_time
             if elapsed >= self.refresh_minutes * 60:
                 if self.running:
-                    self.refresh()
+                    self.refresh_enemy_list()
                     last_refresh_time = time.time()
                         
                         
-    def run_classic_arena_once(self):
+    def run_classic_arena_until_empty(self):
         """
         Run the Classic Arena bot once until no arena coins remain.
         """
@@ -346,22 +346,22 @@ class RSL_Bot_ClassicArena:
         time.sleep(5)
 
         while self.running:
-            self.print_status()
+            self.report_run_status()
             self.battle_occured = False
 
-            self.check_arena_coins()
+            self.ensure_arena_coins()
             if self.no_coin_status:
                 self.running = False
                 print("Waiting for coins")
                 continue
 
-            self.battle_occured = self.evaluate_enemies()
+            self.battle_occured = self.evaluate_arena_enemies()
             if self.battle_occured:
                 continue
 
             window_tools.move_down(self.window)
 
-            self.battle_occured = self.evaluate_enemies()
+            self.battle_occured = self.evaluate_arena_enemies()
             if self.battle_occured:
                 continue
 
@@ -369,7 +369,7 @@ class RSL_Bot_ClassicArena:
 
             if self.classic_arena_multi_refresh:
                 if counter_multi_refresh < self.classic_arena_num_multi_refresh:
-                    self.refresh()
+                    self.refresh_enemy_list()
                     counter_multi_refresh += 1
                     continue
                 else:
@@ -489,7 +489,7 @@ class RSL_Bot_TagTeamArena:
     # Battle outcome & memory
     # ------------------------------------------------------------------
 
-    def get_battle_outcome(self, enemy_power):
+    def evaluate_arena_enemies(self, enemy_power):
         result = image_tools.get_text_in_relative_area(
             self.reader, self.window, self.search_areas["battle_result"]
         )[0]
@@ -501,9 +501,9 @@ class RSL_Bot_TagTeamArena:
             print("Defeat – updating enemy avoid list")
             self.recent_battle_outcome = 0
             self.tagteam_arena_enemies_lost.append(enemy_power)
-            self.update_enemy_memory()
+            self.persist_enemy_avoid_list()
 
-    def update_enemy_memory(self):
+    def persist_enemy_avoid_list(self):
         param_file = os.path.join("data", "params_mainframe.txt")
         updated_line = (
             f"tagteam_arena_enemies_lost = {self.tagteam_arena_enemies_lost}\n"
@@ -523,7 +523,7 @@ class RSL_Bot_TagTeamArena:
     # Battle execution
     # ------------------------------------------------------------------
 
-    def battle_enemy(self, fight_button, power_text_obj, enemy_power):
+    def execute_tagteam_battle(self, fight_button, power_text_obj, enemy_power):
         window_tools.click_at(fight_button.mean_pos_x, fight_button.mean_pos_y)
         time.sleep(3)
 
@@ -540,7 +540,7 @@ class RSL_Bot_TagTeamArena:
 
                 if finished.text == "PULSA PARA CONTINUAR":
                     time.sleep(3)
-                    self.get_battle_outcome(enemy_power)
+                    self.evaluate_arena_enemies(enemy_power)
 
                     for _ in range(2):
                         window_tools.click_at(
@@ -561,7 +561,7 @@ class RSL_Bot_TagTeamArena:
     # Enemy evaluation
     # ------------------------------------------------------------------
 
-    def _parse_power_value(self, text):
+    def _parse_enemy_power_value(self, text):
         matches = re.findall(r"(\d[\d.,]*)([a-zA-Z]*)", text)
         if not matches:
             raise ValueError("No numeric value found")
@@ -578,7 +578,7 @@ class RSL_Bot_TagTeamArena:
 
         return value
 
-    def evaluate_enemies(self):
+    def evaluate_tagteam_enemies(self):
         text_objects = image_tools.get_text_from_cluster_area(
             self.reader,
             self.window,
@@ -595,7 +595,7 @@ class RSL_Bot_TagTeamArena:
             power_obj = filtered[idx - 1]
 
             try:
-                enemy_power = self._parse_power_value(power_obj.text)
+                enemy_power = self._parse_enemy_power_value(power_obj.text)
 
                 screenshot = pyautogui.screenshot(
                     region=(
@@ -610,7 +610,7 @@ class RSL_Bot_TagTeamArena:
                 prob, label = self.evaluation_ai.predict(image_np, enemy_power)
 
                 if label == 1 and enemy_power not in self.tagteam_arena_enemies_lost:
-                    self.battle_enemy(obj, power_obj, enemy_power)
+                    self.execute_tagteam_battle(obj, power_obj, enemy_power)
                     self.battles_done += 1
                     self.battle_occured = True
 
@@ -632,11 +632,11 @@ class RSL_Bot_TagTeamArena:
     # Arena utility
     # ------------------------------------------------------------------
 
-    def refresh(self):
+    def refresh_enemy_list(self):
         if self.coords:
             window_tools.click_center(self.window, self.search_areas["refresh_timer"])
 
-    def check_arena_coins(self):
+    def ensure_arena_coins(self):
         self.no_coin_status = False
         time.sleep(1)
 
@@ -671,7 +671,7 @@ class RSL_Bot_TagTeamArena:
     # Status & main loops
     # ------------------------------------------------------------------
 
-    def print_status(self):
+    def report_run_status(self):
         elapsed = str(timedelta(seconds=int(time.time() - self.init_time)))
         wins = self.battles_done - len(self.tagteam_arena_enemies_lost) + self.offset_wins
         medals = wins * 4
@@ -685,30 +685,30 @@ class RSL_Bot_TagTeamArena:
         print(f"🎖️ Estimated Medals: {medals}")
         print("=" * 40)
 
-    def run_tagteam_arena_noTimeLimit(self):
+    def run_tagteam_arena_continuous(self):
         time.sleep(5)
         last_refresh = time.time()
         refresh_count = 0
 
         while self.running:
-            self.print_status()
-            self.check_arena_coins()
+            self.report_run_status()
+            self.ensure_arena_coins()
 
             if self.no_coin_status:
                 print("Waiting for coins")
                 break
 
-            if self.evaluate_enemies():
+            if self.evaluate_tagteam_enemies():
                 continue
 
             window_tools.move_down(self.window)
-            if self.evaluate_enemies():
+            if self.evaluate_tagteam_enemies():
                 continue
             window_tools.move_up(self.window)
 
             if self.tagteam_arena_multi_refresh:
                 if refresh_count < self.tagteam_arena_num_multi_refresh:
-                    self.refresh()
+                    self.refresh_enemy_list()
                     refresh_count += 1
                     continue
                 refresh_count = 0
@@ -717,26 +717,26 @@ class RSL_Bot_TagTeamArena:
             time.sleep(62)
 
             if time.time() - last_refresh >= self.refresh_minutes * 60:
-                self.refresh()
+                self.refresh_enemy_list()
                 last_refresh = time.time()
 
-    def run_tagteam_arena_once(self):
+    def run_tagteam_arena_single_cycle(self):
         time.sleep(5)
         self.running = True
 
         while self.running:
-            self.print_status()
-            self.check_arena_coins()
+            self.report_run_status()
+            self.ensure_arena_coins()
 
             if self.no_coin_status:
                 print("Waiting for coins")
                 break
 
-            if self.evaluate_enemies():
+            if self.evaluate_tagteam_enemies():
                 continue
 
             window_tools.move_down(self.window)
-            if self.evaluate_enemies():
+            if self.evaluate_tagteam_enemies():
                 continue
             window_tools.move_up(self.window)
 
@@ -840,13 +840,13 @@ class RSL_Bot_LiveArena:
         
         
     # ------------------------- Reset Methods -------------------------
-    def reset_battle_parameters(self):
+    def reset_battle_state(self):
         self.battle_status = 'menu'
         self.auto_button_clicked = False
         self.no_coin_status = False
 
     # ------------------------- Battle Outcome -------------------------
-    def get_battle_outcome(self):
+    def evaluate_arena_enemies(self):
         for result_area in ["battle_result", "battle_result_2"]:
             try:
                 battle_result = image_tools.get_text_in_relative_area(
@@ -862,12 +862,12 @@ class RSL_Bot_LiveArena:
                 continue
 
     # ------------------------- Enemy Memory -------------------------
-    def update_enemy_memory(self):
+    def persist_enemy_avoid_list(self):
         # Not used currently
         pass
 
     # ------------------------- Battle Status -------------------------
-    def get_battle_status(self):
+    def update_battle_activity_status(self):
         try:
             auto_button = image_tools.get_text_in_relative_area(
                 self.reader, self.window, search_area=self.search_areas["auto_battle_button"]
@@ -885,7 +885,7 @@ class RSL_Bot_LiveArena:
             pass
 
     # ------------------------- Arena Coins -------------------------
-    def check_arena_coins(self):
+    def ensure_arena_coins(self):
         time.sleep(1)
         self.no_coin_status = False
 
@@ -929,7 +929,7 @@ class RSL_Bot_LiveArena:
             window_tools.click_at(confirm_text.mean_pos_x, confirm_text.mean_pos_y)
 
     # ------------------------- Status Print -------------------------
-    def print_status(self):
+    def report_run_status(self):
         elapsed = int(time.time() - self.init_time)
         medals = self.battles_won * 70
         formatted_elapsed = str(timedelta(seconds=elapsed))
@@ -947,7 +947,7 @@ class RSL_Bot_LiveArena:
         print("=" * 40 + "\n")
 
     # ------------------------- Live Arena -------------------------
-    def check_live_arena_availability(self):
+    def is_live_arena_active(self):
         rel_left, rel_top, rel_width, rel_height = self.search_areas["live_arena_status"]
         x = int(self.window.left + rel_left * self.window.width)
         y = int(self.window.top + rel_top * self.window.height)
@@ -963,14 +963,14 @@ class RSL_Bot_LiveArena:
         )
         return result != "red" if result else False
 
-    def check_live_arena_rewards(self):
+    def claim_live_arena_rewards(self):
         for reward in ["live_arena_reward_1", "live_arena_reward_2", "live_arena_reward_3", "live_arena_reward_4", "live_arena_reward_5"]:
             # Click twice per reward
             for _ in range(2):
                 window_tools.click_center(self.window, self.search_areas[reward], delay=1)
 
     # ------------------------- Pick Phase -------------------------
-    def simple_pick_phase(self):
+    def execute_simple_pick_phase(self):
         try:
             confirm_button = image_tools.get_text_in_relative_area(
                 self.reader, self.window, search_area=self.search_areas["confirm_button_champion_selection"]
@@ -986,18 +986,18 @@ class RSL_Bot_LiveArena:
         except:
             pass
 
-    def complex_pick_phase(self):
+    def execute_complex_pick_phase(self):
         pass
 
     # ------------------------- Encounter -------------------------
-    def run_encounter(self):
-        self.reset_battle_parameters()
+    def execute_live_arena_encounter(self):
+        self.reset_battle_state()
         window_tools.click_center(self.window, self.search_areas["start_encounter"])
 
         while self.battle_status != 'Done':
-            self.get_battle_outcome()
-            self.simple_pick_phase()
-            self.get_battle_status()
+            self.evaluate_arena_enemies()
+            self.execute_simple_pick_phase()
+            self.update_battle_activity_status()
 
         while self.battle_status == 'Done':
             battle_finished = image_tools.get_text_in_relative_area(
@@ -1008,25 +1008,25 @@ class RSL_Bot_LiveArena:
                 self.battle_status = 'menu'
 
     # ------------------------- Main Live Arena Loop -------------------------
-    def run_live_arena(self):
+    def run_live_arena_loop(self):
         time.sleep(5)
         self.start_time = time.time()
         self.running = True
         time.sleep(5)
 
         while self.running:
-            if not self.check_live_arena_availability():
+            if not self.is_live_arena_active():
                 self.running = False
                 print("Live arena not active")
                 continue
 
-            self.check_live_arena_rewards()
-            self.check_arena_coins()
+            self.claim_live_arena_rewards()
+            self.ensure_arena_coins()
             self.battle_occured = False
 
             if self.no_coin_status:
                 self.running = False
             else:
-                self.run_encounter()
+                self.execute_live_arena_encounter()
 
-            self.print_status()
+            self.report_run_status()
