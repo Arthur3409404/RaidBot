@@ -51,7 +51,7 @@ class RSL_Bot_DemonLord():
         self.demonlord_encounter_difficulty = None 
 
     # ------------------------- Keys -------------------------
-    def check_demonlord_keys(self):
+    def update_available_keys(self):
         """Check if Demon Lord keys are available."""
         try:
             keys_text = image_tools.get_text_in_relative_area(
@@ -63,7 +63,7 @@ class RSL_Bot_DemonLord():
             self.num_of_keys = 0
 
     # ------------------------- Name Scan -------------------------
-    def check_list_of_names(self, max_attempts=3):
+    def detect_cleared_difficulties(self, max_attempts=3):
         """Check which Demon Lord difficulties are already cleared."""
         self.demonlord_encounters_cleared = []
 
@@ -72,7 +72,7 @@ class RSL_Bot_DemonLord():
                 self.window, self.search_areas[f'DemonLord_{difficulty}']
             )
 
-            window_tools.move_up(self.window, strength=3, relative_x_pos=0.25)
+            window_tools.move_up(self.window, strength=3, relative_x=0.25)
             name_found = False
 
             for _ in range(max_attempts):
@@ -85,20 +85,20 @@ class RSL_Bot_DemonLord():
                     name_found = True
                     break
 
-                window_tools.move_down(self.window, strength=0.5, relative_x_pos=0.25)
+                window_tools.move_down(self.window, strength=0.5, relative_x=0.25)
 
             if name_found:
                 continue
 
     # ------------------------- Difficulty -------------------------
-    def set_difficulty(self):
+    def select_next_difficulty(self):
         """Set next Demon Lord difficulty."""
         self.demonlord_encounter_difficulty = self.difficulty_order[
             len(self.demonlord_encounters_cleared)
         ]
 
     # ------------------------- Battle Result -------------------------
-    def check_battle_outcome(self):
+    def update_battle_status(self):
         try:
             result = image_tools.get_text_in_relative_area(
                 self.reader, self.window, search_area=self.search_areas['DemonLord_Result']
@@ -112,7 +112,7 @@ class RSL_Bot_DemonLord():
             pass
 
     # ------------------------- Encounter -------------------------
-    def handle_demonlord_encounter(self):
+    def execute_demonlord_encounter(self):
         """Execute Demon Lord fight."""
         difficulty_key = f'DemonLord_{self.demonlord_encounter_difficulty}'
         window_tools.click_center(self.window, self.search_areas[difficulty_key])
@@ -131,7 +131,7 @@ class RSL_Bot_DemonLord():
 
         self.battle_status = 'Starting'
         while self.battle_status != 'Done':
-            self.check_battle_outcome()
+            self.update_battle_status()
 
         window_tools.click_center(self.window, self.search_areas["DemonLord_EndEncounter"])
         window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
@@ -139,20 +139,20 @@ class RSL_Bot_DemonLord():
     # ------------------------- Main Runner -------------------------
     def run_demonlord(self):
         """Run Demon Lord encounters."""
-        self.check_demonlord_keys()
+        self.update_available_keys()
         if self.num_of_keys == 0:
             return
 
-        self.check_list_of_names()
+        self.detect_cleared_difficulties()
 
         while len(self.demonlord_encounters_cleared) < len(self.difficulty_order):
-            self.check_demonlord_keys()
+            self.update_available_keys()
             if self.num_of_keys == 0:
                 break
 
             if self.demonlord_encounters_cleared != self.difficulty_order:
-                self.set_difficulty()
-                self.handle_demonlord_encounter()
+                self.select_next_difficulty()
+                self.execute_demonlord_encounter()
 
         window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
 

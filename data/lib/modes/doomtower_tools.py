@@ -134,11 +134,11 @@ class RSL_Bot_DoomTower():
         self.highest_stage_available = {'normal': 1, 'hard': 1}
 
     # ------------------------- Reset -------------------------
-    def reset(self):
+    def reset_run_state(self):
         self.battle_status = 'Starting'
 
     # ------------------------- Stage Field -------------------------
-    def get_current_stagefield(self):
+    def scan_visible_stages(self):
         text_objects = image_tools.get_text_in_relative_area(
             self.reader, self.window, search_area=self.search_areas['pov']
         )
@@ -162,14 +162,14 @@ class RSL_Bot_DoomTower():
             return None
         return max(matching_keys)
 
-    def is_within_radius(self, obj1, obj2, radius):
+    def objects_within_radius(self, obj1, obj2, radius):
         return math.hypot(
             obj1.mean_pos_x - obj2.mean_pos_x,
             obj1.mean_pos_y - obj2.mean_pos_y
         ) <= radius
 
     # ------------------------- Keys -------------------------
-    def check_doomtower_keys(self):
+    def update_available_keys(self):
         """Check Doom Tower keys."""
         try:
             doom_tower_keys = image_tools.get_text_in_relative_area(
@@ -189,7 +189,7 @@ class RSL_Bot_DoomTower():
 
     # ------------------------- Builds -------------------------
     def check_list_of_builds(self, max_attempts=3):
-        window_tools.move_down(self.window, strength=0.5, relative_x_pos=0.25)
+        window_tools.move_down(self.window, strength=0.5, relative_x=0.25)
 
     # ------------------------- Stage Reconstruction -------------------------
     def _reconstruct_stage_numbers(self, stages_numbers):
@@ -248,7 +248,7 @@ class RSL_Bot_DoomTower():
             self.current_difficulty = set_level
 
     # ------------------------- Battle Outcome -------------------------
-    def check_battle_outcome(self):
+    def update_battle_status(self):
         try:
             result = image_tools.get_text_in_relative_area(
                 self.reader, self.window,
@@ -302,7 +302,7 @@ class RSL_Bot_DoomTower():
             pass
 
     # ------------------------- Encounter Setup -------------------------
-    def setup_encounter(self):
+    def prepare_encounter(self):
         doom_tower_menu_name = image_tools.get_text_in_relative_area(
             self.reader, self.window,
             search_area=self.search_areas["doom_tower_menu_name"]
@@ -317,14 +317,14 @@ class RSL_Bot_DoomTower():
         else:
             current_opponent = 'Waves'
 
-        self.select_build(current_opponent)
+        self.select_encounter_build(current_opponent)
 
     # ------------------------- Build Selection -------------------------
-    def select_build(self, setup):
+    def select_encounter_build(self, setup):
         self.current_setup = False
 
         window_tools.click_center(self.window, self.search_areas["doom_tower_setup_section_groups"])
-        window_tools.move_up(self.window, strength=3, relative_x_pos=0.15)
+        window_tools.move_up(self.window, strength=3, relative_x=0.15)
 
         for _ in range(3):
             setups = image_tools.get_text_in_relative_area(
@@ -340,7 +340,7 @@ class RSL_Bot_DoomTower():
             if self.current_setup:
                 break
 
-            window_tools.move_down(self.window, strength=0.5, relative_x_pos=0.15)
+            window_tools.move_down(self.window, strength=0.5, relative_x=0.15)
 
         if self.current_setup:
             completed = image_tools.get_simliarities_in_relative_area(
@@ -359,8 +359,8 @@ class RSL_Bot_DoomTower():
                 window_tools.click_center(self.window, self.search_areas["doom_tower_start_encounter"])
 
     # ------------------------- Run Encounter -------------------------
-    def run_encounter(self, farming=False, max_attempts=50):
-        self.setup_encounter()
+    def execute_encounter(self, farming=False, max_attempts=50):
+        self.prepare_encounter()
         self.battle_status = 'Starting'
 
         window_tools.click_center(self.window, self.search_areas["doom_tower_start_encounter"])
@@ -368,7 +368,7 @@ class RSL_Bot_DoomTower():
 
         attempt = 0
         while True:
-            self.check_battle_outcome()
+            self.update_battle_status()
             time.sleep(2)
 
             if self.battle_status == 'Done' and not farming:
@@ -424,7 +424,7 @@ class RSL_Bot_DoomTower():
         return not len(stage_completed) == 1
 
     # ------------------------- Highest Stage Detection -------------------------
-    def get_highest_stage_available(self, max_attempts=10):
+    def detect_highest_unlocked_stage(self, max_attempts=10):
         self.highest_stage_available = 1
         end_reached = False
         attempts = 0
@@ -444,13 +444,13 @@ class RSL_Bot_DoomTower():
 
             stages_completed.sort(key=lambda o: o.mean_pos_y)
 
-            stages_numbers = self.get_current_stagefield()
+            stages_numbers = self.scan_visible_stages()
             self._reconstruct_stage_numbers(stages_numbers)
 
             backtrack = 0
             for completed in stages_completed:
                 for number in stages_numbers:
-                    if number.text and self.is_within_radius(completed, number, 100):
+                    if number.text and self.objects_within_radius(completed, number, 100):
                         self.highest_stage_available = int(number.text) + backtrack
                         self.highest_stage = completed
                         break
@@ -461,7 +461,7 @@ class RSL_Bot_DoomTower():
 
             rel_y = (self.highest_stage.mean_pos_y - self.window.top) / self.window.height
             if rel_y < 0.3:
-                window_tools.move_up(self.window, strength=1, relative_x_pos=0.1)
+                window_tools.move_up(self.window, strength=1, relative_x=0.1)
                 continue
             else:
                 end_reached = True
@@ -473,7 +473,7 @@ class RSL_Bot_DoomTower():
             self.highest_stage_available = max(1, min(120, self.highest_stage_available))
 
     # ------------------------- Stage Scan -------------------------
-    def check_for_boss_and_current_stage(self, target=None):
+    def scan_for_boss_or_current_stage(self, target=None):
         FIRST_PATH = 'pic\\doom_tower_current_stage.png'
         list_of_paths = [FIRST_PATH]
         expected_menu_names = {FIRST_PATH: 'Planta'}
@@ -561,22 +561,22 @@ class RSL_Bot_DoomTower():
                     pass
 
     # ------------------------- Simple Scan -------------------------
-    def simple_find_highest_stage(self, target=None):
-        for _ in range(7):
-            window_tools.move_up(self.window, strength=3, relative_x_pos=0.1)
+    def locate_highest_stage_simple(self, target=None):
+
+        window_tools.move_up(self.window, strength=15, relative_x=0.1)
 
         for _ in range(25):
-            self.check_for_boss_and_current_stage(target=target)
+            self.scan_for_boss_or_current_stage(target=target)
             if self.stage_found:
                 break
-            window_tools.move_down(self.window, strength=0.6, relative_x_pos=0.1)
+            window_tools.move_down(self.window, strength=0.6, relative_x=0.1)
 
     # ------------------------- Climb -------------------------
-    def climb_doomtower(self):
+    def progress_doom_tower(self):
         self.set_difficulty('hard')
 
         if self.doomtower_climb_status_hard != 'completed':
-            self.simple_find_highest_stage()
+            self.locate_highest_stage_simple()
 
         if self.doomtower_climb_status in ('completed',) or \
            self.doomtower_climb_status_hard == 'completed':
@@ -585,7 +585,7 @@ class RSL_Bot_DoomTower():
             self.set_difficulty('normal')
 
             if not self.doomtower_completed:
-                self.simple_find_highest_stage()
+                self.locate_highest_stage_simple()
 
             if self.doomtower_climb_status == 'completed':
                 self.doomtower_climb_status_normal = 'completed'
@@ -593,10 +593,10 @@ class RSL_Bot_DoomTower():
 
         if not self.doomtower_completed and self.stage_found:
             window_tools.click_at(self.stage_found.mean_pos_x, self.stage_found.mean_pos_y)
-            self.run_encounter()
+            self.execute_encounter()
 
     # ------------------------- Farming -------------------------
-    def farm_doomtower(self):
+    def farm_doom_tower_bosses(self):
         self.set_difficulty(self.setup['difficulty'])
 
         for opponent in self.setup['priority_bosses']:
@@ -604,16 +604,16 @@ class RSL_Bot_DoomTower():
                 self.farming_opponent = opponent
                 break
 
-        self.simple_find_highest_stage(target=self.farming_opponent)
+        self.locate_highest_stage_simple(target=self.farming_opponent)
 
         if self.stage_found:
             window_tools.click_at(self.stage_found.mean_pos_x, self.stage_found.mean_pos_y)
-            self.run_encounter(farming=True)
+            self.execute_encounter(farming=True)
 
     # ------------------------- Runner -------------------------
     def run_doomtower(self):
-        self.reset()
-        self.check_doomtower_keys()
+        self.reset_run_state()
+        self.update_available_keys()
         self.no_run_failed = True
 
         if self.num_of_gold_keys == 0 and self.num_of_silver_keys < 2:
@@ -625,9 +625,9 @@ class RSL_Bot_DoomTower():
         ):
             self.stage_found = False
             if self.num_of_gold_keys > 0 and not self.doomtower_completed:
-                self.climb_doomtower()
+                self.progress_doom_tower()
             if self.num_of_silver_keys>1:
-                self.farm_doomtower()
+                self.farm_doom_tower_bosses()
 
             if not self.stage_found:
                 break
