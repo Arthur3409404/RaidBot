@@ -496,10 +496,10 @@ class RSL_Bot_Mainframe():
         if timers[key] is None:
             timers[key] = now
             if now - self.handler_init_time > interval:
-                bot.refresh()
+                bot.refresh_enemy_list()
         elif now - timers[key] > interval:
             timers[key] = now
-            bot.refresh()
+            bot.refresh_enemy_list()
 
     def start_main_loop(self):
         remote_overide_possible = True
