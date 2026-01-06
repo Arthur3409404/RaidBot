@@ -408,6 +408,8 @@ class RSL_Bot_Mainframe():
                 self.search_areas['pov'],
                 power_detection=False
             )
+            window_tools.move_right(self.window, strength=1.2)
+            window_tools.move_down(self.window, strength=1.2)
             for obj in objs:
                 if obj.text == 'Ring de Guardianes':
                     window_tools.click_at(obj.mean_pos_x, obj.mean_pos_y, delay=2)
@@ -418,7 +420,7 @@ class RSL_Bot_Mainframe():
                         )
                     window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
                     break
-            window_tools.move_left(self.window, strength=1.2)
+            
 
         self.navigate_bastion_menu(
             self.search_areas["bastion_to_main_menu"],
