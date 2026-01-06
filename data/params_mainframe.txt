@@ -30,11 +30,7 @@ tagteam_arena_multi_refresh = True
 tagteam_arena_num_multi_refresh = 0
 tagteam_arena_power_threshold = 1300000
 tagteam_arena_use_gems = False
-<<<<<<< HEAD
 tagteam_arena_enemies_lost = [0, 1.1, 1.0, 1.2, 1.3, 1.4, 1180000.0, 33.0, 6000000.0, 19000000.0, 14000000.0, 15000000.0, 43000000.0]
-=======
-tagteam_arena_enemies_lost = [0, 1.1, 1.0, 1.2, 1.3, 1.4, 1180000.0, 33.0, 6000000.0, 19000000.0, 14000000.0, 15000000.0, 43000000.0]
->>>>>>> 9db8ef0f65000000e741775da961aa99874a393b
 
 dungeons_verbose = True
 dungeons_iron_twins_priority = True
