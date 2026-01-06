@@ -183,7 +183,7 @@ class RSL_Bot_Dungeons:
     def select_encounter(self, encounter_name, max_attempts = 4):
         obj_found = False
         attempts = 0
-        while attempts<max_attempts and not obj_found:
+        while self.main_loop_running and (attempts<max_attempts and not obj_found):
             attempts+=1
 
             time.sleep(2)
@@ -228,7 +228,7 @@ class RSL_Bot_Dungeons:
         self.reset_battle_parameters()
         window_tools.click_center(self.window, self.search_areas["confirm_button_champion_selection"])
         
-        while self.battle_status != 'Done':
+        while self.main_loop_running and (self.battle_status != 'Done'):
             
             self.get_battle_outcome()
 
@@ -265,13 +265,13 @@ class RSL_Bot_Dungeons:
             self.iron_twins_keys = 0
 
                     
-    def run_dungeons(self):
+    def run_dungeons(self, main_loop_running = True):
         time.sleep(5)
         self.start_time = time.time()
         self.running = True
-        time.sleep(5)
+        self.main_loop_running = main_loop_running
 
-        while self.running:
+        while self.main_loop_running and (self.running):
             # Stop if not enough energy
             self.check_iron_twins_keys_and_energy()
             if self.energy < 60:

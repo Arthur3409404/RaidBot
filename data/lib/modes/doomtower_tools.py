@@ -212,7 +212,7 @@ class RSL_Bot_DoomTower():
             seq = []
             current = start
             for _ in range(len(stages_numbers)):
-                while current % 10 == 0:
+                while self.main_loop_running and (current % 10 == 0):
                     current -= 1
                 seq.append(current)
                 current -= 1
@@ -327,6 +327,8 @@ class RSL_Bot_DoomTower():
         window_tools.move_up(self.window, strength=3, relative_x=0.15)
 
         for _ in range(3):
+            if not self.main_loop_running:
+                break            
             setups = image_tools.get_text_in_relative_area(
                 self.reader, self.window,
                 search_area=self.search_areas["doom_tower_setup_names"]
@@ -343,7 +345,7 @@ class RSL_Bot_DoomTower():
             window_tools.move_down(self.window, strength=0.5, relative_x=0.15)
 
         if self.current_setup:
-            completed = image_tools.get_simliarities_in_relative_area(
+            completed = image_tools.get_similarities_in_relative_area(
                 self.window,
                 self.search_areas["doom_tower_setup_check"],
                 'pic\\doom_tower_completed_stage.png'
@@ -359,7 +361,7 @@ class RSL_Bot_DoomTower():
                 window_tools.click_center(self.window, self.search_areas["doom_tower_start_encounter"])
 
     # ------------------------- Run Encounter -------------------------
-    def execute_encounter(self, farming=False, max_attempts=50):
+    def execute_encounter(self, farming=False, max_attempts=40):
         self.prepare_encounter()
         self.battle_status = 'Starting'
 
@@ -367,7 +369,7 @@ class RSL_Bot_DoomTower():
         time.sleep(10)
 
         attempt = 0
-        while True:
+        while self.main_loop_running and (True):
             self.update_battle_status()
             time.sleep(2)
 
@@ -414,7 +416,7 @@ class RSL_Bot_DoomTower():
 
         window_tools.click_at(x_pos, y_pos)
 
-        stage_completed = image_tools.get_simliarities_in_relative_area(
+        stage_completed = image_tools.get_similarities_in_relative_area(
             self.window,
             self.search_areas["doom_tower_check_boss_stage_complete"],
             'pic\\doom_tower_locked_stage.png'
@@ -429,10 +431,10 @@ class RSL_Bot_DoomTower():
         end_reached = False
         attempts = 0
 
-        while self.highest_stage_available != 120 and attempts != max_attempts and not end_reached:
+        while self.main_loop_running and (self.highest_stage_available != 120 and attempts != max_attempts and not end_reached):
             attempts += 1
 
-            stages_completed = image_tools.get_simliarities_in_relative_area(
+            stages_completed = image_tools.get_similarities_in_relative_area(
                 self.window,
                 self.search_areas["pov"],
                 'pic\\doom_tower_completed_stage.png'
@@ -501,9 +503,11 @@ class RSL_Bot_DoomTower():
         for path in list_of_paths:
             threshold = 0.8
             possible = []
+            if not self.main_loop_running:
+                break
 
-            while not possible and threshold > 0.25:
-                possible = image_tools.get_simliarities_in_relative_area(
+            while self.main_loop_running and (not possible and threshold > 0.25):
+                possible = image_tools.get_similarities_in_relative_area(
                     self.window,
                     self.search_areas["pov"],
                     path,
@@ -514,6 +518,9 @@ class RSL_Bot_DoomTower():
 
             for stage in possible:
                 window_tools.click_at(stage.mean_pos_x, stage.mean_pos_y, delay=4)
+
+                if not self.main_loop_running:
+                    break
 
                 try:
                     menu = image_tools.get_text_in_relative_area(
@@ -541,7 +548,7 @@ class RSL_Bot_DoomTower():
                         continue
 
                     if 'Jefe Final' in menu.text or int(number) % 10 == 0:
-                        locked = image_tools.get_simliarities_in_relative_area(
+                        locked = image_tools.get_similarities_in_relative_area(
                             self.window,
                             self.search_areas["doom_tower_check_boss_stage_complete"],
                             'pic\\doom_tower_locked_boss.png'
@@ -566,6 +573,8 @@ class RSL_Bot_DoomTower():
         window_tools.move_up(self.window, strength=15, relative_x=0.1)
 
         for _ in range(25):
+            if not self.main_loop_running:
+                break
             self.scan_for_boss_or_current_stage(target=target)
             if self.stage_found:
                 break
@@ -600,6 +609,8 @@ class RSL_Bot_DoomTower():
         self.set_difficulty(self.setup['difficulty'])
 
         for opponent in self.setup['priority_bosses']:
+            if not self.main_loop_running:
+                break
             if opponent in self.doomtower_rotations[self.current_rotation].values():
                 self.farming_opponent = opponent
                 break
@@ -611,18 +622,19 @@ class RSL_Bot_DoomTower():
             self.execute_encounter(farming=True)
 
     # ------------------------- Runner -------------------------
-    def run_doomtower(self):
+    def run_doomtower(self, main_loop_running = True):
         self.reset_run_state()
         self.update_available_keys()
         self.no_run_failed = True
+        self.main_loop_running = main_loop_running
 
         if self.num_of_gold_keys == 0 and self.num_of_silver_keys < 2:
             return
 
-        while self.no_run_failed or (
+        while self.main_loop_running and (self.no_run_failed or (
             (self.doomtower_completed or self.num_of_gold_keys == 0)
-            and self.num_of_silver_keys < 2
-        ):
+            and self.num_of_silver_keys > 1
+        )):
             self.stage_found = False
             if self.num_of_gold_keys > 0 and not self.doomtower_completed:
                 self.progress_doom_tower()

@@ -11,12 +11,11 @@ import data.lib.utils.file_tools as file_tools
 
 
 class BotGUI:
-    def __init__(self, bot_instance):
+    def __init__(self):
         param_file = os.path.join("data", "params_mainframe.txt")
         params = file_tools.read_params(param_file)
         self.params = self.group_params(params)
 
-        self.bot = bot_instance
 
         self.bot_process = None
         self.start_btn = None
