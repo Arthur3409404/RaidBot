@@ -83,7 +83,7 @@ class RSL_Bot_FactionWars:
             'Undead Hordes': 'No Muertos',
             'Shadowkin': 'Cripta de Sombrios',
             'Skinwalkers': 'Cambiapieles',
-            'Sylvan Watchers': 'Vigias Silvanos',
+            'Sylvan Watchers': 'Cripta de Vigias Silvanos',
             'hard': "Dificil",
             "normal": "Normal"
         }
