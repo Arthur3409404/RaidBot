@@ -421,11 +421,7 @@ class RSL_Bot_Mainframe():
                         )
                     window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
                     break
-<<<<<<< HEAD
-
-=======
             
->>>>>>> 869bc07176dcbf37a54289650e6cf78974cd3a40
 
         self.navigate_bastion_menu(
             self.search_areas["bastion_to_main_menu"],
