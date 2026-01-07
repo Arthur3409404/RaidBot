@@ -226,6 +226,7 @@ class RSL_Bot_Mainframe():
                         self.main_loop_running = False  # signal main loop to exit
                         while not self.main_loop_stopped:
                             time.sleep(1)
+                        print("[ErrorHandler] Stoppinged main_loop successfully")
 
                         time.sleep((self.remote_override_time_minutes+1)*60)
                         print("[ErrorHandler] Restarted Errorhandler")
@@ -421,7 +422,10 @@ class RSL_Bot_Mainframe():
                         )
                     window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
                     break
+<<<<<<< HEAD
             
+=======
+>>>>>>> f544fad4de68912ced1ef117ce5b2d384e91d027
 
         self.navigate_bastion_menu(
             self.search_areas["bastion_to_main_menu"],
