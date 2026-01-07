@@ -94,10 +94,7 @@ Enable or disable specific modes:
 
 ## Usage
 
-Run the bot using the GUI:
-
-```bash
-python RaidBot.bat
+Run the bot using the GUI by executing RaidBot.bat
 
 - Recommended when PC is idle for best performance  
 - Can run alongside user activity, but manual input may interfere  
