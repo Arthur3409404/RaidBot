@@ -81,7 +81,7 @@ class RSL_Bot_FactionWars:
             'Orcs': 'Orcos',
             'Sacred Order': 'Orden Sagrada',
             'Undead Hordes': 'No Muertos',
-            'Shadowkin': 'Sombrios',
+            'Shadowkin': 'Cripta de Sombrios',
             'Skinwalkers': 'Cambiapieles',
             'Sylvan Watchers': 'Vigias Silvanos',
             'hard': "Dificil",
