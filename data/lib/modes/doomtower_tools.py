@@ -364,9 +364,21 @@ class RSL_Bot_DoomTower():
     def execute_encounter(self, farming=False, max_attempts=40):
         self.prepare_encounter()
         self.battle_status = 'Starting'
-
+        check_correct_start = image_tools.get_text_in_relative_area(
+                self.reader, self.window,
+                search_area=self.search_areas["doom_tower_menu_name"]
+            )
         window_tools.click_center(self.window, self.search_areas["doom_tower_start_encounter"])
         time.sleep(10)
+        check_correct_execution = image_tools.get_text_in_relative_area(
+                self.reader, self.window,
+                search_area=self.search_areas["doom_tower_menu_name"]
+            )
+        
+        if getattr(check_correct_start,'text', False) and getattr(check_correct_execution,'text', False):
+            if check_correct_execution.text == check_correct_start.text:
+                window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
+
 
         attempt = 0
         while self.main_loop_running and (True):
