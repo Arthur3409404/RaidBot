@@ -15,7 +15,7 @@ from datetime import  timedelta
 import os
 import data.lib.utils.image_tools as image_tools
 import data.lib.utils.window_tools as window_tools
-from data.lib.handlers.ai_networks_handler import EnemyDataset, EvaluationNetworkCNN
+from data.lib.handlers.ai_networks_handler import EnemyDataset, EvaluationNetworkCNN, EvaluationNetworkCNN_ImageOnly
 
 
 
@@ -439,7 +439,7 @@ class RSL_Bot_TagTeamArena:
 
         # AI evaluation network
         weights_path = r"neural_networks\enemy_eval_tagteam_arena\_epoch500.pt"
-        self.evaluation_ai = EvaluationNetworkCNN(weights_path=weights_path)
+        self.evaluation_ai = EvaluationNetworkCNN_ImageOnly(weights_path=weights_path)
         self.evaluation_ai.eval()
 
         # Window coordinates
