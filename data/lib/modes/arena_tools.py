@@ -438,7 +438,7 @@ class RSL_Bot_TagTeamArena:
         )
 
         # AI evaluation network
-        weights_path = r"neural_networks\enemy_eval_tagteam_arena\_epoch300.pt"
+        weights_path = r"neural_networks\enemy_eval_tagteam_arena\_epoch500.pt"
         self.evaluation_ai = EvaluationNetworkCNN(weights_path=weights_path)
         self.evaluation_ai.eval()
 
@@ -610,7 +610,7 @@ class RSL_Bot_TagTeamArena:
                 image_np = np.array(screenshot).astype(np.float32)
                 prob, label = self.evaluation_ai.predict(image_np, enemy_power)
 
-                if label == 1 and enemy_power not in self.tagteam_arena_enemies_lost:
+                if label == 1 and enemy_power not in self.tagteam_arena_enemies_lost and enemy_power>1000:
                     self.execute_tagteam_battle(obj, power_obj, enemy_power)
                     self.battles_done += 1
                     self.battle_occured = True

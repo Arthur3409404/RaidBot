@@ -39,10 +39,11 @@ class EnemyDataset(Dataset):
     Creates the dataset if it does not exist and appends new entries.
     Images are normalized to [0,1], power is normalized by 350000.
     """
-    def __init__(self, dataset_path, transform=None, max_power=350000.0):
+    def __init__(self, dataset_path, use_power = True, transform=None, max_power=350000.0):
         self.dataset_path = dataset_path
         self.transform = transform
         self.max_power = max_power
+        self.use_power = use_power
 
         # Ensure the folder exists
         os.makedirs(os.path.dirname(dataset_path), exist_ok=True)
@@ -59,7 +60,8 @@ class EnemyDataset(Dataset):
         # Load existing data
         data = np.load(dataset_path, allow_pickle=True)
         self.images = data["images"]
-        self.powers = data["powers"]
+        if self.use_power:
+            self.powers = data["powers"]
         self.labels = data["labels"]
 
     def __len__(self):
@@ -68,18 +70,23 @@ class EnemyDataset(Dataset):
     def __getitem__(self, idx):
         # Get image, power, label
         image = self.images[idx]  # already normalized
-        power = self.powers[idx]  # already normalized
+        if self.use_power:
+            power = self.powers[idx]  # already normalized
         label = self.labels[idx]  # 0 or 1
 
         # Convert to tensors
         image = torch.tensor(image, dtype=torch.float32).permute(2, 0, 1)  # [C,H,W]
-        power = torch.tensor([power], dtype=torch.float32)
+        if self.use_power:
+            power = torch.tensor([power], dtype=torch.float32)
         label = torch.tensor([label], dtype=torch.float32)
 
         if self.transform:
             image = self.transform(image)
 
-        return image, power, label
+        if self.use_power:
+            return image, power, label
+        else:
+            return image, label
 
     # -----------------------------
     # Append a new entry
@@ -582,6 +589,137 @@ class EvaluationNetworkCNN(nn.Module):
                     labels = labels.to(device)
 
                     logits = self(images, powers)
+                    loss = criterion(logits, labels)
+                    val_loss += loss.item() * images.size(0)
+
+                    preds = (torch.sigmoid(logits) >= 0.5).float()
+                    val_correct += (preds == labels).sum().item()
+                    val_total += labels.size(0)
+
+            val_loss /= val_total
+            val_acc = val_correct / val_total
+
+            if epoch % checkpoint_interval == 0:
+                torch.save(self.state_dict(), f"{checkpoint_path}_epoch{epoch}.pt")
+                print(f"Checkpoint saved at epoch {epoch}")
+                print(f"Epoch [{epoch}/{epochs}] | Train Loss: {epoch_loss:.4f} | "
+                      f"Train Acc: {epoch_acc:.4f} | Val Loss: {val_loss:.4f} | Val Acc: {val_acc:.4f}")
+
+
+class EvaluationNetworkCNN_ImageOnly(nn.Module):
+    """
+    CNN-based Win/Loss predictor using only enemy lineup images.
+    """
+    def __init__(self, weights_path: str | None = None):
+        super().__init__()
+
+        # -----------------------------
+        # Image Encoder: CNN -> 1 scalar
+        # -----------------------------
+        self.cnn = nn.Sequential(
+            nn.Conv2d(3, 32, kernel_size=5, stride=2, padding=2),  # 3x130x440 -> 32x65x220
+            nn.ReLU(),
+            nn.Conv2d(32, 64, kernel_size=5, stride=2, padding=2), # 64x33x110
+            nn.ReLU(),
+            nn.Conv2d(64, 128, kernel_size=3, stride=2, padding=1),# 128x17x55
+            nn.ReLU(),
+            nn.Conv2d(128, 256, kernel_size=3, stride=2, padding=1), # 256x9x28
+            nn.ReLU(),
+            nn.AdaptiveAvgPool2d((1,1))  # 256x1x1
+        )
+        self.image_fc = nn.Linear(256, 1)  # directly to scalar output
+
+        # Optional weight loading
+        if weights_path is not None:
+            self.load_state_dict(torch.load(weights_path, map_location="cpu"))
+
+    def forward(self, image):
+        # CNN image branch
+        x = self.cnn(image)
+        x = x.view(x.size(0), -1)  # flatten 256x1x1 -> 256
+        logits = self.image_fc(x)  # [batch, 1]
+        return logits
+
+    def predict(self, image_np, threshold=0.5):
+        self.eval()
+        with torch.no_grad():
+            image = (
+                torch.from_numpy(image_np.astype(np.float32) / 255.0)
+                .permute(2, 0, 1)
+                .unsqueeze(0)
+            )
+
+            logits = self(image)
+            prob = torch.sigmoid(logits).item()
+            label = int(prob >= threshold)
+
+        return prob, label
+
+    # -----------------------------
+    # Training method
+    # -----------------------------
+    def train_network(self,
+                      dataset_path: str,
+                      epochs: int = 50,
+                      batch_size: int = 32,
+                      lr: float = 1e-3,
+                      checkpoint_interval: int = 10,
+                      checkpoint_path: str = "checkpoint.pt",
+                      val_split: float = 0.2,
+                      device: str = "cuda" if torch.cuda.is_available() else "cpu"):
+        dataset = EnemyDataset(dataset_path, use_power = False)  # ensure dataset returns only images
+
+        # Train/Validation split
+        val_size = int(val_split * len(dataset))
+        train_size = len(dataset) - val_size
+        train_set, val_set = random_split(dataset, [train_size, val_size])
+
+        train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
+        val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=False)
+
+        # Device, Loss, Optimizer
+        self.to(device)
+        criterion = nn.BCEWithLogitsLoss()
+        optimizer = optim.Adam(self.parameters(), lr=lr)
+
+        # Track metrics
+        train_losses, train_accuracies = [], []
+
+        for epoch in range(1, epochs + 1):
+            self.train()
+            epoch_loss = 0.0
+            correct = 0
+            total = 0
+
+            for images, labels in train_loader:
+                images = images.to(device)
+                labels = labels.to(device)
+
+                optimizer.zero_grad()
+                logits = self(images)
+                loss = criterion(logits, labels)
+                loss.backward()
+                optimizer.step()
+
+                epoch_loss += loss.item() * images.size(0)
+                preds = (torch.sigmoid(logits) >= 0.5).float()
+                correct += (preds == labels).sum().item()
+                total += labels.size(0)
+
+            epoch_loss /= total
+            epoch_acc = correct / total
+            train_losses.append(epoch_loss)
+            train_accuracies.append(epoch_acc)
+
+            # Validation
+            self.eval()
+            val_loss, val_correct, val_total = 0.0, 0, 0
+            with torch.no_grad():
+                for images, labels in val_loader:
+                    images = images.to(device)
+                    labels = labels.to(device)
+
+                    logits = self(images)
                     loss = criterion(logits, labels)
                     val_loss += loss.item() * images.size(0)
 
