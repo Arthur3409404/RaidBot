@@ -542,8 +542,8 @@ class RSL_Bot_Mainframe():
 if __name__ == "__main__":
     print('ALWAYS RUN THE PROGRAM IN 1280 x 1024')
 
-#    gui = gui_tools.BotGUI()
-#    gui.run()
+    gui = gui_tools.BotGUI()
+    gui.run()
 
 
     # bot = RSL_Bot_Mainframe()
