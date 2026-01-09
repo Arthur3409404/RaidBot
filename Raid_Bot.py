@@ -547,6 +547,8 @@ if __name__ == "__main__":
 
 
     # bot = RSL_Bot_Mainframe()
+    # bot.tagteam_arena_bot.run_tagteam_arena_single_cycle()
+
     # bot.doomtower_bot.current_rotation = '1'
     # bot.doomtower_bot.run_doomtower()
     #bot.run_main_loop()
