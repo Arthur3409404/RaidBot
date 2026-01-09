@@ -438,7 +438,7 @@ class RSL_Bot_TagTeamArena:
         )
 
         # AI evaluation network
-        weights_path = r"neural_networks\enemy_eval_tagteam_arena\_epoch500.pt"
+        weights_path = r"neural_networks\enemy_eval_tagteam_arena\_epoch300.pt"
         self.evaluation_ai = EvaluationNetworkCNN_ImageOnly(weights_path=weights_path)
         self.evaluation_ai.eval()
 
@@ -596,8 +596,10 @@ class RSL_Bot_TagTeamArena:
             power_obj = filtered[idx - 1]
 
             try:
-                #enemy_power = self._parse_enemy_power_value(power_obj.text)
-                enemy_power = 10000
+                try:
+                    enemy_power = self._parse_enemy_power_value(power_obj.text)
+                except:
+                    enemy_power = 10000
 
                 screenshot = pyautogui.screenshot(
                     region=(
@@ -609,9 +611,9 @@ class RSL_Bot_TagTeamArena:
                 )
 
                 image_np = np.array(screenshot).astype(np.float32)
-                prob, label = self.evaluation_ai.predict(image_np, enemy_power)
-                print(f"prob: {prob:.2f}  for {label}")
-                if prob>1 and enemy_power not in self.tagteam_arena_enemies_lost and enemy_power>1000:
+                prob, label = self.evaluation_ai.predict(image_np)
+
+                if label == 1 and enemy_power not in self.tagteam_arena_enemies_lost and enemy_power>1000:
                     self.execute_tagteam_battle(obj, power_obj, enemy_power)
                     self.battles_done += 1
                     self.battle_occured = True
