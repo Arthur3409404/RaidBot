@@ -542,11 +542,13 @@ class RSL_Bot_Mainframe():
 if __name__ == "__main__":
     print('ALWAYS RUN THE PROGRAM IN 1280 x 1024')
 
-    gui = gui_tools.BotGUI()
-    gui.run()
+#    gui = gui_tools.BotGUI()
+#    gui.run()
 
 
-    # bot = RSL_Bot_Mainframe()
+    bot = RSL_Bot_Mainframe()
+    bot.tagteam_arena_bot.run_tagteam_arena_single_cycle()
+
     # bot.doomtower_bot.current_rotation = '1'
     # bot.doomtower_bot.run_doomtower()
     #bot.run_main_loop()
