@@ -600,6 +600,11 @@ class RSL_Bot_TagTeamArena:
         filtered = image_tools.filter_text_objects(text_objects)
 
         for idx, obj in enumerate(filtered):
+
+            self.ensure_arena_coins()
+            if self.no_coin_status:
+                break
+
             if obj.text.strip() != "Luchar":
                 continue
             window_tools.click_at(obj.mean_pos_x, obj.mean_pos_y)
