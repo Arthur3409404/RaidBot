@@ -12,6 +12,7 @@ import re
 from datetime import datetime, timedelta
 import os
 import ast
+import difflib
 
 
 import data.lib.utils.image_tools as image_tools
@@ -109,10 +110,14 @@ class RSL_Bot_Dungeons:
     def reset_battle_parameters(self):
         self.battle_status = 'menu'
 
+    def resembles(self, text, target, threshold=0.8):
+        ratio = difflib.SequenceMatcher(None, text.lower(), target.lower()).ratio()
+        return ratio >= threshold
+
     def check_difficulty(self):
         try:
             difc_txt = image_tools.get_text_in_relative_area(self.reader, self.window,search_area=self.search_areas["get_dungeon_difficulty"])[0]
-            if difc_txt.text == self.dungeon_menu_names[self.default_difficulty]:
+            if self.resembles(difc_txt.text, self.dungeon_menu_names[self.default_difficulty]):
                 pass
             else:
                 window_tools.click_center(self.window, self.search_areas["get_dungeon_difficulty"])
@@ -125,10 +130,10 @@ class RSL_Bot_Dungeons:
     def get_battle_outcome(self):
         try:
             battle_result = image_tools.get_text_in_relative_area(self.reader, self.window,search_area=self.search_areas["battle_result"])[0]
-            if battle_result.text == "VICTORIA" or battle_result.text == "DERROTA":
+            if self.resembles(battle_result.text ,"VICTORIA") or self.resembles(battle_result.text ,"DERROTA"):
                 self.battle_status = 'Done'
                 self.battles_done +=1
-                if battle_result.text =="VICTORIA":
+                if self.resembles(battle_result.text, "VICTORIA"):
                     self.battles_won +=1
                 return
         except:
@@ -136,10 +141,10 @@ class RSL_Bot_Dungeons:
         
         try:
             battle_result = image_tools.get_text_in_relative_area(self.reader, self.window,search_area=self.search_areas["battle_result_2"])[0]
-            if battle_result.text == "VICTORIA" or battle_result.text == "DERROTA":
+            if self.resembles(battle_result.text, "VICTORIA") or self.resembles(battle_result.text ,"DERROTA"):
                 self.battle_status = 'Done'
                 self.battles_done +=1
-                if battle_result.text =="VICTORIA":
+                if self.resembles(battle_result.text, "VICTORIA"):
                     self.battles_won +=1
                 return
         except:
@@ -150,7 +155,7 @@ class RSL_Bot_Dungeons:
     def get_battle_status(self):
         try:
             auto_button = image_tools.get_text_in_relative_area(self.reader, self.window,search_area=self.search_areas["auto_battle_button"])[0]
-            if auto_button.text == 'Auto':
+            if self.resembles(auto_button.text, 'Auto'):
                 self.battle_status = 'Battle active'
                 battle_running = True
 
@@ -193,7 +198,7 @@ class RSL_Bot_Dungeons:
 
             try:
                 for obj in objects:
-                    if obj.text == name_string:
+                    if self.resembles(obj.text ,name_string):
                         window_tools.click_at(obj.mean_pos_x, obj.mean_pos_y, delay = 4)
                         obj_found = True
                         break

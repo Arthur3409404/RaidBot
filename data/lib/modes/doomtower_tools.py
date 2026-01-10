@@ -11,6 +11,7 @@ import re
 import math
 import data.lib.utils.image_tools as image_tools
 import data.lib.utils.window_tools as window_tools
+import difflib
 
 
 class RSL_Bot_DoomTower():
@@ -27,7 +28,7 @@ class RSL_Bot_DoomTower():
         self.search_areas = {
             "menu_name": [0.008, 0.034, 0.23, 0.037],   # [left, top, width, height]
             "go_to_higher_menu":   [0.928, 0.031, 0.046, 0.039],
-            "pov":   [0.0, 0.07, 1, 0.93],
+            "pov":   [0.0, 0.1, 1, 0.9],
             "detect_doomtower_rotation": [0.121, 0.696, 0.189, 0.035],
 
             "doom_tower_keys":   [0.682, 0.033, 0.212, 0.04],
@@ -268,7 +269,7 @@ class RSL_Bot_DoomTower():
                     self.reader, self.window,
                     search_area=self.search_areas[key]
                 )[0]
-                if result.text == "Autoescalada completada":
+                if self.resembles(result.text, "Autoescalada completada"):
                     self.battle_status = 'autoclimb_Done'
                     window_tools.click_center(
                         self.window,
@@ -294,7 +295,7 @@ class RSL_Bot_DoomTower():
             if battle_result.text in ("VICTORIA", "DERROTA") and self.battle_status != 'autoclimb':
                 self.battle_status = 'Done'
                 self.battles_done += 1
-                if battle_result.text == "VICTORIA":
+                if self.resembles(battle_result.text , "VICTORIA"):
                     self.battles_won += 1
                 else:
                     self.no_run_failed = False
@@ -335,7 +336,7 @@ class RSL_Bot_DoomTower():
             )
 
             for name in setups:
-                if name.text == setup:
+                if self.resembles(name.text, setup):
                     self.current_setup = name
                     break
 
@@ -376,7 +377,7 @@ class RSL_Bot_DoomTower():
             )
         
         if getattr(check_correct_start,'text', False) and getattr(check_correct_execution,'text', False):
-            if check_correct_execution.text == check_correct_start.text:
+            if self.resembles(check_correct_execution.text, check_correct_start.text):
                 window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
 
 
@@ -487,10 +488,21 @@ class RSL_Bot_DoomTower():
             self.highest_stage_available = max(1, min(120, self.highest_stage_available))
 
     # ------------------------- Stage Scan -------------------------
-    def scan_for_boss_or_current_stage(self, target=None):
-        FIRST_PATH = 'pic\\doom_tower_current_stage.png'
-        list_of_paths = [FIRST_PATH]
-        expected_menu_names = {FIRST_PATH: 'Planta'}
+
+
+    def resembles(self, text, target, threshold=0.8):
+        ratio = difflib.SequenceMatcher(None, text.lower(), target.lower()).ratio()
+        return ratio >= threshold
+
+
+    def scan_for_boss_or_current_stage(self, target=None, farming=False):
+        if farming:
+            list_of_paths = []
+            expected_menu_names = {}
+        else:
+            FIRST_PATH = 'pic\\doom_tower_current_stage.png'
+            list_of_paths = [FIRST_PATH]
+            expected_menu_names = {FIRST_PATH: 'Planta'}
 
         self.stage_found = False
         self.doomtower_climb_status = False
@@ -543,7 +555,8 @@ class RSL_Bot_DoomTower():
                     number = re.findall(r'\d+', menu.text)
                     number = number[0] if number else '10'
 
-                    if menu.text == 'Torre del Destino':
+                    print(menu.text)
+                    if self.resembles(menu.text, 'Torre del Destino'):
                         continue
 
                     expected = expected_menu_names[path]
@@ -580,14 +593,14 @@ class RSL_Bot_DoomTower():
                     pass
 
     # ------------------------- Simple Scan -------------------------
-    def locate_highest_stage_simple(self, target=None):
+    def locate_highest_stage_simple(self, target=None, farming=False):
 
         window_tools.move_up(self.window, strength=15, relative_x=0.1)
 
         for _ in range(25):
             if not self.main_loop_running:
                 break
-            self.scan_for_boss_or_current_stage(target=target)
+            self.scan_for_boss_or_current_stage(target=target, farming=farming)
             if self.stage_found:
                 break
             window_tools.move_down(self.window, strength=0.6, relative_x=0.1)
@@ -627,7 +640,7 @@ class RSL_Bot_DoomTower():
                 self.farming_opponent = opponent
                 break
 
-        self.locate_highest_stage_simple(target=self.farming_opponent)
+        self.locate_highest_stage_simple(target=self.farming_opponent, farming=True)
 
         if self.stage_found:
             window_tools.click_at(self.stage_found.mean_pos_x, self.stage_found.mean_pos_y)
@@ -643,18 +656,25 @@ class RSL_Bot_DoomTower():
         if self.num_of_gold_keys == 0 and self.num_of_silver_keys < 2:
             return
 
-        while self.main_loop_running and (self.no_run_failed or (
-            (self.doomtower_completed or self.num_of_gold_keys == 0)
-            and self.num_of_silver_keys > 1
-        )):
-            self.stage_found = False
-            if self.num_of_gold_keys > 0 and not self.doomtower_completed:
-                self.progress_doom_tower()
-            if self.num_of_silver_keys>1:
+        if self.setup['only_farming']:
+            while self.main_loop_running and (self.no_run_failed and self.num_of_silver_keys > 1):
                 self.farm_doom_tower_bosses()
+                if not self.stage_found:
+                    break
+                
+        else:
+            while self.main_loop_running and (self.no_run_failed or (
+                (self.doomtower_completed or self.num_of_gold_keys == 0)
+                and self.num_of_silver_keys > 1
+            )):
+                self.stage_found = False
+                if self.num_of_gold_keys > 0 and not self.doomtower_completed:
+                    self.progress_doom_tower()
+                if self.num_of_silver_keys>1:
+                    self.farm_doom_tower_bosses()
 
-            if not self.stage_found:
-                break
+                if not self.stage_found:
+                    break
 
     # ------------------------- Test -------------------------
     def test(self):

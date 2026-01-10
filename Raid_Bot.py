@@ -4,6 +4,7 @@ Created on Thu Jun 19 20:04:52 2025
 
 @author: Arthur
 """
+import difflib
 import pygetwindow as gw
 import pyautogui
 import matplotlib.pyplot as plt
@@ -246,6 +247,11 @@ class RSL_Bot_Mainframe():
     # =========================
     # Params Grouping
     # =========================
+
+    def resembles(self, text, target, threshold=0.8):
+        ratio = difflib.SequenceMatcher(None, text.lower(), target.lower()).ratio()
+        return ratio >= threshold
+
     def group_params(self, params: dict, min_shared_keys: int = 3):
         prefix_counts = defaultdict(int)
 
@@ -289,7 +295,7 @@ class RSL_Bot_Mainframe():
                         self.search_areas["advert"],
                         power_detection=False
                     )[0]
-                    if advert.text == "Cancelar":
+                    if self.resembles(advert.text, "Cancelar"):
                         window_tools.click_center(self.window, self.search_areas["advert"])
                 except Exception:
                     pass
@@ -302,7 +308,7 @@ class RSL_Bot_Mainframe():
                     power_detection=False
                 )[0]
 
-                if menu_name.text == confirm_string:
+                if self.resembles(menu_name.text ,confirm_string):
                     return True
             except Exception:
                 pass
@@ -341,7 +347,7 @@ class RSL_Bot_Mainframe():
             )
 
             for label in labels:
-                if label.text == menu_name:
+                if self.resembles(label.text, menu_name):
                     if detect_doomtower_rotation:
                         self.detect_doomtower_rotation()
                     window_tools.click_at(label.mean_pos_x, label.mean_pos_y)
@@ -413,7 +419,7 @@ class RSL_Bot_Mainframe():
             window_tools.move_right(self.window, strength=1.2)
             window_tools.move_down(self.window, strength=1.2)
             for obj in objs:
-                if obj.text == 'Ring de Guardianes':
+                if self.resembles(obj.text, 'Ring de Guardianes'):
                     window_tools.click_at(obj.mean_pos_x, obj.mean_pos_y, delay=2)
                     for i in range(1, 6):
                         window_tools.click_center(
@@ -547,9 +553,9 @@ if __name__ == "__main__":
 
 
     # bot = RSL_Bot_Mainframe()
-    # bot.tagteam_arena_bot.run_tagteam_arena_single_cycle()
+    #  bot.tagteam_arena_bot.run_tagteam_arena_single_cycle()
 
-    # bot.doomtower_bot.current_rotation = '1'
+    # bot.doomtower_bot.current_rotation = '2'
     # bot.doomtower_bot.run_doomtower()
     #bot.run_main_loop()
     #bot.classic_arena_bot.run_classic_arena_until_empty()

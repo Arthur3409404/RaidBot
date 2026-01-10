@@ -16,7 +16,7 @@ import os
 import data.lib.utils.image_tools as image_tools
 import data.lib.utils.window_tools as window_tools
 from data.lib.handlers.ai_networks_handler import EnemyDataset, EvaluationNetworkCNN, EvaluationNetworkCNN_ImageOnly
-
+import difflib
 
 
 
@@ -107,7 +107,7 @@ class RSL_Bot_ClassicArena:
             self.reader, self.window, search_area=self.search_areas["battle_result"]
         )[0]
 
-        if battle_result.text == "VICTORIA":
+        if self.resembles(battle_result.text, "VICTORIA"):
             print("Victory")
             self.recent_battle_outcome = 1
         else:
@@ -150,7 +150,7 @@ class RSL_Bot_ClassicArena:
                 battle_finished = image_tools.get_text_in_relative_area(
                     self.reader, self.window, search_area=self.search_areas["battle_finished"]
                 )[0]
-                if battle_finished.text == "PULSA PARA CONTINUAR":
+                if self.resembles(battle_finished.text ,"PULSA PARA CONTINUAR"):
                     battle_running = False
                     time.sleep(3)
                     self.update_battle_outcome(power_level)
@@ -281,6 +281,10 @@ class RSL_Bot_ClassicArena:
         print("🛑 To stop the bot, press 'v'")
         print("=" * 40 + "\n")
         
+    def resembles(self, text, target, threshold=0.8):
+        ratio = difflib.SequenceMatcher(None, text.lower(), target.lower()).ratio()
+        return ratio >= threshold
+
 
     def run_classic_arena_continuous(self):
         """
@@ -505,7 +509,7 @@ class RSL_Bot_TagTeamArena:
             self.reader, self.window, self.search_areas["battle_result"]
         )[0]
 
-        if result.text == "VICTORIA":
+        if self.resembles(result.text , "VICTORIA"):
             print("Victory")
             self.recent_battle_outcome = 1
         else:
@@ -513,6 +517,11 @@ class RSL_Bot_TagTeamArena:
             self.recent_battle_outcome = 0
             self.tagteam_arena_enemies_lost.append(enemy_power)
             self.persist_enemy_avoid_list()
+
+    def resembles(self, text, target, threshold=0.8):
+        ratio = difflib.SequenceMatcher(None, text.lower(), target.lower()).ratio()
+        return ratio >= threshold
+    
 
     def persist_enemy_avoid_list(self):
         param_file = os.path.join("data", "params_mainframe.txt")
@@ -549,7 +558,7 @@ class RSL_Bot_TagTeamArena:
                     self.reader, self.window, self.search_areas["battle_finished"]
                 )[0]
 
-                if finished.text == "PULSA PARA CONTINUAR":
+                if self.resembles(finished.text, "PULSA PARA CONTINUAR"):
                     time.sleep(3)
                     self.update_battle_outcome(enemy_power)
 
@@ -907,7 +916,7 @@ class RSL_Bot_LiveArena:
                 if battle_result.text in ["VICTORIA", "DERROTA"]:
                     self.battle_status = 'Done'
                     self.battles_done += 1
-                    if battle_result.text == "VICTORIA":
+                    if self.resembles(battle_result.text ,"VICTORIA"):
                         self.battles_won += 1
                     return
             except:
@@ -918,13 +927,17 @@ class RSL_Bot_LiveArena:
         # Not used currently
         pass
 
+    def resembles(self, text, target, threshold=0.8):
+        ratio = difflib.SequenceMatcher(None, text.lower(), target.lower()).ratio()
+        return ratio >= threshold
+
     # ------------------------- Battle Status -------------------------
     def update_battle_activity_status(self):
         try:
             auto_button = image_tools.get_text_in_relative_area(
                 self.reader, self.window, search_area=self.search_areas["auto_battle_button"]
             )[0]
-            if auto_button.text == 'Auto':
+            if self.resembles(auto_button.text, 'Auto'):
                 self.battle_status = 'Battle active'
                 time.sleep(3)
                 if not self.auto_button_clicked:
@@ -1031,7 +1044,7 @@ class RSL_Bot_LiveArena:
                 self.reader, self.window, search_area=self.search_areas["turn_counter_roster"]
             )[0]
 
-            if confirm_button.text == 'Confirmar' and turn_counter.text == 'Tu turno':
+            if self.resembles(confirm_button.text, 'Confirmar') and self.resembles(turn_counter.text, 'Tu turno'):
                 for i in range(1, 9):
                     window_tools.click_center(self.window, self.search_areas[f"preset_champion_{i}"], delay=1)
                 window_tools.click_center(self.window, self.search_areas["confirm_button_champion_selection"], delay=1)
@@ -1055,7 +1068,7 @@ class RSL_Bot_LiveArena:
             battle_finished = image_tools.get_text_in_relative_area(
                 self.reader, self.window, search_area=self.search_areas['battle_status_finished']
             )[0]
-            if battle_finished.text == "VOLVER A LA ARENA":
+            if self.resembles(battle_finished.text, "VOLVER A LA ARENA"):
                 window_tools.click_center(self.window, self.search_areas["battle_status_finished"])
                 self.battle_status = 'menu'
 
