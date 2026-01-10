@@ -535,6 +535,7 @@ class RSL_Bot_TagTeamArena:
     # ------------------------------------------------------------------
 
     def execute_tagteam_battle(self, fight_button, power_text_obj, enemy_power):
+        window_tools.click_at(fight_button.mean_pos_x, fight_button.mean_pos_y)
         time.sleep(3)
 
         start_btn = image_tools.get_text_in_relative_area(
@@ -629,6 +630,7 @@ class RSL_Bot_TagTeamArena:
             power_detection=False,
         )
 
+            window_tools.sendkey("esc", delay= 5)
             try:
                 try:
                     enemy_power = self._parse_enemy_power_value(power_obj[0].text)
@@ -665,7 +667,7 @@ class RSL_Bot_TagTeamArena:
 
                     return True
                 else:
-                    window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
+                    pass
 
             except Exception as e:
                 print(f"[!] Error parsing '{power_obj[0].text}': {e}")
