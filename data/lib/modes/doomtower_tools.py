@@ -57,6 +57,12 @@ class RSL_Bot_DoomTower():
             "doom_tower_close_encounter":   [0.13, 0.898, 0.064, 0.076],
 
             "doom_tower_auto_battle_button": [0.026, 0.899, 0.058, 0.07],
+
+            "doom_tower_farm_encounter": [0.763, 0.764, 0.211, 0.105],
+            "doom_tower_start_multibattles": [0.254, 0.634, 0.23, 0.075],
+            "doomtower_multibattles_setup_1": [0.222, 0.458, 0.032, 0.04],
+            "doomtower_multibattles_setup_2": [0.221, 0.502, 0.034, 0.045],
+            "doom_tower_farming_status": [0.366, 0.609, 0.269, 0.102],
             
             
 
@@ -362,6 +368,47 @@ class RSL_Bot_DoomTower():
                 window_tools.click_center(self.window, self.search_areas["doom_tower_start_encounter"])
 
     # ------------------------- Run Encounter -------------------------
+    def farm_encounter(self):
+        self.prepare_encounter()
+        self.battle_status = 'Starting'
+        window_tools.click_center(self.window, self.search_areas["doom_tower_farm_encounter"])
+        doomtower_multibattles_setup_1 = image_tools.get_similarities_in_relative_area(
+                self.window,
+                self.search_areas["doomtower_multibattles_setup_1"],
+                'pic\\doom_tower_multibattles_setup.png'
+            )
+        doomtower_multibattles_setup_2 = image_tools.get_similarities_in_relative_area(
+                self.window,
+                self.search_areas["doomtower_multibattles_setup_2"],
+                'pic\\doom_tower_multibattles_setup.png'
+            )
+        if not doomtower_multibattles_setup_1:
+            window_tools.click_center(self.window, self.search_areas["doomtower_multibattles_setup_1"])
+
+        if not doomtower_multibattles_setup_2:
+            window_tools.click_center(self.window, self.search_areas["doomtower_multibattles_setup_2"])
+
+        window_tools.click_center(self.window, self.search_areas["doom_tower_start_multibattles"], delay = 5)
+        self.battle_status = 'Running'
+        window_tools.click_at(self.stage_found.mean_pos_x, self.stage_found.mean_pos_y)
+
+        while self.battle_status == "Running":
+            farming_status = image_tools.get_text_in_relative_area(
+                self.reader, self.window,
+                search_area=self.search_areas["doom_tower_farming_status"]
+            )
+
+            time.sleep(2)
+            if getattr(farming_status[0],'text', False):
+                if self.resembles(farming_status[0].text, "Resultados"):
+                    self.battle_status = 'Finished'
+                    window_tools.click_center(self.window, self.search_areas["doom_tower_farming_status"])
+                    window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
+
+
+
+
+
     def execute_encounter(self, farming=False, max_attempts=40):
         self.prepare_encounter()
         self.battle_status = 'Starting'
@@ -369,6 +416,7 @@ class RSL_Bot_DoomTower():
                 self.reader, self.window,
                 search_area=self.search_areas["doom_tower_menu_name"]
             )
+            
         window_tools.click_center(self.window, self.search_areas["doom_tower_start_encounter"])
         time.sleep(10)
         check_correct_execution = image_tools.get_text_in_relative_area(
@@ -389,27 +437,27 @@ class RSL_Bot_DoomTower():
             if self.battle_status == 'Done' and not farming:
                 break
 
-            if self.battle_status == 'Done' and farming:
-                attempt += 1
-                if attempt >= max_attempts:
-                    break
+            # if self.battle_status == 'Done' and farming:
+            #     attempt += 1
+            #     if attempt >= max_attempts:
+            #         break
 
-                window_tools.click_center(
-                    self.window,
-                    self.search_areas["doom_tower_restart_encounter"]
-                )
-                time.sleep(10)
-                self.battle_status = 'Starting'
+            #     window_tools.click_center(
+            #         self.window,
+            #         self.search_areas["doom_tower_restart_encounter"]
+            #     )
+            #     time.sleep(10)
+            #     self.battle_status = 'Starting'
 
-                try:
-                    battle_result = image_tools.get_text_in_relative_area(
-                        self.reader, self.window,
-                        search_area=self.search_areas["doom_tower_battle_result"]
-                    )[0]
-                    if battle_result.text in ("VICTORIA", "DERROTA"):
-                        self.battle_status = 'Done'
-                except:
-                    pass
+            #     try:
+            #         battle_result = image_tools.get_text_in_relative_area(
+            #             self.reader, self.window,
+            #             search_area=self.search_areas["doom_tower_battle_result"]
+            #         )[0]
+            #         if battle_result.text in ("VICTORIA", "DERROTA"):
+            #             self.battle_status = 'Done'
+            #     except:
+            #         pass
 
         print('Battle_Done')
         window_tools.click_center(
@@ -496,13 +544,10 @@ class RSL_Bot_DoomTower():
 
 
     def scan_for_boss_or_current_stage(self, target=None, farming=False):
-        if farming:
-            list_of_paths = []
-            expected_menu_names = {}
-        else:
-            FIRST_PATH = 'pic\\doom_tower_current_stage.png'
-            list_of_paths = [FIRST_PATH]
-            expected_menu_names = {FIRST_PATH: 'Planta'}
+
+        FIRST_PATH = 'pic\\doom_tower_current_stage.png'
+        list_of_paths = [FIRST_PATH]
+        expected_menu_names = {FIRST_PATH: 'Planta'}
 
         self.stage_found = False
         self.doomtower_climb_status = False
@@ -519,8 +564,9 @@ class RSL_Bot_DoomTower():
             add_boss_paths()
             list_of_paths = [
                 p for p in list_of_paths
-                if expected_menu_names.get(p) == target or p == FIRST_PATH
+                if expected_menu_names.get(p) == target
             ]
+            print(list_of_paths)
         else:
             add_boss_paths()
 
@@ -633,7 +679,8 @@ class RSL_Bot_DoomTower():
     def farm_doom_tower_bosses(self):
         self.set_difficulty(self.setup['difficulty'])
 
-        for opponent in self.setup['priority_bosses']:
+        for i in range(len(self.setup["priority_bosses"])):
+            opponent = self.setup['priority_bosses'][i]
             if not self.main_loop_running:
                 break
             if opponent in self.doomtower_rotations[self.current_rotation].values():
@@ -644,7 +691,7 @@ class RSL_Bot_DoomTower():
 
         if self.stage_found:
             window_tools.click_at(self.stage_found.mean_pos_x, self.stage_found.mean_pos_y)
-            self.execute_encounter(farming=True)
+            self.farm_encounter()
 
     # ------------------------- Runner -------------------------
     def run_doomtower(self, main_loop_running = True):
@@ -657,10 +704,11 @@ class RSL_Bot_DoomTower():
             return
 
         if self.setup['only_farming']:
-            while self.main_loop_running and (self.no_run_failed and self.num_of_silver_keys > 1):
+            while self.main_loop_running and self.no_run_failed and self.num_of_silver_keys > 1:
                 self.farm_doom_tower_bosses()
                 if not self.stage_found:
                     break
+                self.update_available_keys()
                 
         else:
             while self.main_loop_running and (self.no_run_failed or (
