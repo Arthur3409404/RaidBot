@@ -1,6 +1,6 @@
 verbose = True
 screen_drift = [0.07, 0.07, 0, 0]
-override_timer_minutes = 10
+override_timer_minutes = 30
 
 run_classic_arena = True
 run_tagteam_arena = True
@@ -16,9 +16,9 @@ run_effective_unit_leveling = False
 classic_arena_verbose = True
 classic_arena_multi_refresh = True
 classic_arena_num_multi_refresh = 0
-classic_arena_power_threshold = 350000
+classic_arena_power_threshold = 500000
 classic_arena_use_gems = False
-classic_arena_enemies_lost = [0, 1.1, 1.0, 1.2, 1.3, 1.4, 319040.0, 291750.0, 61233.0, 141320.0, 317920.0, 319260.0, 338590.0, 328090.0, 315870.0, 151950.0]
+classic_arena_enemies_lost = [0, 1.1, 1.0, 1.2, 1.3, 1.4, 319040.0, 291750.0, 61233.0, 141320.0, 317920.0, 319260.0, 338590.0, 328090.0, 315870.0, 151950.0, 307250.0, 11000.0, 305210.0, 44000.0, 249610.0, 78000.0, 5000.0, 346160.0, 229930.0, 1000.0, 51000.0, 35000.0, 38000.0, 288650.0, 233710.0, 240190.0, 81000.0, 56000.0, 488530.0, 317790.0, 259470.00000000003, 385060.0, 225370.0, 33000.0, 93000.0]
 
 live_arena_verbose = True
 live_arena_use_gems = True
@@ -30,19 +30,19 @@ tagteam_arena_multi_refresh = True
 tagteam_arena_num_multi_refresh = 0
 tagteam_arena_power_threshold = 1300000
 tagteam_arena_use_gems = False
-tagteam_arena_enemies_lost = [0, 1.1, 1.0, 1.2, 1.3, 1.4, 1180000.0, 33.0, 6000000.0, 19000000.0, 14000000.0, 15000000.0, 43000000.0, 1290000.0, 1330000.0, 54000000.0, 18000000.0, 799000000.0, 8000000.0, 1340000.0, 732100.0, 141000000.0, 4000.0, 58000000.0, 837.0, 774540.0, 932070.0, 29000000.0, 27.0, 31.0, 1220000.0, 29.0, 40.0, 9.0, 59.0]
+tagteam_arena_enemies_lost = [0, 1.1, 1.0, 1.2, 1.3, 1.4, 1180000.0, 33.0, 6000000.0, 19000000.0, 14000000.0, 15000000.0, 43000000.0, 1290000.0, 1330000.0, 54000000.0, 18000000.0, 799000000.0, 8000000.0, 1340000.0, 732100.0, 141000000.0, 4000.0, 58000000.0, 837.0, 774540.0, 932070.0, 29000000.0, 27.0, 31.0, 1220000.0, 29.0, 40.0, 9.0, 59.0, 879290.0, 1160000.0, 1260000.0, 10, 1240000.0, 1150000.0, 913940.0, 1020000.0, 1040000.0, 961320.0, 850000.0, 1060000.0, 1250000.0, 1280000.0, 1190000.0, 951310.0, 1090000.0, 1050000.0, 1100000.0, 1110000.0, 925670.0, 944440.0, 1120000.0, 1270000.0, 1140000.0, 939150.0, 1030000.0, 929910.0, 1210000.0, 998310.0, 948590.0, 948170.0, 1070000.0, 882090.0, 820200.0, 933320.0, 1200000.0, 902300.0]
 
 dungeons_verbose = True
 dungeons_iron_twins_priority = True
 dungeons_essence_priority = 'shogun'
 dungeons_defaults_available = ["fire_knight","dragon",'sand_devil', 'shogun']
-dungeons_default_difficulty = 'hard'
-dungeons_default_level = 8
-dungeons_default_dungeon = 'fire_knight'
+dungeons_default_difficulty = 'normal'
+dungeons_default_level = 20
+dungeons_default_dungeon = 'dragon'
 
 demon_lord_verbose = True
 demon_lord_player_names = ["TrollPatrol69", "TrollPetrol3"]
-demon_lord_difficulty_order = ['UNM', 'NM', 'Brutal']
+demon_lord_difficulty_order = ['UNM', 'NM', 'Brutal','Hard']
 
 faction_wars_verbose = True
 faction_wars_farm_stages = {"Banner Lords":[21,"normal"],"Barbarians":[21,"normal"],"Dark Elves":[21,"normal"],"Demonspawn":[17,"normal"],"Dwarves":[21,"normal"],"High Elves":[21,"normal"],"Knight Revenant":[17,"normal"],"Lizardmen":[21,"normal"],"Ogryn Tribes":[21,"normal"],"Orcs":[21,"normal"],"Sacred Order":[21,"normal"],"Undead Hordes":[21,"normal"],"Shadowkin":[21,"normal"],"Skinwalkers":[17,"normal"],"Sylvan Watchers":[21,"normal"]}
@@ -50,4 +50,4 @@ faction_wars_farm_superraid = False
 
 doom_tower_verbose = True
 doom_tower_setup_build_names = {'Waves': 'Waves', 'Magma Dragon': 'Magma Dragon', 'Frost Spider': 'Frost Spider', 'Nether Spider': 'Nether Spider', 'Scarab King': 'Scarab King', 'Eternal Dragon': 'Eternal Dragon', 'Bommal': 'Bommal', 'Dark Fae': 'Dark Fae', 'Gryphon': 'Gryphon'}
-doom_tower_setup = {"difficulty": "hard", "priority_bosses": ['Dark Fae', 'Gryphon', 'Nether Spider'] }
+doom_tower_setup = {"difficulty": "hard", "priority_bosses": ['Dark Fae', 'Gryphon', 'Nether Spider'], "only_farming": True }

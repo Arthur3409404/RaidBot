@@ -105,6 +105,10 @@ class RSL_Bot_FactionWars:
     def reset_battle_state(self):
         self.battle_status = 'menu'
 
+    def resembles(self, text, target, threshold=0.8):
+        ratio = difflib.SequenceMatcher(None, text.lower(), target.lower()).ratio()
+        return ratio >= threshold
+
     # ------------------------- Difficulty -------------------------
     def ensure_correct_difficulty(self):
         try:
@@ -128,7 +132,7 @@ class RSL_Bot_FactionWars:
                 if battle_result.text in ["VICTORIA", "DERROTA"]:
                     self.battle_status = 'Done'
                     self.battles_done += 1
-                    if battle_result.text == "VICTORIA":
+                    if self.resembles(battle_result.text, "VICTORIA"):
                         self.battles_won += 1
                     return
             except:
@@ -140,7 +144,7 @@ class RSL_Bot_FactionWars:
             auto_button = image_tools.get_text_in_relative_area(
                 self.reader, self.window, search_area=self.search_areas["auto_battle_button"]
             )[0]
-            self.battle_status = 'Battle active' if auto_button.text == 'Auto' else 'Battle inactive'
+            self.battle_status = 'Battle active' if self.resembles(auto_button.text, 'Auto') else 'Battle inactive'
         except:
             pass
 

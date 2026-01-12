@@ -9,6 +9,7 @@ import numpy as np
 import re
 import data.lib.utils.image_tools as image_tools
 import data.lib.utils.window_tools as window_tools
+import difflib
 
 class RSL_Bot_DemonLord():
     def __init__(self, title_substring="Raid: Shadow Legends", reader = None, window = None, verbose = True, player_names = None, difficulty_order = None):
@@ -51,6 +52,11 @@ class RSL_Bot_DemonLord():
         self.demonlord_encounter_difficulty = None 
 
     # ------------------------- Keys -------------------------
+
+    def resembles(self, text, target, threshold=0.8):
+        ratio = difflib.SequenceMatcher(None, text.lower(), target.lower()).ratio()
+        return ratio >= threshold
+    
     def update_available_keys(self):
         """Check if Demon Lord keys are available."""
         try:
@@ -103,7 +109,7 @@ class RSL_Bot_DemonLord():
             result = image_tools.get_text_in_relative_area(
                 self.reader, self.window, search_area=self.search_areas['DemonLord_Result']
             )[0]
-            if result.text == 'RESULTADO':
+            if self.resembles(result.text, 'RESULTADO'):
                 self.battle_status = 'Done'
                 self.demonlord_encounters_cleared.append(
                     self.demonlord_encounter_difficulty
@@ -121,7 +127,7 @@ class RSL_Bot_DemonLord():
             self.reader, self.window, search_area=self.search_areas['DemonLord_EnterEncounter']
         )
 
-        if reclaim_status and reclaim_status[0].text == 'Reclamar':
+        if reclaim_status and self.resembles(reclaim_status[0].text ,'Reclamar'):
             window_tools.click_center(self.window, self.search_areas["DemonLord_EnterEncounter"])
             window_tools.click_center(self.window, self.search_areas["DemonLord_NameList"])
             window_tools.click_center(self.window, self.search_areas["DemonLord_NameList"])

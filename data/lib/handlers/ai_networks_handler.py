@@ -37,9 +37,11 @@ class EnemyDataset(Dataset):
     """
     Dataset storing all images, power (normalized), and labels (0/1) in a single .npz file.
     Creates the dataset if it does not exist and appends new entries.
-    Images are normalized to [0,1], power is normalized by 350000.
+    Images are normalized to [0,1], power is normalized by max_power.
+    Power can be a single value or a numpy array.
     """
-    def __init__(self, dataset_path, use_power = True, transform=None, max_power=350000.0):
+
+    def __init__(self, dataset_path, use_power=True, transform=None, max_power=350000.0):
         self.dataset_path = dataset_path
         self.transform = transform
         self.max_power = max_power
@@ -60,24 +62,26 @@ class EnemyDataset(Dataset):
         # Load existing data
         data = np.load(dataset_path, allow_pickle=True)
         self.images = data["images"]
+        self.labels = data["labels"]
+
         if self.use_power:
             self.powers = data["powers"]
-        self.labels = data["labels"]
 
     def __len__(self):
         return len(self.labels)
 
     def __getitem__(self, idx):
         # Get image, power, label
-        image = self.images[idx]  # already normalized
-        if self.use_power:
-            power = self.powers[idx]  # already normalized
+        image = self.images[idx]  # already normalized [H,W,C]
         label = self.labels[idx]  # 0 or 1
 
-        # Convert to tensors
-        image = torch.tensor(image, dtype=torch.float32).permute(2, 0, 1)  # [C,H,W]
+        # Convert image to tensor [C,H,W]
+        image = torch.tensor(image, dtype=torch.float32).permute(2, 0, 1)
+
         if self.use_power:
+            power = self.powers[idx]
             power = torch.tensor([power], dtype=torch.float32)
+
         label = torch.tensor([label], dtype=torch.float32)
 
         if self.transform:
@@ -89,16 +93,17 @@ class EnemyDataset(Dataset):
             return image, label
 
     # -----------------------------
-    # Append a new entry
+    # Append new entry / entries
     # -----------------------------
     def append_entry(self, image_np, power_val, battle_result):
         """
-        Append a new entry and save dataset.
+        Append new entry or multiple entries and save dataset.
 
         image_np: np.ndarray (H,W,C) uint8
-        power_val: float, between 0 and 350000
+        power_val: float or np.ndarray, between 0 and max_power
         battle_result: int, 0=Loss, 1=Win
         """
+
         # Validate battle result
         if battle_result not in [0, 1]:
             raise ValueError("battle_result must be 0 (Loss) or 1 (Win)")
@@ -110,22 +115,38 @@ class EnemyDataset(Dataset):
         # Normalize image to [0,1]
         image_np = image_np.astype(np.float32) / 255.0
 
-        # Normalize power
+        # Convert power to numpy array
+        power_val = np.asarray(power_val, dtype=np.float32)
+
+        # Normalize power(s)
         power_val = power_val / self.max_power
 
+        # Ensure 1D array
+        power_val = power_val.reshape(-1)
+
+        num_entries = len(power_val)
+
+        # Duplicate image and label if multiple powers provided
+        images_to_add = np.repeat(image_np[np.newaxis, ...], num_entries, axis=0)
+        labels_to_add = np.full((num_entries,), battle_result, dtype=np.float32)
+
         # Append to arrays
-        self.images = np.concatenate([self.images, image_np[np.newaxis, ...]], axis=0)
-        self.powers = np.concatenate([self.powers, np.array([power_val], dtype=np.float32)], axis=0)
-        self.labels = np.concatenate([self.labels, np.array([battle_result], dtype=np.float32)], axis=0)
+        self.images = np.concatenate([self.images, images_to_add], axis=0)
+
+        if self.use_power:
+            self.powers = np.concatenate([self.powers, power_val], axis=0)
+
+        self.labels = np.concatenate([self.labels, labels_to_add], axis=0)
 
         # Save to npz (overwrite old dataset)
         np.savez_compressed(
             self.dataset_path,
             images=self.images,
-            powers=self.powers,
+            powers=self.powers if self.use_power else np.zeros((len(self.labels),), dtype=np.float32),
             labels=self.labels
         )
-        print(f"Appended new entry. Dataset now has {len(self.labels)} samples.")
+
+        print(f"Appended {num_entries} new entries. Dataset now has {len(self.labels)} samples.")
 
 
 # -----------------------------
