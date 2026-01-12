@@ -159,6 +159,7 @@ class RSL_Bot_ClassicArena:
                     for _ in range(4):
                         window_tools.click_at(battle_finished.mean_pos_x, battle_finished.mean_pos_y)
                         time.sleep(0.2)
+                    
             except:
                 pass
             time.sleep(3)
