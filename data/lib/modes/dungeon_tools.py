@@ -91,6 +91,7 @@ class RSL_Bot_Dungeons:
             "fire_knight": "Castillo del Caballero de Fuego",
             "sand_devil": "Necropolis de la Arena",
             "shogun": "Arboleda del Shoc",
+            'minotaur': 'Laberinto del Minotauro',
             "hard": "Dificil",
             "normal": "Normal"
         }

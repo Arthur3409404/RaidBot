@@ -144,6 +144,8 @@ class RSL_Bot_Mainframe():
             "internet_connectivity_error_name":      [0.408, 0.335, 0.179, 0.036],
             "internet_connectivity_error_retry_connection":      [0.506, 0.53, 0.211, 0.084],
 
+            "advert2":      [0.277, 0.622, 0.215, 0.083], 
+
             "remote_override_error_name":      [0.428, 0.36, 0.121, 0.049],
             "remote_override_error_retry_connection":      [0.279, 0.539, 0.215, 0.087],
         }
@@ -189,6 +191,16 @@ class RSL_Bot_Mainframe():
         self.demonlord_bot = demonlord_tools.RSL_Bot_DemonLord(reader = self.reader, window = self.window, **params_demonlord)
         self.doomtower_bot = doomtower_tools.RSL_Bot_DoomTower(reader = self.reader, window = self.window, **params_doomtower)
         
+        self.bots = [
+            self.classic_arena_bot,
+            self.tagteam_arena_bot,
+            self.live_arena_bot,
+            self.dungeon_bot,
+            self.factionwars_bot,
+            self.demonlord_bot,
+            self.doomtower_bot,
+        ]
+
 
         self.error_handler = error_handler.RSL_Bot_ErrorHandler(reader = self.reader, window = self.window)
         self.main_loop_running = False
@@ -222,15 +234,21 @@ class RSL_Bot_Mainframe():
                     if getattr(self.error_handler, 'remote_override_detected', True):
                         print("[ErrorHandler] Remote override detected. Handling...")
 
-                        # Stop main loop safely
+                        # Stop main loops
                         print("[ErrorHandler] Stopping current run_main_loop thread...")
+                        for bot in self.bots:
+                            bot.main_loop_running = True
                         self.main_loop_running = False  # signal main loop to exit
                         while not self.main_loop_stopped:
                             time.sleep(1)
                         print("[ErrorHandler] Stoppinged main_loop successfully")
 
-                        time.sleep((self.remote_override_time_minutes+1)*60)
+                        time.sleep((self.remote_override_time_minutes+0.7)*60)
                         print("[ErrorHandler] Restarted Errorhandler")
+
+                        # Start main loops
+                        for bot in self.bots:
+                            bot.main_loop_running = False
                         self.main_loop_running = True
                         self.main_loop_stopped = False
                         self.error_handler.remote_override_detected = False
@@ -297,6 +315,17 @@ class RSL_Bot_Mainframe():
                     )[0]
                     if self.resembles(advert.text, "Cancelar"):
                         window_tools.click_center(self.window, self.search_areas["advert"])
+                except Exception:
+                    pass
+
+                try:
+                    advert2 = image_tools.get_text_in_relative_area(
+                        self.reader, self.window,
+                        self.search_areas["advert2"],
+                        power_detection=False
+                    )[0]
+                    if self.resembles(advert2.text, "Cerrar"):
+                        window_tools.click_center(self.window, self.search_areas["advert2"])
                 except Exception:
                     pass
 

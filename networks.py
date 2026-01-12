@@ -138,7 +138,8 @@ def analyze_power_label_correlation():
 
         plt.xlabel("Enemy Power")
         plt.ylabel("Win (1) / Loss (0)")
-        plt.ylim(1000, 1e7)
+        plt.ylim(0, 1)
+
         plt.title("Win/Loss vs Enemy Power")
         plt.legend()
         plt.grid(alpha=0.3)
@@ -206,6 +207,6 @@ def plot_images_with_labels(dataset_path=DATASET_PATH, grid_size=(15, 15)):
 # =============================
 if __name__ == "__main__":
     #plot_images_with_labels()
-    # analyze_power_label_correlation()
-    train_enemy_evaluation_model()
+    analyze_power_label_correlation()
+    # train_enemy_evaluation_model()
     # power_only_baseline_accuracy()
