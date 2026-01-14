@@ -1,71 +1,75 @@
 # -*- coding: utf-8 -*-
 """
-Created on Sat Oct 25 13:46:11 2025
+Window and Input Utilities for UI Automation
 
+Created on Sat Oct 25 13:46:11 2025
 @author: Arthur
 """
 
 import time
+import ctypes
+from typing import Optional, Tuple, List
+
 import pyautogui
 import pygetwindow as gw
-import ctypes
-import time
 import matplotlib.pyplot as plt
-import re
 
+
+# -------------------- Window Representation -------------------- #
 
 class WindowObject:
-    def __init__(self, window):
-        self.left = window[0]
-        self.top = window[1]
-        self.width = window[2]
-        self.height = window[3]
+    """Represents a rectangular window region on screen."""
+    def __init__(self, coords: Tuple[int, int, int, int]):
+        self.left, self.top, self.width, self.height = coords
 
 
+# -------------------- Keyboard & Mouse -------------------- #
 
-def sendkey(key, delay=2):
+def sendkey(key: str, delay: float = 3.0):
     """
     Sends a single key press and waits for a delay.
-
-    :param key: Key to press (e.g. 'esc', 'enter', 'f1')
-    :param delay: Delay after key press in seconds (default: 2)
     """
     try:
         pyautogui.press(key)
         time.sleep(delay)
     except Exception:
-        print('SendKey Failed')
+        print(f"SendKey failed for '{key}'")
 
-def test_window(window):
+
+def click_at(x: int, y: int, delay: float = 3.0):
+    """Click at absolute screen coordinates."""
+    pyautogui.click(x, y)
+    time.sleep(delay)
+
+
+def click_center(window: WindowObject, rel_coords: Tuple[float, float, float, float] = (0.5, 0.5, 0, 0),
+                 clicks: int = 1, delay: float = 3.0):
     """
-    Captures a screenshot of the given game window and plots it.
+    Clicks at the center of a relative rectangle inside a window.
 
     Args:
-        window: A window object (from pygetwindow) with attributes left, top, width, height.
+        window: WindowObject
+        rel_coords: (rel_left, rel_top, rel_width, rel_height)
+        clicks: Number of clicks
+        delay: Pause after clicking
     """
-    if window is None:
-        print("No window provided for testing.")
+    if not window:
+        print("No window provided for center click.")
         return
 
-    left, top, width, height = window.left, window.top, window.width, window.height
-    screenshot = pyautogui.screenshot(region=(left, top, width, height))
+    rel_left, rel_top, rel_width, rel_height = rel_coords
+    abs_x = int(window.left + (rel_left + rel_width / 2) * window.width)
+    abs_y = int(window.top + (rel_top + rel_height / 2) * window.height)
 
-    plt.figure(figsize=(10, 6))
-    plt.imshow(screenshot)
-    plt.title("Captured Game Window")
-    plt.axis("off")
-    plt.show()
+    pyautogui.click(abs_x, abs_y, clicks=clicks)
+    time.sleep(delay)
 
 
-def find_window(window_title):
+# -------------------- Window Detection -------------------- #
+
+def find_window(window_title: str) -> Optional[Tuple[int, int, int, int]]:
     """
-    Finds a window by its title.
-
-    Args:
-        window_title (str): The title (or part of the title) of the window.
-
-    Returns:
-        tuple | None: (left, top, width, height) of the window if found, otherwise None.
+    Finds a window by title and returns its coordinates (left, top, width, height).
     """
     windows = gw.getWindowsWithTitle(window_title)
     if not windows:
@@ -73,140 +77,88 @@ def find_window(window_title):
         return None
 
     window = windows[0]
-    # if not window.isActive:
-    #     window.activate()
-    #     time.sleep(0.3)
-
     return (window.left, window.top, window.width, window.height)
 
 
-def click_at(x, y, delay=3):
+def test_window(window: WindowObject):
     """
-    Click at the given absolute screen coordinates (x, y).
-    """
-    pyautogui.click(x, y)
-    time.sleep(delay)
-    return 
-
-def click_center(window, coords, clicks=1, delay=2):
-    """
-    Clicks the center of the given window.
-
-    Args:
-        coords (tuple): (left, top, width, height) of the window.
-        clicks (int): Number of clicks (default 1).
-        delay (float): Delay after clicking (default 0.1).
-    """
-    if not coords:
-        print("No window coordinates provided for center click.")
-        return
-
-    left, top, width, height = coords
-    abs_x = (left + width/2)*window.width + window.left
-    abs_y = (top + height/2)*window.height + window.top
-
-    pyautogui.click(abs_x, abs_y, clicks=clicks)
-    time.sleep(delay)
-
-
-def move_up(window, strength = 1, relative_x_pos = 0.5, relative_y_pos = 0.5):
-    """
-    Click and drag from the center downward.
-    
-    Args:
-        window: Object with attributes left, top, width, height
+    Captures and displays a screenshot of the given window.
     """
     if not window:
+        print("No window provided for testing.")
         return
-    while strength >0.1:
 
-        start_x = window.left + window.width *relative_x_pos
-        start_y = window.top + window.height *relative_y_pos
-        end_y = start_y + int(window.height * 0.49 * min(1,strength))  # Drag ~49% of height downward
-
-        strength -=min(1,strength)
-        pyautogui.moveTo(start_x, start_y)
-        pyautogui.mouseDown()
-        time.sleep(0.1)
-        pyautogui.moveTo(start_x, end_y, duration=0.2)
-        pyautogui.mouseUp()
-        time.sleep(5)
-    
+    screenshot = pyautogui.screenshot(region=(window.left, window.top, window.width, window.height))
+    plt.figure(figsize=(10, 6))
+    plt.imshow(screenshot)
+    plt.title("Captured Game Window")
+    plt.axis("off")
+    plt.show()
 
 
+# -------------------- Drag / Movement -------------------- #
 
-def move_down(window, strength = 1, relative_x_pos = 0.5, relative_y_pos = 0.5):
-    """
-    Click and drag from the center upward.
-    
-    Args:
-        window: Object with attributes left, top, width, height
-    """
-    if not window:
-        return
-    while strength >0.1:
+# -------------------- Drag / Movement -------------------- #
 
-        start_x = window.left + window.width *relative_x_pos
-        start_y = window.top + window.height *relative_y_pos
-        end_y = start_y - int(window.height * 0.49 * min(1,strength))  # Drag ~49% of height upward
+# Base relative movement per full "step"
+BASE_DELTA = 0.49
 
-        strength-=min(1,strength)
-        pyautogui.moveTo(start_x, start_y)
-        pyautogui.mouseDown()
-        time.sleep(0.1)
-        pyautogui.moveTo(start_x, end_y, duration=0.2)
-        pyautogui.mouseUp()
-        time.sleep(5)
-    
-    
-def move_left(window, strength = 1, relative_x_pos = 0.5, relative_y_pos = 0.5):
-    """
-    Click and drag from the center downward.
-    
-    Args:
-        window: Object with attributes left, top, width, height
-    """
-    if not window:
-        return
-    while strength >0.1:
 
-        start_x = window.left + window.width *relative_x_pos
-        start_y = window.top + window.height *relative_y_pos
-        end_x = start_x + int(window.width * 0.49 * min(1,strength))  # Drag ~49% of height downward
-
-        strength -=min(1,strength)
-        pyautogui.moveTo(start_x, start_y)
-        pyautogui.mouseDown()
-        time.sleep(0.1)
-        pyautogui.moveTo(end_x, start_y, duration=0.2)
-        pyautogui.mouseUp()
-        time.sleep(5)
-    
-    
-def move_right(window, strength = 1, relative_x_pos = 0.5, relative_y_pos = 0.5):
-    """
-    Click and drag from the center downward.
-    
-    Args:
-        window: Object with attributes left, top, width, height
-    """
+def _drag(window: WindowObject, start_rel: tuple[float, float], end_rel: tuple[float, float], duration: float = 0.2, delay: float = 5.0):
+    """Generic drag helper: from start_rel to end_rel inside window."""
     if not window:
         return
 
-    while strength >0.1:
+    start_x = int(window.left + start_rel[0] * window.width)
+    start_y = int(window.top + start_rel[1] * window.height)
+    end_x = int(window.left + end_rel[0] * window.width)
+    end_y = int(window.top + end_rel[1] * window.height)
 
-        start_x = window.left + window.width *relative_x_pos
-        start_y = window.top + window.height *relative_y_pos
-        end_x = start_x - int(window.width * 0.49 *min(strength,1))  # Drag ~49% of height downward
-        strength -= min(strength,1)
-        pyautogui.moveTo(start_x, start_y)
-        pyautogui.mouseDown()
-        time.sleep(0.1)
-        pyautogui.moveTo(end_x, start_y, duration=0.2)
-        pyautogui.mouseUp()
-        time.sleep(5)
-    
-    
+    pyautogui.moveTo(start_x, start_y)
+    pyautogui.mouseDown()
+    time.sleep(0.1)
+    pyautogui.moveTo(end_x, end_y, duration=duration)
+    pyautogui.mouseUp()
+    time.sleep(delay)  # keep original wait times
+
+
+def _move(window, dx: float, dy: float, strength: float, relative_x: float = 0.5, relative_y: float = 0.5):
+    """Generic move function handling fractional and full strength."""
+    if not window or strength <= 0:
+        return
+
+    full_steps = int(strength)          # number of full moves
+    remainder = strength - full_steps   # fractional part
+
+    # Perform full moves
+    for _ in range(full_steps):
+        _drag(window, start_rel=(relative_x, relative_y),
+              end_rel=(relative_x + dx, relative_y + dy))
+
+    # Perform fractional move if remainder exists
+    if remainder > 0:
+        _drag(window, start_rel=(relative_x, relative_y),
+              end_rel=(relative_x + dx * remainder, relative_y + dy * remainder))
+
+
+def move_up(window: WindowObject, strength: float = 1.0, relative_x: float = 0.5, relative_y: float = 0.5):
+    _move(window, dx=0, dy=BASE_DELTA, strength=strength, relative_x=relative_x, relative_y=relative_y)
+
+
+def move_down(window: WindowObject, strength: float = 1.0, relative_x: float = 0.5, relative_y: float = 0.5):
+    _move(window, dx=0, dy=-BASE_DELTA, strength=strength, relative_x=relative_x, relative_y=relative_y)
+
+
+def move_right(window: WindowObject, strength: float = 1.0, relative_x: float = 0.5, relative_y: float = 0.5):
+    _move(window, dx=-BASE_DELTA, dy=0, strength=strength, relative_x=relative_x, relative_y=relative_y)
+
+
+def move_left(window: WindowObject, strength: float = 1.0, relative_x: float = 0.5, relative_y: float = 0.5):
+    _move(window, dx=BASE_DELTA, dy=0, strength=strength, relative_x=relative_x, relative_y=relative_y)
+
+
+# -------------------- Mouse Position & Clicks -------------------- #
+
 def get_mouse_pos():
     user32 = ctypes.windll.user32
     VK_LBUTTON = 0x01

@@ -5,28 +5,11 @@ Created on Sat Oct 25 14:00:37 2025
 @author: Arthur
 """
 
-import pygetwindow as gw
-import pyautogui
-import matplotlib.pyplot as plt
-import cv2
 import numpy as np
-import easyocr
-from skimage.metrics import structural_similarity as ssim
-import time
-import keyboard 
 import re
-from datetime import datetime, timedelta
-import os
-import ast
-
-
 import data.lib.utils.image_tools as image_tools
 import data.lib.utils.window_tools as window_tools
-import data.lib.utils.file_tools as file_tools
-
-
-import data.lib.modes.arena_tools as arena_tools
-import Backup.hydra_tools_old as hydra_tools_old
+import difflib
 
 class RSL_Bot_DemonLord():
     def __init__(self, title_substring="Raid: Shadow Legends", reader = None, window = None, verbose = True, player_names = None, difficulty_order = None):
@@ -68,61 +51,83 @@ class RSL_Bot_DemonLord():
 
         self.demonlord_encounter_difficulty = None 
 
-    def check_demonlord_keys(self):
-        """Check if demon lord keys are available."""
-        try:
-            DemonLord_Keys = image_tools.get_text_in_relative_area(self.reader, self.window, search_area=self.search_areas['DemonLord_Keys'])
-            num_of_keys = re.findall(r"\d+", DemonLord_Keys[0].text)[0]
-            self.num_of_keys = int(num_of_keys)
-            print(self.num_of_keys)
+    # ------------------------- Keys -------------------------
 
+    def resembles(self, text, target, threshold=0.8):
+        ratio = difflib.SequenceMatcher(None, text.lower(), target.lower()).ratio()
+        return ratio >= threshold
+    
+    def update_available_keys(self):
+        """Check if Demon Lord keys are available."""
+        try:
+            keys_text = image_tools.get_text_in_relative_area(
+                self.reader, self.window, search_area=self.search_areas['DemonLord_Keys']
+            )[0].text
+            self.num_of_keys = int(re.findall(r"\d+", keys_text)[0])
+            print(self.num_of_keys)
         except:
             self.num_of_keys = 0
-        
 
-    def check_list_of_names(self, max_attempts = 3):
-        """Validate or refresh the list of demon lord names."""
+    # ------------------------- Name Scan -------------------------
+    def detect_cleared_difficulties(self, max_attempts=3):
+        """Check which Demon Lord difficulties are already cleared."""
         self.demonlord_encounters_cleared = []
+
         for difficulty in self.difficulty_order:
-            string = 'DemonLord_'+difficulty
-            window_tools.click_center(self.window, self.search_areas[string])
+            window_tools.click_center(
+                self.window, self.search_areas[f'DemonLord_{difficulty}']
+            )
+
+            window_tools.move_up(self.window, strength=3, relative_x=0.25)
             name_found = False
 
-            window_tools.move_up(self.window, strength = 3, relative_x_pos= 0.25)
-            for attempt in range(max_attempts): 
-                name_strings = image_tools.get_text_in_relative_area(self.reader, self.window, search_area=self.search_areas['DemonLord_NameList'])
-                for name_string in name_strings:
-                    if name_string.text in self.player_names:
-                        name_found = True
-                        self.demonlord_encounters_cleared.append(difficulty)
-                        break
-                if name_found:
+            for _ in range(max_attempts):
+                name_strings = image_tools.get_text_in_relative_area(
+                    self.reader, self.window, search_area=self.search_areas['DemonLord_NameList']
+                )
+
+                if any(name.text in self.player_names for name in name_strings):
+                    self.demonlord_encounters_cleared.append(difficulty)
+                    name_found = True
                     break
-                window_tools.move_down(self.window, strength = 0.5, relative_x_pos= 0.25)
 
+                window_tools.move_down(self.window, strength=0.5, relative_x=0.25)
 
-    def set_difficulty(self):
-        """Set the next demon lord difficulty."""
-        self.demonlord_encounter_difficulty = self.difficulty_order[len(self.demonlord_encounters_cleared)]
+            if name_found:
+                continue
 
-    def check_battle_outcome(self):
-        result = image_tools.get_text_in_relative_area(self.reader, self.window, search_area=self.search_areas['DemonLord_Result'])
+    # ------------------------- Difficulty -------------------------
+    def select_next_difficulty(self):
+        """Set next Demon Lord difficulty."""
+        self.demonlord_encounter_difficulty = self.difficulty_order[
+            len(self.demonlord_encounters_cleared)
+        ]
+
+    # ------------------------- Battle Result -------------------------
+    def update_battle_status(self):
         try:
-            if result[0].text == 'RESULTADO':
-                #result_message = image_tools.get_text_in_relative_area(self.reader, self.window, search_area=self.search_areas['DemonLord_Result_Message'])
+            result = image_tools.get_text_in_relative_area(
+                self.reader, self.window, search_area=self.search_areas['DemonLord_Result']
+            )[0]
+            if self.resembles(result.text, 'RESULTADO'):
                 self.battle_status = 'Done'
-                self.demonlord_encounters_cleared.append(self.demonlord_encounter_difficulty)
+                self.demonlord_encounters_cleared.append(
+                    self.demonlord_encounter_difficulty
+                )
         except:
             pass
 
+    # ------------------------- Encounter -------------------------
+    def execute_demonlord_encounter(self):
+        """Execute Demon Lord fight."""
+        difficulty_key = f'DemonLord_{self.demonlord_encounter_difficulty}'
+        window_tools.click_center(self.window, self.search_areas[difficulty_key])
 
+        reclaim_status = image_tools.get_text_in_relative_area(
+            self.reader, self.window, search_area=self.search_areas['DemonLord_EnterEncounter']
+        )
 
-    def handle_demonlord_encounter(self):
-        """Execute the demon lord fight logic."""
-        string = 'DemonLord_'+ self.demonlord_encounter_difficulty
-        window_tools.click_center(self.window, self.search_areas[string])
-        reclaim_status = image_tools.get_text_in_relative_area(self.reader, self.window, search_area=self.search_areas['DemonLord_EnterEncounter'])
-        if reclaim_status[0].text == 'Reclamar':
+        if reclaim_status and self.resembles(reclaim_status[0].text ,'Reclamar'):
             window_tools.click_center(self.window, self.search_areas["DemonLord_EnterEncounter"])
             window_tools.click_center(self.window, self.search_areas["DemonLord_NameList"])
             window_tools.click_center(self.window, self.search_areas["DemonLord_NameList"])
@@ -131,35 +136,34 @@ class RSL_Bot_DemonLord():
         window_tools.click_center(self.window, self.search_areas["DemonLord_StartEncounter"])
 
         self.battle_status = 'Starting'
-        while self.battle_status != 'Done':
-                    self.check_battle_outcome()
+        while self.main_loop_running and (self.battle_status != 'Done'):
+            self.update_battle_status()
 
         window_tools.click_center(self.window, self.search_areas["DemonLord_EndEncounter"])
         window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
 
-
-    def run_demonlord(self):
-        """Run Demon Lord Encounter"""      
-        self.check_demonlord_keys()
+    # ------------------------- Main Runner -------------------------
+    def run_demonlord(self, main_loop_running = True):
+        """Run Demon Lord encounters."""
+        self.update_available_keys()
+        self.main_loop_running = True
         if self.num_of_keys == 0:
             return
 
-        self.check_list_of_names()
-        while not len(self.demonlord_encounters_cleared) == len(self.difficulty_order):
-            self.check_demonlord_keys()
+        self.detect_cleared_difficulties()
+
+        while self.main_loop_running and (len(self.demonlord_encounters_cleared) < len(self.difficulty_order)):
+            self.update_available_keys()
             if self.num_of_keys == 0:
                 break
-            
+
             if self.demonlord_encounters_cleared != self.difficulty_order:
-                self.set_difficulty()
-                self.handle_demonlord_encounter()
+                self.select_next_difficulty()
+                self.execute_demonlord_encounter()
+
         window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
-            
-                
-            
 
-
+    # ------------------------- Test -------------------------
     def test(self):
         window_tools.click_center(self.window, self.search_areas["clanboss_DemonLord"])
         self.run_demonlord()
-

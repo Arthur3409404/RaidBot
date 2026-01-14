@@ -5,30 +5,18 @@ Created on Sat Oct 25 13:45:00 2025
 @author: Arthur
 """
 
-import pygetwindow as gw
+
 import pyautogui
-import matplotlib.pyplot as plt
-import cv2
 import numpy as np
-import easyocr
 from skimage.metrics import structural_similarity as ssim
 import time
-import keyboard 
 import re
-from datetime import datetime, timedelta
+from datetime import  timedelta
 import os
-import ast
-import torch
-
 import data.lib.utils.image_tools as image_tools
 import data.lib.utils.window_tools as window_tools
-
-
-import data.lib.modes.arena_tools as arena_tools
-import Backup.hydra_tools_old as hydra_tools_old
-
-from data.lib.handlers.ai_networks_handler import EnemyDataset, EvaluationNetworkCNN
-
+from data.lib.handlers.ai_networks_handler import EnemyDataset, EvaluationNetworkCNN, EvaluationNetworkCNN_ImageOnly
+import difflib
 
 
 
@@ -38,15 +26,26 @@ from data.lib.handlers.ai_networks_handler import EnemyDataset, EvaluationNetwor
 
 class RSL_Bot_ClassicArena:
     
-    def __init__(self, title_substring="Raid: Shadow Legends", reader = None, window =None, verbose = True, num_multi_refresh = 0, multi_refresh = False, power_threshold = 70000, use_gems = True, enemies_lost= [0]):
-
+    def __init__(
+        self,
+        title_substring="Raid: Shadow Legends",
+        reader=None,
+        window=None,
+        verbose=True,
+        num_multi_refresh=0,
+        multi_refresh=False,
+        power_threshold=70000,
+        use_gems=True,
+        enemies_lost=[0]
+    ):
+        """
+        Initialize the Classic Arena bot.
+        """
         if reader is None:
-            print('Error When Loading Reader')
-            
+            print("Error When Loading Reader")
         self.reader = reader  
-        
+
         self.running = True
-        #"data/database_champions/datasets/enemy_dataset_classic_arena.npz"
         self.dataset = EnemyDataset("data/database_champions/datasets/enemy_dataset_classic_arena.npz")
         self.battles_done = 0
         self.classic_arena_multi_refresh = multi_refresh
@@ -56,249 +55,221 @@ class RSL_Bot_ClassicArena:
         self.classic_arena_use_gems = use_gems
         self.offset_wins = len(self.classic_arena_enemies_lost)
         self.window = window
-        
         self.init_time = time.time()
-        
+        self.classic_arena_power_threshold = power_threshold
+        self.refresh_minutes = 15.2
+        self.max_battle_time = 90
+        self.no_coin_status = False
+
         if self.window:
             self.coords = (self.window.left, self.window.top, self.window.width, self.window.height)
             print(f"Window Coordinates: {self.coords}")
         else:
             self.coords = None
-            
-        self.classic_arena_power_threshold = power_threshold
-        self.refresh_minutes = 15.2
+
         # Search Areas
         self.search_areas = {
-            "bronce_medals": [0.235, 0.038, 0.066, 0.03],   # [left, top, width, height]
-            "silver_medals":   [0.342, 0.038, 0.068, 0.028],
-            "gold_medals":      [0.449, 0.04, 0.067, 0.026],
-            
-            "refresh_timer":   [0.789, 0.15, 0.177, 0.059],
-            "arena_coins":   [0.722, 0.039, 0.042, 0.026],
-            "add_arena_coins":   [0.701, 0.039, 0.024, 0.028],
-            "confirm_add_arena_coins":   [0.394, 0.615, 0.208, 0.083],
-            "confirm_use_gems":   [0.394, 0.615, 0.208, 0.083],
-            "gem_amount":   [0.497, 0.629, 0.031, 0.03],
-            
-            
-            "list_enemies":     [0.665, 0.225, 0.314, 0.761],
-            "start_battle":     [0.762, 0.876, 0.213, 0.104],
-            "battle_finished":  [0.362, 0.897, 0.269, 0.081],
-            "battle_result":    [0.389, 0.148, 0.204, 0.071],
-            
-            "test":   [0.05, 0.30, 0.15, 0.08],
+            "bronce_medals": [0.235, 0.038, 0.066, 0.03],
+            "silver_medals": [0.342, 0.038, 0.068, 0.028],
+            "gold_medals": [0.449, 0.04, 0.067, 0.026],
+            "refresh_timer": [0.789, 0.15, 0.177, 0.059],
+            "arena_coins": [0.722, 0.039, 0.042, 0.026],
+            "add_arena_coins": [0.701, 0.039, 0.024, 0.028],
+            "confirm_add_arena_coins": [0.394, 0.615, 0.208, 0.083],
+            "confirm_use_gems": [0.394, 0.615, 0.208, 0.083],
+            "gem_amount": [0.497, 0.629, 0.031, 0.03],
+            "list_enemies": [0.665, 0.225, 0.314, 0.761],
+            "start_battle": [0.762, 0.876, 0.213, 0.104],
+            "battle_finished": [0.362, 0.897, 0.269, 0.081],
+            "battle_result": [0.389, 0.148, 0.204, 0.071],
+            "test": [0.05, 0.30, 0.15, 0.08],
         }
-        
+
+        # Enemy positions
         self.corresponding_enemy_positions = {
             "Pos1": [[0.583, 0.31, 0.173, 0.023], [0.787, 0.237, 0.181, 0.082]],
             "Pos2": [[0.586, 0.43, 0.16, 0.019], [0.789, 0.357, 0.181, 0.078]],
-        
             "Pos3": [[0.586, 0.548, 0.164, 0.019], [0.787, 0.473, 0.184, 0.084]],
             "Pos4": [[0.587, 0.664, 0.162, 0.021], [0.787, 0.592, 0.183, 0.08]],
             "Pos5": [[0.582, 0.782, 0.166, 0.022], [0.787, 0.709, 0.182, 0.082]],
             "Pos6": [[0.586, 0.901, 0.16, 0.018], [0.787, 0.827, 0.183, 0.082]],
-        
             "Pos7": [[0.586, 0.592, 0.16, 0.02], [0.788, 0.519, 0.181, 0.079]],
             "Pos8": [[0.586, 0.709, 0.163, 0.021], [0.787, 0.636, 0.181, 0.08]],
             "Pos9": [[0.586, 0.829, 0.164, 0.019], [0.787, 0.754, 0.183, 0.081]],
             "Pos10": [[0.583, 0.946, 0.166, 0.02], [0.787, 0.874, 0.181, 0.078]],
         }
 
-        self.max_battle_time = 90
-        self.no_coin_status = False
+    def update_battle_outcome(self, power_level):
+        """
+        Determine outcome of a battle and update enemy memory if lost.
+        """
+        battle_result = image_tools.get_text_in_relative_area(
+            self.reader, self.window, search_area=self.search_areas["battle_result"]
+        )[0]
 
-
-    def get_battle_outcome(self,power_level):
-        battle_result = image_tools.get_text_in_relative_area(self.reader, self.window,search_area=self.search_areas["battle_result"])[0]
-        if battle_result.text == "VICTORIA":
-            print('Victory')
+        if self.resembles(battle_result.text, "VICTORIA"):
+            print("Victory")
             self.recent_battle_outcome = 1
-        else: 
+        else:
             self.classic_arena_enemies_lost.append(power_level)
-            self.update_enemy_memory()
-            print('Updated Enemy Avoid List')
+            self.persist_enemy_avoid_list()
+            print("Updated Enemy Avoid List")
             self.recent_battle_outcome = 0
-            #save to txt file self.classic_arena_enemies_lost
-            
-    def update_enemy_memory(self):
-        param_file = os.path.join("data", "params_mainframe.txt")
 
-        # Prepare the string representation of the list
+    def persist_enemy_avoid_list(self):
+        """
+        Persist lost enemies to params_mainframe.txt
+        """
+        param_file = os.path.join("data", "params_mainframe.txt")
         updated_line = f"classic_arena_enemies_lost = {self.classic_arena_enemies_lost}\n"
-        
-        # Read and update lines
+
         with open(param_file, "r") as f:
             lines = f.readlines()
-        
         with open(param_file, "w") as f:
             for line in lines:
                 if line.strip().startswith("classic_arena_enemies_lost ="):
                     f.write(updated_line)
                 else:
                     f.write(line)
-    
-    def battle_enemy(self, obj, next_obj, power_level):
-        battle_running = True
-        
-        window_tools.click_at(obj.mean_pos_x,obj.mean_pos_y)
-        time.sleep(3)
-        start_button = image_tools.get_text_in_relative_area(self.reader, self.window,self.search_areas["start_battle"])[0]
-        window_tools.click_at(start_button.mean_pos_x,start_button.mean_pos_y)
 
-        
-        while battle_running:
+    def execute_arena_battle(self, obj, next_obj, power_level):
+        """
+        Engage an enemy and handle the battle loop.
+        """
+        battle_running = True
+        window_tools.click_at(obj.mean_pos_x, obj.mean_pos_y)
+        time.sleep(3)
+
+        start_button = image_tools.get_text_in_relative_area(
+            self.reader, self.window, self.search_areas["start_battle"]
+        )[0]
+        window_tools.click_at(start_button.mean_pos_x, start_button.mean_pos_y)
+
+        while self.main_loop_running and (battle_running):
             try:
-                battle_finished = image_tools.get_text_in_relative_area(self.reader, self.window,search_area=self.search_areas['battle_finished'])[0]
-                if battle_finished.text == "PULSA PARA CONTINUAR":
+                battle_finished = image_tools.get_text_in_relative_area(
+                    self.reader, self.window, search_area=self.search_areas["battle_finished"]
+                )[0]
+                if self.resembles(battle_finished.text ,"PULSA PARA CONTINUAR"):
                     battle_running = False
                     time.sleep(3)
-                    #print('Continue but not working')
-                    #self.end_battle()
-                    self.get_battle_outcome(power_level)
+                    self.update_battle_outcome(power_level)
                     time.sleep(3)
-                    window_tools.click_at(battle_finished.mean_pos_x,battle_finished.mean_pos_y)
-                    window_tools.click_at(battle_finished.mean_pos_x,battle_finished.mean_pos_y)
-                    time.sleep(3)
-                    #self.end_battle()
-                    window_tools.click_at(battle_finished.mean_pos_x,battle_finished.mean_pos_y)
-                    window_tools.click_at(battle_finished.mean_pos_x,battle_finished.mean_pos_y)
+                    # Multiple clicks to ensure continuation
+                    for _ in range(4):
+                        window_tools.click_at(battle_finished.mean_pos_x, battle_finished.mean_pos_y)
+                        time.sleep(0.2)
+                    
             except:
                 pass
-            
             time.sleep(3)
-        return
 
-    def evaluate_enemies(self):
-        #text_objects = image_tools.get_text_in_relative_area(self.reader, self.window, search_area=self.search_areas["list_enemies"], powerdetection = False)  
-        text_objects = image_tools.get_text_from_cluster_area(self.reader, self.window, search_areas=self.corresponding_enemy_positions, powerdetection = False)
-        
+    def evaluate_arena_enemies(self):
+        """
+        Scan and evaluate all enemies in the arena.
+        """
+        text_objects = image_tools.get_text_from_cluster_area(
+            self.reader, self.window, search_areas=self.corresponding_enemy_positions, power_detection=False
+        )
         filtered_objects = image_tools.filter_text_objects(text_objects)
-        
+
         idx = 0
-        while idx < len(filtered_objects):
-                obj = filtered_objects[idx]
-        
-                if obj in filtered_objects and obj.text.strip() == "Luchar":
-                    if idx - 1 < len(filtered_objects):
-                        next_obj = filtered_objects[idx - 1]
-                        raw_text = next_obj.text.strip()
-        
-                        try:
-                            # Match patterns like '66.65k', '5432abc', capturing number and optional trailing letters
-                            matches = re.findall(r"(\d[\d.,]*)([a-zA-Z]*)", raw_text)
-                            if not matches:
-                                raise ValueError("No numeric value found in text")
-                
-                            number_part, suffix = matches[-1]  # Take the last match
-                            number_part = number_part.replace('.', '').replace(',', '.').replace(' ', '')
-                
-                            # Try converting number part
+        while self.main_loop_running and (idx < len(filtered_objects)):
+            obj = filtered_objects[idx]
+            if obj.text.strip() == "Luchar":
+                if idx - 1 < len(filtered_objects):
+                    next_obj = filtered_objects[idx - 1]
+                    raw_text = next_obj.text.strip()
+                    try:
+                        matches = re.findall(r"(\d[\d.,]*)([a-zA-Z]*)", raw_text)
+                        if not matches:
+                            raise ValueError("No numeric value found in text")
+                        number_part, suffix = matches[-1]
+                        number_part = number_part.replace('.', '').replace(',', '.').replace(' ', '')
+                        num = float(str(number_part))
+                        suffix = suffix.lower()
+                        if suffix.startswith("k"):
+                            power_val = num * 1000
+                        elif suffix.startswith("m"):
+                            power_val = num * 1_000_000
+                        else:
+                            power_val = num
 
-                            num = float(str(number_part))
+                        if power_val < self.classic_arena_power_threshold and power_val >= 500 and power_val not in self.classic_arena_enemies_lost:
+                            screenshot_enemy = pyautogui.screenshot(
+                                region=(int(obj.mean_pos_x - 500), int(obj.mean_pos_y - 65), 440, 130)
+                            )
+                            image_np_enemy = np.array(screenshot_enemy)
+                            print(f"Power {power_val} < threshold {self.classic_arena_power_threshold}")
+                            self.execute_arena_battle(obj, next_obj, power_val)
+                            time.sleep(3)
+                            self.battle_occured = True
+                            self.battles_done += 1
+                            self.dataset.append_entry(image_np_enemy, power_val, self.recent_battle_outcome)
+                            return self.battle_occured
+                    except Exception as e:
+                        print(f"[!] Error parsing '{next_obj.text}': {e}")
+            idx += 1
+        return getattr(self, "battle_occured", False)
 
-                            # Handle known suffixes
-                            suffix = suffix.lower()
-                            if suffix.startswith('k'):
-                                power_val = num * 1000
-                            elif suffix.startswith('m'):
-                                power_val = num * 1_000_000
-                            else:
-                                power_val = num 
-                        
-                            if power_val >= self.classic_arena_power_threshold or power_val<500 or power_val in self.classic_arena_enemies_lost:
-                                #print(f"Power {power_val} > threshold {self.classic_arena_power_threshold}")
-                                pass  # Meets requirement
-                            
-                            # Using an AI network    
-                            # evaluation = self.evaluation_network.foreward(enemy_roster , power_val)
-                            # if evaluation < 0.8:
-                            #     evaluation = 'Win'
-                            # if evaluation is 'Win' and power_val not in self.classic_arena_enemies_lost:
-                            #     pass
-                            
-                            else:
-                                
-                                # Datacollector
-                                screenshot_enemy = pyautogui.screenshot(region=(int(obj.mean_pos_x-500), int(obj.mean_pos_y-65), 440, 130))
-                                image_np_enemy = np.array(screenshot_enemy)
-                                
-                                
-                                print(f"Power {power_val} < threshold {self.classic_arena_power_threshold}")
-                                self.battle_enemy(obj, next_obj, power_val)
-                                time.sleep(3)
-                                self.battle_occured = True
-                                self.battles_done += 1
-                                self.dataset.append_entry(image_np_enemy, power_val, self.recent_battle_outcome)
-
-                                
-                                return self.battle_occured
-                                
-                        except Exception as e:
-                            print(f"[!] Error parsing '{next_obj.text}': {e}")
-                idx += 1
-                    
-        return self.battle_occured
-
-
-
-    def end_battle(self):
+    def exit_battle_screen(self):
         window_tools.click_center(self.window, self.search_areas["battle_finished"])
-        return
-    
 
-    def refresh(self):
+    def refresh_enemy_list(self):
         if not self.coords or "refresh_timer" not in self.search_areas:
-            #print("Missing window coordinates or refresh area definition.")
-            return    
+            return
         window_tools.click_center(self.window, self.search_areas["refresh_timer"])
-        return
-    
 
-    def check_arena_coins(self):
+    def ensure_arena_coins(self):
+        """
+        Checks if arena coins are available; if not, attempt to use gems if allowed.
+        """
         time.sleep(1)
         self.no_coin_status = False
-        coins_text = image_tools.get_text_in_relative_area(self.reader, self.window,self.search_areas["arena_coins"])[0]
-        if "0/" in coins_text.text and not coins_text.text == '10/10':
+        coins_text = image_tools.get_text_in_relative_area(
+            self.reader, self.window, self.search_areas["arena_coins"]
+        )[0]
+
+        if "0/" in coins_text.text and coins_text.text != "10/10":
             rel_left, rel_top, rel_width, rel_height = self.search_areas["add_arena_coins"]
-        
             abs_left = self.window.left + int(rel_left * self.window.width)
             abs_top = self.window.top + int(rel_top * self.window.height)
             abs_width = int(rel_width * self.window.width)
             abs_height = int(rel_height * self.window.height)
-        
             center_x = abs_left + abs_width // 2
             center_y = abs_top + abs_height // 2
-            
 
             pyautogui.click(center_x, center_y)
             time.sleep(3)
-            confirm_text = image_tools.get_text_in_relative_area(self.reader, self.window,self.search_areas["confirm_add_arena_coins"])[0]
-            
-            confirm_gems_text = image_tools.get_text_in_relative_area(self.reader, self.window,self.search_areas["confirm_use_gems"])[0]
-            
+            confirm_text = image_tools.get_text_in_relative_area(
+                self.reader, self.window, self.search_areas["confirm_add_arena_coins"]
+            )[0]
+            confirm_gems_text = image_tools.get_text_in_relative_area(
+                self.reader, self.window, self.search_areas["confirm_use_gems"]
+            )[0]
             try:
-                gem_amount = image_tools.get_text_in_relative_area(self.reader, self.window,self.search_areas["gem_amount"])[0].text
-                numbers = re.findall(r"\d+", gem_amount)
+                gem_amount_text = image_tools.get_text_in_relative_area(
+                    self.reader, self.window, self.search_areas["gem_amount"]
+                )[0].text
+                numbers = re.findall(r"\d+", gem_amount_text)
                 gem_amount = int("".join(numbers)) if numbers else 0
-            except:    
+            except:
                 gem_amount = 0
-                
+
             if not self.classic_arena_use_gems and gem_amount > 0:
                 pyautogui.click(center_x, center_y)
                 time.sleep(3)
                 self.no_coin_status = True
                 return
-            
-            window_tools.click_at(confirm_text.mean_pos_x,confirm_text.mean_pos_y)
-            time.sleep(3)
-            
-        pass
 
-    def print_status(self):
+            window_tools.click_at(confirm_text.mean_pos_x, confirm_text.mean_pos_y)
+            time.sleep(3)
+
+    def report_run_status(self):
         elapsed = time.time() - self.init_time
         formatted_elapsed = str(timedelta(seconds=int(elapsed)))
         medals = (self.battles_done - len(self.classic_arena_enemies_lost) + self.offset_wins) * 4
-    
+
         print("\n" + "=" * 40)
         print("🛡️  RAID Classic Arena Bot Status")
         print("-" * 40)
@@ -311,106 +282,109 @@ class RSL_Bot_ClassicArena:
         print("🛑 To stop the bot, press 'v'")
         print("=" * 40 + "\n")
         
+    def resembles(self, text, target, threshold=0.8):
+        ratio = difflib.SequenceMatcher(None, text.lower(), target.lower()).ratio()
+        return ratio >= threshold
 
-    def run_classic_arena_noTimeLimit(self):
-        
+
+    def run_classic_arena_continuous(self):
+        """
+        Run the Classic Arena bot indefinitely without a time limit.
+        """
         time.sleep(5)
+
         time_start = time.time()
         last_refresh_time = time_start
         self.start_time = time_start
         counter_multi_refresh = 0
-        while self.running:
-            
-            self.print_status()
-            
+
+        while self.main_loop_running and (self.running):
+            self.report_run_status()
             self.battle_occured = False
-            
-            
-            self.check_arena_coins()
-            
-            self.battle_occured = self.evaluate_enemies()
+
+            self.ensure_arena_coins()
+
+            self.battle_occured = self.evaluate_arena_enemies()
             if self.battle_occured:
-                continue  # Restart loop if battle occurred
-    
+                continue
+
             window_tools.move_down(self.window)
-    
-            self.battle_occured = self.evaluate_enemies()
+
+            self.battle_occured = self.evaluate_arena_enemies()
             if self.battle_occured:
-                continue  # Restart loop if battle occurred
+                continue
+
             window_tools.move_up(self.window)
-            
-            if self.classic_arena_multi_refresh == True:
-                if counter_multi_refresh<self.classic_arena_num_multi_refresh:
-                    time_start = time.time()
-                    self.refresh()
+
+            if self.classic_arena_multi_refresh:
+                if counter_multi_refresh < self.classic_arena_num_multi_refresh:
+                    self.refresh_enemy_list()
                     counter_multi_refresh += 1
                     continue
                 else:
                     counter_multi_refresh = 0
-                    
-            # Wait until `refresh_minutes` have passed
+
             print("Waiting for free Refresh")
             time_start_loop = time.time()
-            while (time.time() - time_start_loop) < (62):
+            while self.main_loop_running and ((time.time() - time_start_loop) < 62):
                 time.sleep(1)
-
 
             elapsed = time.time() - last_refresh_time
             if elapsed >= self.refresh_minutes * 60:
                 if self.running:
-                    self.refresh()
+                    self.refresh_enemy_list()
                     last_refresh_time = time.time()
-                    
-                    
-    def run_classic_arena_once(self):
-        
+                        
+                        
+    def run_classic_arena_until_empty(self, main_loop_running = True):
+        """
+        Run the Classic Arena bot once until no arena coins remain.
+        """
         time.sleep(5)
+        self.main_loop_running = main_loop_running
+
         time_start = time.time()
         last_refresh_time = time_start
         self.start_time = time_start
         counter_multi_refresh = 0
         self.running = True
-        #self.refresh()
+
         time.sleep(5)
 
-        while self.running:
-            
-            self.print_status()
-            
+        while self.main_loop_running and (self.running):
+            self.report_run_status()
             self.battle_occured = False
-            
-            
-            self.check_arena_coins()
-            if self.no_coin_status: 
+
+            self.ensure_arena_coins()
+            if self.no_coin_status:
                 self.running = False
-                print('Waiting for coins')
+                print("Waiting for coins")
                 continue
-            
-            self.battle_occured = self.evaluate_enemies()
+
+            self.battle_occured = self.evaluate_arena_enemies()
             if self.battle_occured:
-                continue  # Restart loop if battle occurred
-    
+                continue
+
             window_tools.move_down(self.window)
-    
-            self.battle_occured = self.evaluate_enemies()
+
+            self.battle_occured = self.evaluate_arena_enemies()
             if self.battle_occured:
-                continue  # Restart loop if battle occurred
+                continue
+
             window_tools.move_up(self.window)
-            
-            if self.classic_arena_multi_refresh == True:
-                if counter_multi_refresh<self.classic_arena_num_multi_refresh:
-                    time_start = time.time()
-                    self.refresh()
+
+            if self.classic_arena_multi_refresh:
+                if counter_multi_refresh < self.classic_arena_num_multi_refresh:
+                    self.refresh_enemy_list()
                     counter_multi_refresh += 1
                     continue
                 else:
                     counter_multi_refresh = 0
-                    
-            # Wait until `refresh_minutes` have passed
+
             print("Waiting for free Refresh")
             self.running = False
 
-        return 
+        return
     
     
 # =============================================================================
@@ -418,63 +392,102 @@ class RSL_Bot_ClassicArena:
 # =============================================================================
 
 class RSL_Bot_TagTeamArena:
-    
-    def __init__(self, title_substring="Raid: Shadow Legends", reader = None, window =None, verbose = True, num_multi_refresh = 0, multi_refresh = False, power_threshold = 70000, use_gems = True, enemies_lost= [0]):
+    """
+    Automates Tag Team Arena battles in Raid: Shadow Legends.
+    """
 
+    def __init__(
+        self,
+        title_substring="Raid: Shadow Legends",
+        reader=None,
+        window=None,
+        verbose=True,
+        num_multi_refresh=0,
+        multi_refresh=False,
+        power_threshold=70000,
+        use_gems=True,
+        enemies_lost=[0],
+    ):
         if reader is None:
-            print('Error When Loading Reader')
-            
+            print("Error When Loading Reader")
+
+        # Core state
         self.reader = reader
-        
+        self.window = window
         self.running = True
-        #"data/database_champions/datasets/enemy_dataset_tagteam_arena.npz"
-        self.dataset = EnemyDataset("data/database_champions/datasets/enemy_dataset_tagteam_arena.npz")
+        self.verbose = verbose
+
+        # Battle tracking
         self.battles_done = 0
+        self.recent_battle_outcome = 0
+        self.battle_occured = False
+
+        # Enemy memory
+        self.tagteam_arena_enemies_lost = enemies_lost
+        self.offset_wins = len(self.tagteam_arena_enemies_lost)
+
+        # Arena configuration
+        self.tagteam_arena_power_threshold = power_threshold
+        self.tagteam_arena_use_gems = use_gems
         self.tagteam_arena_multi_refresh = multi_refresh
         self.tagteam_arena_num_multi_refresh = num_multi_refresh
-        self.verbose = verbose
-        self.tagteam_arena_enemies_lost = enemies_lost
-        self.tagteam_arena_use_gems = use_gems
-        self.offset_wins = len(self.tagteam_arena_enemies_lost)
-        self.window = window
+
+        # Timing
         self.init_time = time.time()
-        
+        self.refresh_minutes = 15.2
+        self.max_battle_time = 200
+
+        # Dataset
+        self.dataset = EnemyDataset(
+            "data/database_champions/datasets/enemy_dataset_tagteam_arena.npz"
+        )
+
+        # AI evaluation network
         weights_path = r"neural_networks\enemy_eval_tagteam_arena\_epoch300.pt"
-        self.evaluation_ai = EvaluationNetworkCNN(weights_path=weights_path)
-        self.evaluation_ai.eval()  # IMPORTANT
-        
+        self.evaluation_ai = EvaluationNetworkCNN_ImageOnly(weights_path=weights_path)
+        self.evaluation_ai.eval()
+
+        # Window coordinates
         if self.window:
-            self.coords = (self.window.left, self.window.top, self.window.width, self.window.height)
+            self.coords = (
+                self.window.left,
+                self.window.top,
+                self.window.width,
+                self.window.height,
+            )
             print(f"Window Coordinates: {self.coords}")
         else:
             self.coords = None
-            
-        self.tagteam_arena_power_threshold = power_threshold
-        self.refresh_minutes = 15.2
-        # Search Areas
+
+        # UI search areas (relative)
         self.search_areas = {
-            "bronce_medals": [0.235, 0.038, 0.066, 0.03],   # [left, top, width, height]
-            "silver_medals":   [0.342, 0.038, 0.068, 0.028],
-            "gold_medals":      [0.449, 0.04, 0.067, 0.026],
-            
-            "refresh_timer":   [0.789, 0.15, 0.177, 0.059],
-            "arena_coins":   [0.722, 0.039, 0.042, 0.026],
-            "add_arena_coins":   [0.701, 0.039, 0.024, 0.028],
-            "confirm_add_arena_coins":   [0.394, 0.615, 0.208, 0.083],
-            "confirm_use_gems":   [0.394, 0.615, 0.208, 0.083],
-            "gem_amount":   [0.498, 0.66, 0.03, 0.023],
-            
-            
-            "list_enemies":     [0.665, 0.225, 0.314, 0.761],
-            "start_battle":     [0.762, 0.876, 0.213, 0.104],
-            "battle_finished":  [0.362, 0.897, 0.269, 0.081],
-            "battle_result":    [0.389, 0.148, 0.204, 0.071],
+            "go_to_higher_menu":   [0.928, 0.031, 0.046, 0.039],
+            'pov' : [0, 0, 1, 1],
+            "main_menu_labels":      [0.007, 0.27, 0.984, 0.044],
+
+            "bronce_medals": [0.235, 0.038, 0.066, 0.03],
+            "silver_medals": [0.342, 0.038, 0.068, 0.028],
+            "gold_medals": [0.449, 0.04, 0.067, 0.026],
+            "refresh_timer": [0.789, 0.15, 0.177, 0.059],
+            "arena_coins": [0.722, 0.039, 0.042, 0.026],
+            "add_arena_coins": [0.701, 0.039, 0.024, 0.028],
+            "confirm_add_arena_coins": [0.394, 0.615, 0.208, 0.083],
+            "confirm_use_gems": [0.394, 0.615, 0.208, 0.083],
+            "gem_amount": [0.498, 0.66, 0.03, 0.023],
+            "list_enemies": [0.665, 0.225, 0.314, 0.761],
+            "start_battle": [0.762, 0.876, 0.213, 0.104],
+            "battle_finished": [0.362, 0.897, 0.269, 0.081],
+            "battle_result": [0.389, 0.148, 0.204, 0.071],
             "close_encounter": [0.376, 0.639, 0.231, 0.071],
-            
-            "test":   [0.05, 0.30, 0.15, 0.08],
-            
+            'luchar_area' : [0.5, 0, 0.5, 1],
+
+            "enemy_total_power_value": [0.707, 0.566, 0.17, 0.034],
+            "enemy_team1_power_value": [0.763, 0.24, 0.155, 0.025],
+            "enemy_team2_power_value": [0.758, 0.351, 0.156, 0.023],
+            "enemy_team3_power_value": [0.763, 0.459, 0.154, 0.023],
         }
-        
+
+        # Enemy slot → power + button areas
         self.corresponding_enemy_positions = {
             "Pos1": [[0.535, 0.324, 0.136, 0.017], [0.786, 0.236, 0.182, 0.081]],
             "Pos2": [[0.538, 0.453, 0.137, 0.018], [0.786, 0.362, 0.183, 0.086]],
@@ -487,326 +500,310 @@ class RSL_Bot_TagTeamArena:
             "Pos9": [[0.535, 0.803, 0.14, 0.022], [0.788, 0.72, 0.181, 0.076]],
             "Pos10": [[0.533, 0.93, 0.142, 0.026], [0.788, 0.848, 0.181, 0.079]],
         }
-        self.max_battle_time = 200
 
-    def get_battle_outcome(self,power_level):
-        battle_result = image_tools.get_text_in_relative_area(self.reader, self.window,search_area=self.search_areas["battle_result"])[0]
-        if battle_result.text == "VICTORIA":
-            print('Victory')
+    # ------------------------------------------------------------------
+    # Battle outcome & memory
+    # ------------------------------------------------------------------
+
+    def update_battle_outcome(self, enemy_power):
+        result = image_tools.get_text_in_relative_area(
+            self.reader, self.window, self.search_areas["battle_result"]
+        )[0]
+
+        if self.resembles(result.text , "VICTORIA"):
+            print("Victory")
             self.recent_battle_outcome = 1
-        else: 
-            self.tagteam_arena_enemies_lost.append(power_level)
-            self.update_enemy_memory()
-            print('Updated Enemy Avoid List')
+        else:
+            print("Defeat – updating enemy avoid list")
             self.recent_battle_outcome = 0
-            #save to txt file self.tagteam_arena_enemies_lost
-            
-    def update_enemy_memory(self):
-        param_file = os.path.join("data", "params_mainframe.txt")
+            self.tagteam_arena_enemies_lost.append(enemy_power)
+            self.persist_enemy_avoid_list()
 
-        # Prepare the string representation of the list
-        updated_line = f"tagteam_arena_enemies_lost = {self.tagteam_arena_enemies_lost}\n"
-        
-        # Read and update lines
+    def resembles(self, text, target, threshold=0.8):
+        ratio = difflib.SequenceMatcher(None, text.lower(), target.lower()).ratio()
+        return ratio >= threshold
+    
+
+    def persist_enemy_avoid_list(self):
+        param_file = os.path.join("data", "params_mainframe.txt")
+        updated_line = (
+            f"tagteam_arena_enemies_lost = {self.tagteam_arena_enemies_lost}\n"
+        )
+
         with open(param_file, "r") as f:
             lines = f.readlines()
-        
+
         with open(param_file, "w") as f:
             for line in lines:
                 if line.strip().startswith("tagteam_arena_enemies_lost ="):
                     f.write(updated_line)
                 else:
                     f.write(line)
-    
-    def battle_enemy(self, obj, next_obj, power_level):
-        battle_running = True
-        
-        window_tools.click_at(obj.mean_pos_x,obj.mean_pos_y)
+
+    # ------------------------------------------------------------------
+    # Battle execution
+    # ------------------------------------------------------------------
+
+    def execute_tagteam_battle(self, fight_button, power_text_obj, enemy_power):
+        window_tools.click_at(fight_button.mean_pos_x, fight_button.mean_pos_y)
         time.sleep(3)
-        start_button = image_tools.get_text_in_relative_area(self.reader, self.window,self.search_areas["start_battle"])[0]
-        window_tools.click_at(start_button.mean_pos_x,start_button.mean_pos_y)
 
-        
-        while battle_running:
+        start_btn = image_tools.get_text_in_relative_area(
+            self.reader, self.window, self.search_areas["start_battle"]
+        )[0]
+        window_tools.click_at(start_btn.mean_pos_x, start_btn.mean_pos_y)
+
+        while self.main_loop_running and (True):
             try:
-                battle_finished = image_tools.get_text_in_relative_area(self.reader, self.window,search_area=self.search_areas['battle_finished'])[0]
-                if battle_finished.text == "PULSA PARA CONTINUAR":
-                    battle_running = False
+                finished = image_tools.get_text_in_relative_area(
+                    self.reader, self.window, self.search_areas["battle_finished"]
+                )[0]
+
+                if self.resembles(finished.text, "PULSA PARA CONTINUAR"):
                     time.sleep(3)
-                    #print('Continue but not working')
-                    #self.end_battle()
-                    self.get_battle_outcome(power_level)
-                    time.sleep(3)
-                    window_tools.click_at(battle_finished.mean_pos_x,battle_finished.mean_pos_y)
-                    window_tools.click_at(battle_finished.mean_pos_x,battle_finished.mean_pos_y)
-    
-                    time.sleep(3)
-                    #self.end_battle()
-                    window_tools.click_center(self.window, self.search_areas["close_encounter"])
-                    window_tools.click_center(self.window, self.search_areas["close_encounter"])
-            except:
+                    self.update_battle_outcome(enemy_power)
+
+                    for _ in range(2):
+                        window_tools.click_at(
+                            finished.mean_pos_x, finished.mean_pos_y
+                        )
+                        time.sleep(1)
+
+                    window_tools.click_center(
+                        self.window, self.search_areas["close_encounter"]
+                    )
+                    return
+            except Exception:
                 pass
-            
+
             time.sleep(3)
-        return
 
+    # ------------------------------------------------------------------
+    # Enemy evaluation
+    # ------------------------------------------------------------------
 
+    def _parse_enemy_power_value(self, text):
+        text = text.replace(".", "").replace(",", ".").replace(" ", "")
+        matches = re.findall(r"(\d[\d.,]*)([a-zA-Z]*)", text)
+        if not matches:
+            raise ValueError("No numeric value found")
 
-    def evaluate_enemies(self):
-        #text_objects = image_tools.get_text_in_relative_area(self.reader, self.window, search_area=self.search_areas["list_enemies"], powerdetection = False)  
-        text_objects = image_tools.get_text_from_cluster_area(self.reader, self.window, search_areas=self.corresponding_enemy_positions, powerdetection = False)
-        
-        filtered_objects = image_tools.filter_text_objects(text_objects)
-        
-        idx = 0
-        while idx < len(filtered_objects):
-                obj = filtered_objects[idx]
-                
-                if obj in filtered_objects and obj.text.strip() == "Luchar":
-                    if idx - 1 < len(filtered_objects):
-                        next_obj = filtered_objects[idx - 1]
-                        raw_text = next_obj.text.strip()
-        
-                        try:
-                            # Match patterns like '66.65k', '5432abc', capturing number and optional trailing letters
-                            matches = re.findall(r"(\d[\d.,]*)([a-zA-Z]*)", raw_text)
-                            if not matches:
-                                raise ValueError("No numeric value found in text")
-                
-                            number_part, suffix = matches[-1]  # Take the last match
-                            number_part = number_part.replace('.', '').replace(',', '.').replace(' ', '')
-                
-                            # Try converting number part
+        number, suffix = matches[-1]
+        value = float(number)
 
-                            num = float(str(number_part))
+        suffix = suffix.lower()
+        if suffix.startswith("k"):
+            value *= 1_000
+        elif suffix.startswith("m"):
+            value *= 1_000_000
 
-                            # Handle known suffixes
-                            suffix = suffix.lower()
-                            if suffix.startswith('k'):
-                                power_val = num * 1000
-                            elif suffix.startswith('m'):
-                                power_val = num * 1_000_000
-                            else:
-                                power_val = num 
-                            
+        return value
 
+    def evaluate_tagteam_enemies(self):
+        text_objects = image_tools.get_text_in_relative_area(
+            self.reader,
+            self.window,
+            search_area=self.search_areas["luchar_area"],
+            power_detection=False,
+        )
 
-                            # if power_val >= self.tagteam_arena_power_threshold or power_val<500 or power_val in self.tagteam_arena_enemies_lost:
-                            #     #print(f"Power {power_val} > threshold {self.tagteam_arena_power_threshold}")
-                            #     pass  # Meets requirement
-                             
-                            # Using an AI network    
-                            # evaluation = self.evaluation_network.foreward(enemy_roster , power_val)
-                            # if evaluation < 0.8:
-                            #     evaluation = 'Win'
-                            # if evaluation is 'Win' and power_val not in self.tagteam_arena_enemies_lost:
-                            #     pass
-                            
-                            # Datacollector
-                            screenshot_enemy = pyautogui.screenshot(region=(int(obj.mean_pos_x-540), int(obj.mean_pos_y-65), 440, 130))
-                            image_np_enemy = np.array(screenshot_enemy).astype(np.float32)
+        filtered = image_tools.filter_text_objects(text_objects)
 
-                            prob, label = self.evaluation_ai.predict(image_np_enemy, power_val)
+        for idx, obj in enumerate(filtered):
 
-                            if label ==1 and power_val not in self.tagteam_arena_enemies_lost:
-                                print(f"Power {power_val} < threshold {self.tagteam_arena_power_threshold}")
-                                self.battle_enemy(obj, next_obj, power_val)
-                                time.sleep(3)
-                                self.battle_occured = True
-                                self.battles_done += 1
-                                self.dataset.append_entry(image_np_enemy, power_val, self.recent_battle_outcome)
+            self.ensure_arena_coins()
+            if self.no_coin_status:
+                break
 
-                                outcome_str = "Win" if self.recent_battle_outcome == 1 else "Loss"
-                                print(f'Battle outcome: {outcome_str}  - With Win Probability: {prob:.2f}')
-                                
-                                return self.battle_occured
-                            else:
-                                pass
-                                
-                        except Exception as e:
-                            print(f"[!] Error parsing '{next_obj.text}': {e}")
-                idx += 1
-                    
-        return self.battle_occured
+            if obj.text.strip() != "Luchar":
+                continue
+            window_tools.click_at(obj.mean_pos_x, obj.mean_pos_y)
+            window_tools.click_center(self.window, self.search_areas["pov"])
 
+            power_obj = image_tools.get_text_in_relative_area(
+            self.reader,
+            self.window,
+            search_area=self.search_areas["enemy_total_power_value"],
+            power_detection=False,
+        )
+            power_team1 = image_tools.get_text_in_relative_area(
+            self.reader,
+            self.window,
+            search_area=self.search_areas["enemy_team1_power_value"],
+            power_detection=False,
+        )
+            power_team2 = image_tools.get_text_in_relative_area(
+            self.reader,
+            self.window,
+            search_area=self.search_areas["enemy_team2_power_value"],
+            power_detection=False,
+        )
+            power_team3 = image_tools.get_text_in_relative_area(
+            self.reader,
+            self.window,
+            search_area=self.search_areas["enemy_team3_power_value"],
+            power_detection=False,
+        )
 
-
-    def end_battle(self):
-        window_tools.click_center(self.window, self.search_areas["battle_finished"])
-        return
-
-    def refresh(self):
-        if not self.coords or "refresh_timer" not in self.search_areas:
-            #print("Missing window coordinates or refresh area definition.")
-            return    
-        window_tools.click_center(self.window, self.search_areas["refresh_timer"])
-        return
-
-
-    def check_arena_coins(self):
-        time.sleep(1)
-        self.no_coin_status = False
-        coins_text = image_tools.get_text_in_relative_area(self.reader, self.window,self.search_areas["arena_coins"])[0]
-        if "0/" in coins_text.text and not coins_text.text == '10/10':
-            rel_left, rel_top, rel_width, rel_height = self.search_areas["add_arena_coins"]
-        
-            abs_left = self.window.left + int(rel_left * self.window.width)
-            abs_top = self.window.top + int(rel_top * self.window.height)
-            abs_width = int(rel_width * self.window.width)
-            abs_height = int(rel_height * self.window.height)
-        
-            center_x = abs_left + abs_width // 2
-            center_y = abs_top + abs_height // 2
-            
-
-            pyautogui.click(center_x, center_y)
-            time.sleep(3)
-            confirm_text = image_tools.get_text_in_relative_area(self.reader, self.window,self.search_areas["confirm_add_arena_coins"])[0]
-            
-            confirm_gems_text = image_tools.get_text_in_relative_area(self.reader, self.window,self.search_areas["confirm_use_gems"])[0]
-            #if confirm_gems_text.text == "40" or confirm_gems_text.text == "Obtener y usar":
+            window_tools.sendkey("esc", delay= 5)
             try:
-                # gem_amount = image_tools.get_text_in_relative_area(self.reader, self.window,self.search_areas["gem_amount"])[0].text
-                numbers = re.findall(r"\d+", confirm_gems_text.text)
-                gem_amount = int("".join(numbers)) if numbers else 0
-            except:    
-                gem_amount = 0
-                
-            if not self.tagteam_arena_use_gems and gem_amount > 0:
-                pyautogui.click(center_x, center_y)
-                time.sleep(3)
-                self.no_coin_status = True
-                return
-            
-            window_tools.click_at(confirm_text.mean_pos_x,confirm_text.mean_pos_y)
-            time.sleep(3)
-            
-        else:
-            self.no_coin_status = False
+                try:
+                    enemy_power = self._parse_enemy_power_value(power_obj[0].text)
+                    enemy_power_team1 = self._parse_enemy_power_value(power_team1[0].text)
+                    enemy_power_team2 = self._parse_enemy_power_value(power_team2[0].text)
+                    enemy_power_team3 = self._parse_enemy_power_value(power_team3[0].text)
+                except:
+                    enemy_power = 10
 
-    def print_status(self):
-        elapsed = time.time() - self.init_time
-        formatted_elapsed = str(timedelta(seconds=int(elapsed)))
-        medals = (self.battles_done - len(self.tagteam_arena_enemies_lost) + self.offset_wins) * 4
-    
+                screenshot = pyautogui.screenshot(
+                    region=(
+                        int(obj.mean_pos_x - 540),
+                        int(obj.mean_pos_y - 65),
+                        440,
+                        130,
+                    )
+                )
+
+                image_np = np.array(screenshot).astype(np.float32)
+                #prob, label = self.evaluation_ai.predict(image_np)
+                #print(f"Team1: {enemy_power_team1} Team2:{enemy_power_team2} Team3: {enemy_power_team3}  Total:{enemy_power}")
+                #if label == 1 and enemy_power not in self.tagteam_arena_enemies_lost and enemy_power>500:
+                if enemy_power not in self.tagteam_arena_enemies_lost and enemy_power<1300000:
+                    self.execute_tagteam_battle(obj, power_obj, enemy_power)
+                    self.battles_done += 1
+                    self.battle_occured = True
+                    enemy_power_collection = np.array([enemy_power,enemy_power_team1,enemy_power_team2,enemy_power_team3])
+                    self.dataset.append_entry(
+                        image_np, enemy_power_collection, self.recent_battle_outcome
+                    )
+
+                    outcome = "Win" if self.recent_battle_outcome else "Loss"
+                    print(f"Battle outcome: {outcome} (Win prob: {prob:.2f})")
+
+                    return True
+                else:
+                    pass
+
+            except Exception as e:
+                print(f"[!] Error parsing '{power_obj[0].text}': {e}")
+
+        return False
+
+    # ------------------------------------------------------------------
+    # Arena utility
+    # ------------------------------------------------------------------
+
+    def refresh_enemy_list(self):
+        if self.coords:
+            window_tools.click_center(self.window, self.search_areas["refresh_timer"])
+
+    def ensure_arena_coins(self):
+        self.no_coin_status = False
+        time.sleep(1)
+
+        coins = image_tools.get_text_in_relative_area(
+            self.reader, self.window, self.search_areas["arena_coins"]
+        )[0]
+
+        if "0/" not in coins.text or coins.text == "10/10":
+            return
+
+        window_tools.click_center(self.window, self.search_areas["add_arena_coins"])
+        time.sleep(3)
+
+        confirm = image_tools.get_text_in_relative_area(
+            self.reader, self.window, self.search_areas["confirm_add_arena_coins"]
+        )[0]
+
+        gems = image_tools.get_text_in_relative_area(
+            self.reader, self.window, self.search_areas["confirm_use_gems"]
+        )[0]
+
+        numbers = re.findall(r"\d+", gems.text)
+        gem_cost = int("".join(numbers)) if numbers else 0
+
+        if not self.tagteam_arena_use_gems and gem_cost > 0:
+            self.no_coin_status = True
+            return
+
+        window_tools.click_at(confirm.mean_pos_x, confirm.mean_pos_y)
+
+    # ------------------------------------------------------------------
+    # Status & main loops
+    # ------------------------------------------------------------------
+
+    def report_run_status(self):
+        elapsed = str(timedelta(seconds=int(time.time() - self.init_time)))
+        wins = self.battles_done - len(self.tagteam_arena_enemies_lost) + self.offset_wins
+        medals = wins * 4
+
         print("\n" + "=" * 40)
-        print("🛡️  RAID TagTeam Arena Bot Status")
+        print("🛡️ RAID TagTeam Arena Bot Status")
         print("-" * 40)
-        print(f"🔁 Mode: Multi Refresh ({self.tagteam_arena_num_multi_refresh})")
-        print(f"⏱️  Time Since Start: {formatted_elapsed}")
-        print(f"⚔️  Battles Won: {self.battles_done - len(self.tagteam_arena_enemies_lost) + self.offset_wins}")
-        print(f"⚔️  Battles Lost: {len(self.tagteam_arena_enemies_lost) - + self.offset_wins}")
-        print(f"🎖️  Estimated Medals: {medals}")
-        print("-" * 40)
-        print("🛑 To stop the bot, press 'v'")
-        print("=" * 40 + "\n")
-        
+        print(f"⏱️ Runtime: {elapsed}")
+        print(f"⚔️ Wins: {wins}")
+        print(f"❌ Losses: {len(self.tagteam_arena_enemies_lost) - self.offset_wins}")
+        print(f"🎖️ Estimated Medals: {medals}")
+        print("=" * 40)
 
-    def run_tagteam_arena_noTimeLimit(self):
-        
+    def run_tagteam_arena_continuous(self):
         time.sleep(5)
-        time_start = time.time()
-        last_refresh_time = time_start
-        self.start_time = time_start
-        counter_multi_refresh = 0
-        while self.running:
-            
-            self.print_status()
-            
-            self.battle_occured = False
-            
-            
-            self.check_arena_coins()
-            if self.no_coin_status: 
-                self.running = False
-                print('Waiting for coins')
+        last_refresh = time.time()
+        refresh_count = 0
+
+        while self.main_loop_running and (self.running):
+            self.report_run_status()
+            self.ensure_arena_coins()
+
+            if self.no_coin_status:
+                print("Waiting for coins")
+                break
+
+            if self.evaluate_tagteam_enemies():
                 continue
-            
-            self.battle_occured = self.evaluate_enemies()
-            if self.battle_occured:
-                continue  # Restart loop if battle occurred
-    
+
             window_tools.move_down(self.window)
-    
-            self.battle_occured = self.evaluate_enemies()
-            if self.battle_occured:
-                continue  # Restart loop if battle occurred
+            if self.evaluate_tagteam_enemies():
+                continue
             window_tools.move_up(self.window)
-            
-            if self.tagteam_arena_multi_refresh == True:
-                if counter_multi_refresh<self.tagteam_arena_num_multi_refresh:
-                    time_start = time.time()
-                    self.refresh()
-                    counter_multi_refresh += 1
+
+            if self.tagteam_arena_multi_refresh:
+                if refresh_count < self.tagteam_arena_num_multi_refresh:
+                    self.refresh_enemy_list()
+                    refresh_count += 1
                     continue
-                else:
-                    counter_multi_refresh = 0
-                    
-            # Wait until `refresh_minutes` have passed
-            print("Waiting for free Refresh")
-            time_start_loop = time.time()
-            while (time.time() - time_start_loop) < (62):
-                time.sleep(1)
+                refresh_count = 0
 
+            print("Waiting for free refresh")
+            time.sleep(62)
 
-            elapsed = time.time() - last_refresh_time
-            if elapsed >= self.refresh_minutes * 60:
-                if self.running:
-                    self.refresh()
-                    last_refresh_time = time.time()
-                    
-                    
-    def run_tagteam_arena_once(self):
-        
+            if time.time() - last_refresh >= self.refresh_minutes * 60:
+                self.refresh_enemy_list()
+                last_refresh = time.time()
+
+    def run_tagteam_arena_single_cycle(self, main_loop_running = True):
+        self.main_loop_running = main_loop_running
         time.sleep(5)
-        time_start = time.time()
-        last_refresh_time = time_start
-        self.start_time = time_start
-        counter_multi_refresh = 0
         self.running = True
-        #self.refresh()
-        time.sleep(5)
-        
-        while self.running:
-            
-            self.print_status()
-            
-            self.battle_occured = False
-            
-            
-            self.check_arena_coins()
-            if self.no_coin_status: 
-                self.running = False
-                print('Waiting for coins')
-                continue
-            
-            self.battle_occured = self.evaluate_enemies()
-            if self.battle_occured:
-                continue  # Restart loop if battle occurred
-    
-            window_tools.move_down(self.window)
-    
-            self.battle_occured = self.evaluate_enemies()
-            if self.battle_occured:
-                continue  # Restart loop if battle occurred
-            window_tools.move_up(self.window)
-            
-            if self.tagteam_arena_multi_refresh == True:
-                if counter_multi_refresh<self.tagteam_arena_num_multi_refresh:
-                    time_start = time.time()
-                    self.refresh()
-                    counter_multi_refresh += 1
-                    continue
-                else:
-                    counter_multi_refresh = 0
-                    
-            # Wait until `refresh_minutes` have passed
-            print("Waiting for free Refresh")
-            self.running = False
 
-        return 
-    
-    
+        while self.main_loop_running and (self.running):
+            self.report_run_status()
+            self.ensure_arena_coins()
+
+            if self.no_coin_status:
+                print("Waiting for coins")
+                break
+
+            if self.evaluate_tagteam_enemies():
+                continue
+
+            window_tools.move_down(self.window)
+            if self.evaluate_tagteam_enemies():
+                continue
+            window_tools.move_up(self.window)
+
+            print("Finished one cycle")
+            break
     
     
     
@@ -904,106 +901,109 @@ class RSL_Bot_LiveArena:
         }
         
         
-    def reset_battle_parameters(self):
+    # ------------------------- Reset Methods -------------------------
+    def reset_battle_state(self):
         self.battle_status = 'menu'
         self.auto_button_clicked = False
         self.no_coin_status = False
-        
-        
-    def get_battle_outcome(self):
-        try:
-            battle_result = image_tools.get_text_in_relative_area(self.reader, self.window,search_area=self.search_areas["battle_result"])[0]
-            if battle_result.text == "VICTORIA" or battle_result.text == "DERROTA":
-                self.battle_status = 'Done'
-                self.battles_done +=1
-                if battle_result.text =="VICTORIA":
-                    self.battles_won +=1
-                return
-        except:
-            pass
-        
-        try:
-            battle_result = image_tools.get_text_in_relative_area(self.reader, self.window,search_area=self.search_areas["battle_result_2"])[0]
-            if battle_result.text == "VICTORIA" or battle_result.text == "DERROTA":
-                self.battle_status = 'Done'
-                self.battles_done +=1
-                if battle_result.text =="VICTORIA":
-                    self.battles_won +=1
-                return
-        except:
-            pass
-            
-    def update_enemy_memory(self):
-        #Isn't really needed in this case
-        param_file = os.path.join("data", "params_mainframe.txt")
+
+    # ------------------------- Battle Outcome -------------------------
+    def update_battle_outcome(self):
+        for result_area in ["battle_result", "battle_result_2"]:
+            try:
+                battle_result = image_tools.get_text_in_relative_area(
+                    self.reader, self.window, search_area=self.search_areas[result_area]
+                )[0]
+                if battle_result.text in ["VICTORIA", "DERROTA"]:
+                    self.battle_status = 'Done'
+                    self.battles_done += 1
+                    if self.resembles(battle_result.text ,"VICTORIA"):
+                        self.battles_won += 1
+                    return
+            except:
+                continue
+
+    # ------------------------- Enemy Memory -------------------------
+    def persist_enemy_avoid_list(self):
+        # Not used currently
         pass
-    
-    
-    def get_battle_status(self):
+
+    def resembles(self, text, target, threshold=0.8):
+        ratio = difflib.SequenceMatcher(None, text.lower(), target.lower()).ratio()
+        return ratio >= threshold
+
+    # ------------------------- Battle Status -------------------------
+    def update_battle_activity_status(self):
         try:
-            auto_button = image_tools.get_text_in_relative_area(self.reader, self.window,search_area=self.search_areas["auto_battle_button"])[0]
-            if auto_button.text == 'Auto':
+            auto_button = image_tools.get_text_in_relative_area(
+                self.reader, self.window, search_area=self.search_areas["auto_battle_button"]
+            )[0]
+            if self.resembles(auto_button.text, 'Auto'):
                 self.battle_status = 'Battle active'
-                battle_running = True
                 time.sleep(3)
                 if not self.auto_button_clicked:
-                    window_tools.click_center(self.window, self.search_areas["auto_battle_button"] )
+                    window_tools.click_center(self.window, self.search_areas["auto_battle_button"])
                     self.auto_button_clicked = True
-                    window_tools.click_center(self.window, self.search_areas["live_arena_status"] )
-            else: 
+                    window_tools.click_center(self.window, self.search_areas["live_arena_status"])
+            else:
                 self.battle_status = 'Battle inactive'
         except:
-            pass      
-        return
+            pass
 
-
-    def check_arena_coins(self):
+    # ------------------------- Arena Coins -------------------------
+    def ensure_arena_coins(self):
         time.sleep(1)
         self.no_coin_status = False
-        coins_text = image_tools.get_text_in_relative_area(self.reader, self.window,self.search_areas["live_arena_coins"])[0]
-        if "0/" in coins_text.text and not coins_text.text == '5/5':
+
+        coins_text = image_tools.get_text_in_relative_area(
+            self.reader, self.window, self.search_areas["live_arena_coins"]
+        )[0]
+
+        if "0/" in coins_text.text and coins_text.text != '5/5':
+            # Calculate absolute center coordinates
             rel_left, rel_top, rel_width, rel_height = self.search_areas["live_add_arena_coins"]
-        
             abs_left = self.window.left + int(rel_left * self.window.width)
             abs_top = self.window.top + int(rel_top * self.window.height)
             abs_width = int(rel_width * self.window.width)
             abs_height = int(rel_height * self.window.height)
-        
             center_x = abs_left + abs_width // 2
             center_y = abs_top + abs_height // 2
-            
 
             pyautogui.click(center_x, center_y)
             time.sleep(3)
-            confirm_text = image_tools.get_text_in_relative_area(self.reader, self.window,self.search_areas["live_confirm_add_arena_coins"])[0]
-            
-            confirm_gems_text = image_tools.get_text_in_relative_area(self.reader, self.window,self.search_areas["live_confirm_use_gems"])[0]
+
+            confirm_text = image_tools.get_text_in_relative_area(
+                self.reader, self.window, self.search_areas["live_confirm_add_arena_coins"]
+            )[0]
+
+            # Check gem usage
             try:
-                gem_amount = image_tools.get_text_in_relative_area(self.reader, self.window,self.search_areas["gem_amount"])[0].text
-                numbers = re.findall(r"\d+", gem_amount)
-                gem_amount = int("".join(numbers)) if numbers else 0
-            except:    
+                gem_amount = image_tools.get_text_in_relative_area(
+                    self.reader, self.window, self.search_areas["gem_amount"]
+                )[0].text
+                gem_amount = int("".join(re.findall(r"\d+", gem_amount))) if gem_amount else 0
+            except:
                 gem_amount = 0
-                
-            if (self.live_arena_use_gems and gem_amount > self.live_arena_use_gems_max_amount) or ( not self.live_arena_use_gems and gem_amount > 0):
+
+            if (self.live_arena_use_gems and gem_amount > self.live_arena_use_gems_max_amount) or (not self.live_arena_use_gems and gem_amount > 0):
                 pyautogui.click(center_x, center_y)
                 time.sleep(3)
                 self.no_coin_status = True
-                return          
+                return
+
             time.sleep(3)
-            window_tools.click_at(confirm_text.mean_pos_x,confirm_text.mean_pos_y)
+            window_tools.click_at(confirm_text.mean_pos_x, confirm_text.mean_pos_y)
 
-        pass
+    # ------------------------- Status Print -------------------------
+    def report_run_status(self):
+        elapsed = int(time.time() - self.init_time)
+        medals = self.battles_won * 70
+        formatted_elapsed = str(timedelta(seconds=elapsed))
 
-    def print_status(self):
-        elapsed = time.time() - self.init_time
-        formatted_elapsed = str(timedelta(seconds=int(elapsed)))
-        medals = (self.battles_won) * 70
-    
         print("\n" + "=" * 40)
         print("🛡️  RAID live Arena Bot Status")
         print("-" * 40)
-        print(f"🔁 Mode: Simple Pick)")
+        print(f"🔁 Mode: Simple Pick")
         print(f"⏱️  Time Since Start: {formatted_elapsed}")
         print(f"⚔️  Battles Won: {self.battles_won}")
         print(f"⚔️  Battles Lost: {self.battles_done - self.battles_won}")
@@ -1011,16 +1011,15 @@ class RSL_Bot_LiveArena:
         print("-" * 40)
         print("🛑 To stop the bot, press 'v'")
         print("=" * 40 + "\n")
-        
 
-    def check_live_arena_availability(self):
+    # ------------------------- Live Arena -------------------------
+    def is_live_arena_active(self):
         rel_left, rel_top, rel_width, rel_height = self.search_areas["live_arena_status"]
-
         x = int(self.window.left + rel_left * self.window.width)
         y = int(self.window.top + rel_top * self.window.height)
         w = int(rel_width * self.window.width)
         h = int(rel_height * self.window.height)
-        
+
         result = image_tools.detect_red_or_green_circle_stable(
             region_coords=(x, y, w, h),
             samples=50,
@@ -1028,106 +1027,73 @@ class RSL_Bot_LiveArena:
             min_pixels=10,
             tolerance=50
         )
-        
-        if result is None:
-            result='red'
-        
-        return (result != "red")
-        
-    
-    def check_live_arena_rewards(self):
-        window_tools.click_center(self.window, self.search_areas["live_arena_reward_1"], delay= 1)
-        window_tools.click_center(self.window, self.search_areas["live_arena_reward_1"], delay= 1 )
-        window_tools.click_center(self.window, self.search_areas["live_arena_reward_2"], delay= 1 )
-        window_tools.click_center(self.window, self.search_areas["live_arena_reward_2"], delay= 1 )
-        window_tools.click_center(self.window, self.search_areas["live_arena_reward_3"], delay= 1 )
-        window_tools.click_center(self.window, self.search_areas["live_arena_reward_3"], delay= 1 )
-        window_tools.click_center(self.window, self.search_areas["live_arena_reward_4"], delay= 1 )
-        window_tools.click_center(self.window, self.search_areas["live_arena_reward_4"], delay= 1 )
-        window_tools.click_center(self.window, self.search_areas["live_arena_reward_5"], delay= 1 )
-        window_tools.click_center(self.window, self.search_areas["live_arena_reward_5"], delay= 1 )
-        
-    def simple_pick_phase(self):
+        return result != "red" if result else False
+
+    def claim_live_arena_rewards(self):
+        for reward in ["live_arena_reward_1", "live_arena_reward_2", "live_arena_reward_3", "live_arena_reward_4", "live_arena_reward_5"]:
+            # Click twice per reward
+            for _ in range(2):
+                window_tools.click_center(self.window, self.search_areas[reward], delay=1)
+
+    # ------------------------- Pick Phase -------------------------
+    def execute_simple_pick_phase(self):
         try:
-            confirm_button = image_tools.get_text_in_relative_area(self.reader, self.window, search_area=self.search_areas["confirm_button_champion_selection"])[0]
-            turn_counter = image_tools.get_text_in_relative_area(self.reader, self.window, search_area=self.search_areas["turn_counter_roster"])[0]
+            confirm_button = image_tools.get_text_in_relative_area(
+                self.reader, self.window, search_area=self.search_areas["confirm_button_champion_selection"]
+            )[0]
+            turn_counter = image_tools.get_text_in_relative_area(
+                self.reader, self.window, search_area=self.search_areas["turn_counter_roster"]
+            )[0]
 
-            # window_tools.click_center(self.window, self.search_areas["preset_champion_8"], delay= 1 )
-            # window_tools.click_center(self.window, self.search_areas["preset_champion_7"], delay= 1 )
-            
-            # color_confirm_button = image_tools.check_area_color(self.window, self.search_areas["confirm_button_champion_selection"])
-            
-            # window_tools.click_center(self.window, self.search_areas["preset_champion_7"], delay= 1 )
-            # window_tools.click_center(self.window, self.search_areas["preset_champion_8"], delay= 1 )
-
-            
-            if confirm_button.text == 'Confirmar' and turn_counter.text == 'Tu turno':# and color_confirm_button == 'yellow':
-                window_tools.click_center(self.window, self.search_areas["preset_champion_1"], delay= 1 )
-                window_tools.click_center(self.window, self.search_areas["preset_champion_2"], delay= 1 )
-                window_tools.click_center(self.window, self.search_areas["preset_champion_3"], delay= 1 )
-                window_tools.click_center(self.window, self.search_areas["preset_champion_4"], delay= 1 )
-                window_tools.click_center(self.window, self.search_areas["preset_champion_5"], delay= 1 )
-                window_tools.click_center(self.window, self.search_areas["preset_champion_6"], delay= 1 )
-                window_tools.click_center(self.window, self.search_areas["preset_champion_7"], delay= 1 )
-                window_tools.click_center(self.window, self.search_areas["preset_champion_8"], delay= 1 )
-                
-                window_tools.click_center(self.window, self.search_areas["confirm_button_champion_selection"], delay= 1 )
+            if self.resembles(confirm_button.text, 'Confirmar') and self.resembles(turn_counter.text, 'Tu turno'):
+                for i in range(1, 9):
+                    window_tools.click_center(self.window, self.search_areas[f"preset_champion_{i}"], delay=1)
+                window_tools.click_center(self.window, self.search_areas["confirm_button_champion_selection"], delay=1)
         except:
             pass
 
-    def complex_pick_phase(self):
+    def execute_complex_pick_phase(self):
         pass
-                    
-    def run_encounter(self):
-        self.reset_battle_parameters()
-        window_tools.click_center(self.window, self.search_areas["start_encounter"])
-        
-        while self.battle_status != 'Done':
-            
-            self.get_battle_outcome()
-            
-            self.simple_pick_phase()
 
-            self.get_battle_status()
-        
-        while self.battle_status == 'Done':
-            battle_finished = image_tools.get_text_in_relative_area(self.reader, self.window,search_area=self.search_areas['battle_status_finished'])[0]
-            if battle_finished.text == "VOLVER A LA ARENA":
+    # ------------------------- Encounter -------------------------
+    def execute_live_arena_encounter(self):
+        self.reset_battle_state()
+        window_tools.click_center(self.window, self.search_areas["start_encounter"])
+
+        while self.main_loop_running and (self.battle_status != 'Done'):
+            self.update_battle_outcome()
+            self.execute_simple_pick_phase()
+            self.update_battle_activity_status()
+
+        while self.main_loop_running and (self.battle_status == 'Done'):
+            battle_finished = image_tools.get_text_in_relative_area(
+                self.reader, self.window, search_area=self.search_areas['battle_status_finished']
+            )[0]
+            if self.resembles(battle_finished.text, "VOLVER A LA ARENA"):
                 window_tools.click_center(self.window, self.search_areas["battle_status_finished"])
                 self.battle_status = 'menu'
-        return
-            
-                    
-    def run_live_arena(self):
-        
+
+    # ------------------------- Main Live Arena Loop -------------------------
+    def run_live_arena_loop(self, main_loop_running = True):
+        self.main_loop_running = main_loop_running
         time.sleep(5)
-        time_start = time.time()
-        last_refresh_time = time_start
-        self.start_time = time_start
+        self.start_time = time.time()
         self.running = True
-        live_arena_status = False
         time.sleep(5)
-        
-        while self.running:
-            # Check if live arena is available
-            live_arena_status = self.check_live_arena_availability()
-            if not live_arena_status:
+
+        while self.main_loop_running and (self.running):
+            if not self.is_live_arena_active():
                 self.running = False
                 print("Live arena not active")
                 continue
-            
-            # Check rewards
-            self.check_live_arena_rewards()
-            
-            # Check current coins
-            self.check_arena_coins()
+
+            self.claim_live_arena_rewards()
+            self.ensure_arena_coins()
             self.battle_occured = False
-            
-            
+
             if self.no_coin_status:
                 self.running = False
             else:
-                self.run_encounter()
-            self.print_status()
-            
-        return 
+                self.execute_live_arena_encounter()
+
+            self.report_run_status()

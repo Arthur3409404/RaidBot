@@ -5,29 +5,14 @@ Created on Sat Oct 25 14:00:37 2025
 @author: Arthur
 """
 
-import pygetwindow as gw
-import pyautogui
-import matplotlib.pyplot as plt
-import cv2
 import numpy as np
-import easyocr
-from skimage.metrics import structural_similarity as ssim
 import time
-import keyboard 
 import re
-from datetime import datetime, timedelta
-import os
 import math
-import ast
-
-
 import data.lib.utils.image_tools as image_tools
 import data.lib.utils.window_tools as window_tools
-import data.lib.utils.file_tools as file_tools
+import difflib
 
-
-import data.lib.modes.arena_tools as arena_tools
-import Backup.hydra_tools_old as hydra_tools_old
 
 class RSL_Bot_DoomTower():
     def __init__(self, title_substring="Raid: Shadow Legends", reader = None, window = None, verbose = True, setup_build_names = None, setup = None):
@@ -43,7 +28,7 @@ class RSL_Bot_DoomTower():
         self.search_areas = {
             "menu_name": [0.008, 0.034, 0.23, 0.037],   # [left, top, width, height]
             "go_to_higher_menu":   [0.928, 0.031, 0.046, 0.039],
-            "pov":   [0.0, 0.07, 1, 0.93],
+            "pov":   [0.0, 0.1, 1, 0.9],
             "detect_doomtower_rotation": [0.121, 0.696, 0.189, 0.035],
 
             "doom_tower_keys":   [0.682, 0.033, 0.212, 0.04],
@@ -72,6 +57,12 @@ class RSL_Bot_DoomTower():
             "doom_tower_close_encounter":   [0.13, 0.898, 0.064, 0.076],
 
             "doom_tower_auto_battle_button": [0.026, 0.899, 0.058, 0.07],
+
+            "doom_tower_farm_encounter": [0.763, 0.764, 0.211, 0.105],
+            "doom_tower_start_multibattles": [0.254, 0.634, 0.23, 0.075],
+            "doomtower_multibattles_setup_1": [0.222, 0.458, 0.032, 0.04],
+            "doomtower_multibattles_setup_2": [0.221, 0.502, 0.034, 0.045],
+            "doom_tower_farming_status": [0.366, 0.609, 0.269, 0.102],
             
             
 
@@ -149,20 +140,25 @@ class RSL_Bot_DoomTower():
         self.doomtower_climb_status_normal = False
         self.highest_stage_available = {'normal': 1, 'hard': 1}
 
-    def reset(self):
+    # ------------------------- Reset -------------------------
+    def reset_run_state(self):
         self.battle_status = 'Starting'
 
+    # ------------------------- Stage Field -------------------------
+    def scan_visible_stages(self):
+        text_objects = image_tools.get_text_in_relative_area(
+            self.reader, self.window, search_area=self.search_areas['pov']
+        )
 
-    def get_current_stagefield(self):
-        text_objects = image_tools.get_text_in_relative_area(self.reader, self.window, search_area=self.search_areas['pov'])
         list_of_stages = []
         for s in text_objects:
-            match = re.search(r'^P(\d+)$', s.text.strip())  # stricter: must start with P and digits only
+            match = re.search(r'^P(\d+)$', s.text.strip())
             if match:
-                s.text = match.group(1)  # replace with just the digits
+                s.text = match.group(1)
                 list_of_stages.append(s)
         return list_of_stages
 
+    # ------------------------- Utilities -------------------------
     def _get_highest_key_for_value(self, inner_dict, target_value):
         matching_keys = [
             int(k) for k, v in inner_dict.items()
@@ -172,40 +168,41 @@ class RSL_Bot_DoomTower():
             print('Error getting Farming Stage value')
             return None
         return max(matching_keys)
-    
-    def is_within_radius(self, obj1, obj2, radius):
+
+    def objects_within_radius(self, obj1, obj2, radius):
         return math.hypot(
             obj1.mean_pos_x - obj2.mean_pos_x,
             obj1.mean_pos_y - obj2.mean_pos_y
         ) <= radius
 
-    def check_doomtower_keys(self):
-        """Check if demon lord keys are available."""
+    # ------------------------- Keys -------------------------
+    def update_available_keys(self):
+        """Check Doom Tower keys."""
         try:
-            doom_tower_keys = image_tools.get_text_in_relative_area(self.reader, self.window, search_area=self.search_areas['doom_tower_keys'])
-            # Gold Keys
-            num_of_gold_keys = re.findall(r"\d+", doom_tower_keys[0].text)[0]
-            self.num_of_gold_keys = int(num_of_gold_keys)
+            doom_tower_keys = image_tools.get_text_in_relative_area(
+                self.reader, self.window,
+                search_area=self.search_areas['doom_tower_keys']
+            )
+
+            self.num_of_gold_keys = int(re.findall(r"\d+", doom_tower_keys[0].text)[0])
+            self.num_of_silver_keys = int(re.findall(r"\d+", doom_tower_keys[1].text)[0])
+
             print(doom_tower_keys[0].text)
-            # Silver Keys
-            num_of_silver_keys = re.findall(r"\d+", doom_tower_keys[1].text)[0]
-            self.num_of_silver_keys = int(num_of_silver_keys)
             print(doom_tower_keys[1].text)
 
         except:
             self.num_of_gold_keys = 0
             self.num_of_silver_keys = 0
-        
 
-    def check_list_of_builds(self, max_attempts = 3):
-        """Validate or refresh the list of demon lord names."""
-        window_tools.move_down(self.window, strength = 0.5, relative_x_pos= 0.25)
+    # ------------------------- Builds -------------------------
+    def check_list_of_builds(self, max_attempts=3):
+        window_tools.move_down(self.window, strength=0.5, relative_x=0.25)
 
+    # ------------------------- Stage Reconstruction -------------------------
     def _reconstruct_stage_numbers(self, stages_numbers):
         if not stages_numbers:
             return stages_numbers
 
-        # Extract current numbers (None for invalid text)
         original_nums = []
         for s in stages_numbers:
             try:
@@ -213,198 +210,292 @@ class RSL_Bot_DoomTower():
             except ValueError:
                 original_nums.append(None)
 
-        n = len(stages_numbers)
-
-        # Determine candidate starting numbers from the largest valid number
         max_original = max(num for num in original_nums if num is not None)
 
         best_sequence = None
         best_score = -1
 
-        # Try candidate starts in a reasonable range
         for start in range(max_original, max_original - 21, -1):
             seq = []
             current = start
-            for _ in range(n):
-                while current % 10 == 0:
+            for _ in range(len(stages_numbers)):
+                while self.main_loop_running and (current % 10 == 0):
                     current -= 1
                 seq.append(current)
                 current -= 1
 
-            # Score sequence: how many numbers match the original
-            score = sum(1 for s_num, o_num in zip(seq, original_nums) if o_num is not None and s_num == o_num)
+            score = sum(
+                1 for s_num, o_num in zip(seq, original_nums)
+                if o_num is not None and s_num == o_num
+            )
 
             if score > best_score:
                 best_score = score
                 best_sequence = seq
 
-        # Update .text in-place
         for obj, num in zip(stages_numbers, best_sequence):
             obj.text = str(num)
 
         return stages_numbers
 
+    # ------------------------- Difficulty -------------------------
+    def set_difficulty(self, set_level=None):
+        difficulty = image_tools.get_text_in_relative_area(
+            self.reader, self.window,
+            search_area=self.search_areas['doom_tower_difficulty_current']
+        )[0]
 
-    def set_difficulty(self, set_level = None):
-        """Set the next demon lord difficulty."""
-        difficulty = image_tools.get_text_in_relative_area(self.reader, self.window, search_area=self.search_areas['doom_tower_difficulty_current'])[0]
-        if difficulty.text in self.translation_mapping.keys():
+        if difficulty.text in self.translation_mapping:
             self.current_difficulty = self.translation_mapping[difficulty.text]
-        
-        if set_level is not None and self.current_difficulty != set_level:
-            string = 'doom_tower_difficulty_switch_' + set_level
+
+        if set_level and self.current_difficulty != set_level:
+            switch_key = f'doom_tower_difficulty_switch_{set_level}'
             window_tools.click_center(self.window, self.search_areas['doom_tower_difficulty_current'])
-            window_tools.click_center(self.window, self.search_areas[string], delay = 5)
+            window_tools.click_center(self.window, self.search_areas[switch_key], delay=5)
             self.current_difficulty = set_level
 
-    def check_battle_outcome(self):
+    # ------------------------- Battle Outcome -------------------------
+    def update_battle_status(self):
         try:
-            battle_result = image_tools.get_text_in_relative_area(self.reader, self.window,search_area=self.search_areas["doom_tower_automatic_climb"])[0]
-            if 'Batallas completadas' in battle_result.text:
+            result = image_tools.get_text_in_relative_area(
+                self.reader, self.window,
+                search_area=self.search_areas["doom_tower_automatic_climb"]
+            )[0]
+            if 'Batallas completadas' in result.text:
                 self.battle_status = 'autoclimb'
-
         except:
             pass
 
-        try:
-            battle_result = image_tools.get_text_in_relative_area(self.reader, self.window,search_area=self.search_areas["doom_tower_battle_result_automatic_climb"])[0]
-            if battle_result.text == "Autoescalada completada":
-                self.battle_status = 'autoclimb_Done'
-                window_tools.click_center(self.window, self.search_areas["doom_tower_close_encounter"], delay=5)
-        except:
-            pass
-        
-        try:
-            battle_result = image_tools.get_text_in_relative_area(self.reader, self.window,search_area=self.search_areas["doom_tower_battle_result_automatic_climb_2"])[0]
-            if battle_result.text == "Autoescalada completada":
-                self.battle_status = 'autoclimb_Done'
-                window_tools.click_center(self.window, self.search_areas["doom_tower_close_encounter"], delay=5)
-        except:
-            pass
+        for key in [
+            "doom_tower_battle_result_automatic_climb",
+            "doom_tower_battle_result_automatic_climb_2"
+        ]:
+            try:
+                result = image_tools.get_text_in_relative_area(
+                    self.reader, self.window,
+                    search_area=self.search_areas[key]
+                )[0]
+                if self.resembles(result.text, "Autoescalada completada"):
+                    self.battle_status = 'autoclimb_Done'
+                    window_tools.click_center(
+                        self.window,
+                        self.search_areas["doom_tower_close_encounter"],
+                        delay=5
+                    )
+            except:
+                pass
 
-
         try:
-            battle_status = image_tools.get_text_in_relative_area(self.reader, self.window,search_area=self.search_areas["doom_tower_auto_battle_button"])
-            if len(battle_status) >0:
-                battle_status.text == 'Auto'
+            auto_button = image_tools.get_text_in_relative_area(
+                self.reader, self.window,
+                search_area=self.search_areas["doom_tower_auto_battle_button"]
+            )
+            if auto_button:
                 return
 
-            battle_result = image_tools.get_text_in_relative_area(self.reader, self.window,search_area=self.search_areas["doom_tower_battle_result"])[0]
-            if (battle_result.text == "VICTORIA" or battle_result.text == "DERROTA") and self.battle_status != 'autoclimb':
+            battle_result = image_tools.get_text_in_relative_area(
+                self.reader, self.window,
+                search_area=self.search_areas["doom_tower_battle_result"]
+            )[0]
+
+            if battle_result.text in ("VICTORIA", "DERROTA") and self.battle_status != 'autoclimb':
                 self.battle_status = 'Done'
-                self.battles_done +=1
-                if battle_result.text =="VICTORIA":
-                    self.battles_won +=1
+                self.battles_done += 1
+                if self.resembles(battle_result.text , "VICTORIA"):
+                    self.battles_won += 1
                 else:
                     self.no_run_failed = False
         except:
             pass
 
-    def setup_encounter(self):
-        doom_tower_menu_name = image_tools.get_text_in_relative_area(self.reader, self.window,search_area=self.search_areas["doom_tower_menu_name"])[0]
+    # ------------------------- Encounter Setup -------------------------
+    def prepare_encounter(self):
+        doom_tower_menu_name = image_tools.get_text_in_relative_area(
+            self.reader, self.window,
+            search_area=self.search_areas["doom_tower_menu_name"]
+        )[0]
+
         number = re.findall(r'\d+', doom_tower_menu_name.text)[0]
 
-        if 'Jefe Final' in doom_tower_menu_name.text or int(number)%10 == 0:
-            if 'Jefe Final' in doom_tower_menu_name.text:
-                stage = '120'
-            else:
-                stage = number
+        if 'Jefe Final' in doom_tower_menu_name.text or int(number) % 10 == 0:
+            stage = '120' if 'Jefe Final' in doom_tower_menu_name.text else number
             current_opponent = self.doomtower_rotations[self.current_rotation][stage]
             print(current_opponent)
         else:
-            stage = number
             current_opponent = 'Waves'
-        self.select_build(current_opponent)
 
+        self.select_encounter_build(current_opponent)
 
-    def select_build(self, setup):
+    # ------------------------- Build Selection -------------------------
+    def select_encounter_build(self, setup):
         self.current_setup = False
+
         window_tools.click_center(self.window, self.search_areas["doom_tower_setup_section_groups"])
-        window_tools.move_up(self.window, strength = 3, relative_x_pos= 0.15)
-        for i in range(3):
-            doom_tower_setup_names = image_tools.get_text_in_relative_area(self.reader, self.window,search_area=self.search_areas["doom_tower_setup_names"])
-            for name in doom_tower_setup_names:
-                if name.text == setup:
+        window_tools.move_up(self.window, strength=3, relative_x=0.15)
+
+        for _ in range(3):
+            if not self.main_loop_running:
+                break            
+            setups = image_tools.get_text_in_relative_area(
+                self.reader, self.window,
+                search_area=self.search_areas["doom_tower_setup_names"]
+            )
+
+            for name in setups:
+                if self.resembles(name.text, setup):
                     self.current_setup = name
                     break
-            if self.current_setup != False:
+
+            if self.current_setup:
                 break
-            window_tools.move_down(self.window, strength = 0.5, relative_x_pos= 0.15)
-        if self.current_setup != False:
-            object =  image_tools.get_simliarities_in_relative_area(self.window, self.search_areas["doom_tower_setup_check"], 'pic\doom_tower_completed_stage.png')
-        if len(object) > 0:
-            window_tools.click_center(self.window, self.search_areas["doom_tower_start_encounter"])
-        else:
-            window_tools.click_at(self.current_setup.mean_pos_x - 268.0, self.current_setup.mean_pos_y + 70)
-            window_tools.click_center(self.window, self.search_areas["doom_tower_start_encounter"])
+
+            window_tools.move_down(self.window, strength=0.5, relative_x=0.15)
+
+        if self.current_setup:
+            completed = image_tools.get_similarities_in_relative_area(
+                self.window,
+                self.search_areas["doom_tower_setup_check"],
+                'pic\\doom_tower_completed_stage.png'
+            )
+
+            if completed:
+                window_tools.click_center(self.window, self.search_areas["doom_tower_start_encounter"])
+            else:
+                window_tools.click_at(
+                    self.current_setup.mean_pos_x - 268.0,
+                    self.current_setup.mean_pos_y + 70
+                )
+                window_tools.click_center(self.window, self.search_areas["doom_tower_start_encounter"])
+
+    # ------------------------- Run Encounter -------------------------
+    def farm_encounter(self):
+        self.prepare_encounter()
+        self.battle_status = 'Starting'
+        window_tools.click_center(self.window, self.search_areas["doom_tower_farm_encounter"])
+        doomtower_multibattles_setup_1 = image_tools.get_similarities_in_relative_area(
+                self.window,
+                self.search_areas["doomtower_multibattles_setup_1"],
+                'pic\\doom_tower_multibattles_setup.png'
+            )
+        doomtower_multibattles_setup_2 = image_tools.get_similarities_in_relative_area(
+                self.window,
+                self.search_areas["doomtower_multibattles_setup_2"],
+                'pic\\doom_tower_multibattles_setup.png'
+            )
+        if not doomtower_multibattles_setup_1:
+            window_tools.click_center(self.window, self.search_areas["doomtower_multibattles_setup_1"])
+
+        if not doomtower_multibattles_setup_2:
+            window_tools.click_center(self.window, self.search_areas["doomtower_multibattles_setup_2"])
+
+        window_tools.click_center(self.window, self.search_areas["doom_tower_start_multibattles"], delay = 5)
+        self.battle_status = 'Running'
+        window_tools.click_at(self.stage_found.mean_pos_x, self.stage_found.mean_pos_y)
+
+        while self.battle_status == "Running":
+            farming_status = image_tools.get_text_in_relative_area(
+                self.reader, self.window,
+                search_area=self.search_areas["doom_tower_farming_status"]
+            )
+
+            time.sleep(2)
+            if getattr(farming_status[0],'text', False):
+                if self.resembles(farming_status[0].text, "Resultados"):
+                    self.battle_status = 'Finished'
+                    window_tools.click_center(self.window, self.search_areas["doom_tower_farming_status"])
+                    window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
 
 
-    def run_encounter(self, farming = False, max_attempts = 50):
-        self.setup_encounter()
-        run = True
-        self.battle_status == 'Starting'
+
+
+
+    def execute_encounter(self, farming=False, max_attempts=40):
+        self.prepare_encounter()
+        self.battle_status = 'Starting'
+        check_correct_start = image_tools.get_text_in_relative_area(
+                self.reader, self.window,
+                search_area=self.search_areas["doom_tower_menu_name"]
+            )
+            
         window_tools.click_center(self.window, self.search_areas["doom_tower_start_encounter"])
         time.sleep(10)
-        attempt = 0
-        while run:
+        check_correct_execution = image_tools.get_text_in_relative_area(
+                self.reader, self.window,
+                search_area=self.search_areas["doom_tower_menu_name"]
+            )
+        
+        if getattr(check_correct_start,'text', False) and getattr(check_correct_execution,'text', False):
+            if self.resembles(check_correct_execution.text, check_correct_start.text):
+                window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
 
-            self.check_battle_outcome()
+
+        attempt = 0
+        while self.main_loop_running and (True):
+            self.update_battle_status()
             time.sleep(2)
+
             if self.battle_status == 'Done' and not farming:
                 break
-            if self.battle_status == 'Done' and farming:
-                attempt +=1
 
-                window_tools.click_center(self.window, self.search_areas["doom_tower_restart_encounter"])
-                time.sleep(10)
-                self.battle_status == 'Starting'
-                
-                try:
-                    battle_result = image_tools.get_text_in_relative_area(self.reader, self.window,search_area=self.search_areas["doom_tower_battle_result"])[0]
-                    if (battle_result.text == "VICTORIA" or battle_result.text == "DERROTA"):
-                        self.battle_status = 'Done'
-                except:
-                    pass
+            # if self.battle_status == 'Done' and farming:
+            #     attempt += 1
+            #     if attempt >= max_attempts:
+            #         break
 
-                if self.battle_status == 'Done' and not farming:
-                    break
-                if max_attempts<attempts:
-                    break
+            #     window_tools.click_center(
+            #         self.window,
+            #         self.search_areas["doom_tower_restart_encounter"]
+            #     )
+            #     time.sleep(10)
+            #     self.battle_status = 'Starting'
+
+            #     try:
+            #         battle_result = image_tools.get_text_in_relative_area(
+            #             self.reader, self.window,
+            #             search_area=self.search_areas["doom_tower_battle_result"]
+            #         )[0]
+            #         if battle_result.text in ("VICTORIA", "DERROTA"):
+            #             self.battle_status = 'Done'
+            #     except:
+            #         pass
 
         print('Battle_Done')
-        window_tools.click_center(self.window, self.search_areas["doom_tower_close_encounter"], delay=5)
+        window_tools.click_center(
+            self.window,
+            self.search_areas["doom_tower_close_encounter"],
+            delay=5
+        )
 
+    # ------------------------- Boss Stage Check -------------------------
     def _check_boss_stage(self):
-        if self.highest_stage_available== 119:
-            x_pos = int( self.window.left + self.window.width/2 ) 
-            y_pos = int( self.highest_stage.mean_pos_y - self.window.height * 0.2 )
-            window_tools.click_at(x_pos, y_pos)
+        if self.highest_stage_available == 119:
+            x_pos = int(self.window.left + self.window.width / 2)
+            y_pos = int(self.highest_stage.mean_pos_y - self.window.height * 0.2)
         else:
-            x_pos = int( self.window.left + self.window.width * 0.98 ) 
-            y_pos = int( self.highest_stage.mean_pos_y - self.window.height * 0.1 )
-            window_tools.click_at(x_pos, y_pos)
+            x_pos = int(self.window.left + self.window.width * 0.98)
+            y_pos = int(self.highest_stage.mean_pos_y - self.window.height * 0.1)
 
-        stage_completed = image_tools.get_simliarities_in_relative_area(
+        window_tools.click_at(x_pos, y_pos)
+
+        stage_completed = image_tools.get_similarities_in_relative_area(
             self.window,
             self.search_areas["doom_tower_check_boss_stage_complete"],
             'pic\\doom_tower_locked_stage.png'
         )
+
         window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
-        if len(stage_completed)==1:
-            return False
-        else:
-            return True
-        
+        return not len(stage_completed) == 1
 
-
-    def get_highest_stage_available(self, max_attempts = 10):
-        # 1. Detect completed stages (icons)
+    # ------------------------- Highest Stage Detection -------------------------
+    def detect_highest_unlocked_stage(self, max_attempts=10):
         self.highest_stage_available = 1
         end_reached = False
         attempts = 0
-        while self.highest_stage_available != 120 and attempts != max_attempts and end_reached == False:
-            attempts += 0
-            stages_completed = image_tools.get_simliarities_in_relative_area(
+
+        while self.main_loop_running and (self.highest_stage_available != 120 and attempts != max_attempts and not end_reached):
+            attempts += 1
+
+            stages_completed = image_tools.get_similarities_in_relative_area(
                 self.window,
                 self.search_areas["pov"],
                 'pic\\doom_tower_completed_stage.png'
@@ -414,52 +505,46 @@ class RSL_Bot_DoomTower():
                 self.highest_stage_available = None
                 return None
 
-            # 2. Highest stage is visually highest (smallest Y)
             stages_completed.sort(key=lambda o: o.mean_pos_y)
 
-            # 3. Detect stage number text objects
-            stages_numbers = self.get_current_stagefield()
+            stages_numbers = self.scan_visible_stages()
             self._reconstruct_stage_numbers(stages_numbers)
 
-            radius = 100
-            backtrack_count = 0
-
-            # 4. Walk from highest completed stage downward
-            stage_match = False
-            for completed_stage in stages_completed:
-                for stage_number in stages_numbers:
-                    if stage_number.text is None:
-                        continue
-
-                    if self.is_within_radius(completed_stage, stage_number, radius):
-                        base_stage = int(stage_number.text)
-                        self.highest_stage_available = base_stage + backtrack_count
-                        self.highest_stage = completed_stage
-                        stage_match = True
+            backtrack = 0
+            for completed in stages_completed:
+                for number in stages_numbers:
+                    if number.text and self.objects_within_radius(completed, number, 100):
+                        self.highest_stage_available = int(number.text) + backtrack
+                        self.highest_stage = completed
                         break
-                if stage_match:
-                    break
-                # No number found → move down one completed stage
-                backtrack_count += 1
+                else:
+                    backtrack += 1
+                    continue
+                break
 
-            if (self.highest_stage.mean_pos_y - self.window.top)/self.window.height <0.3:
-                end_reached = False
-                window_tools.move_up(self.window, strength = 1, relative_x_pos= 0.1)
+            rel_y = (self.highest_stage.mean_pos_y - self.window.top) / self.window.height
+            if rel_y < 0.3:
+                window_tools.move_up(self.window, strength=1, relative_x=0.1)
                 continue
-            if (self.highest_stage.mean_pos_y - self.window.top)/self.window.height >=0.3:
+            else:
                 end_reached = True
 
-            if self.highest_stage_available%10 == 9:
-                stage_done = self._check_boss_stage()
-                if stage_done :
-                    increment = 2
-                else:
-                    increment = 1
-                self.highest_stage_available += increment 
-            self.highest_stage_available = max(1, min(120, self.highest_stage_available))
-            
+            if self.highest_stage_available % 10 == 9:
+                increment = 2 if self._check_boss_stage() else 1
+                self.highest_stage_available += increment
 
-    def check_for_boss_and_current_stage(self, target = None):
+            self.highest_stage_available = max(1, min(120, self.highest_stage_available))
+
+    # ------------------------- Stage Scan -------------------------
+
+
+    def resembles(self, text, target, threshold=0.8):
+        ratio = difflib.SequenceMatcher(None, text.lower(), target.lower()).ratio()
+        return ratio >= threshold
+
+
+    def scan_for_boss_or_current_stage(self, target=None, farming=False):
+
         FIRST_PATH = 'pic\\doom_tower_current_stage.png'
         list_of_paths = [FIRST_PATH]
         expected_menu_names = {FIRST_PATH: 'Planta'}
@@ -467,169 +552,178 @@ class RSL_Bot_DoomTower():
         self.stage_found = False
         self.doomtower_climb_status = False
 
-        if target:
-            list_of_paths = []
-            expected_menu_names = {}    
-            for value in self.doomtower_rotations[self.current_rotation].values():
-                if value in self.translation_mapping and value == target:
-                    path = f"pic\\doom_tower_{self.translation_mapping[value]}.png"
-                    if path not in list_of_paths:      # prevents duplicates
-                        list_of_paths.append(path)
-                        expected_menu_names[path] = value
-
-        else:
+        def add_boss_paths():
             for value in self.doomtower_rotations[self.current_rotation].values():
                 if value in self.translation_mapping:
                     path = f"pic\\doom_tower_{self.translation_mapping[value]}.png"
-                    if path not in list_of_paths:      # prevents duplicates
+                    if path not in list_of_paths:
                         list_of_paths.append(path)
                         expected_menu_names[path] = value
 
-        for path in list_of_paths:
-            set_threshold_comparison = 0.8
-            possible_stages = []
-            threshold_min = 0.25
+        if target:
+            add_boss_paths()
+            list_of_paths = [
+                p for p in list_of_paths
+                if expected_menu_names.get(p) == target
+            ]
+            print(list_of_paths)
+        else:
+            add_boss_paths()
 
-            while len(possible_stages) <1 and set_threshold_comparison>threshold_min:
-                possible_stages = image_tools.get_simliarities_in_relative_area(
+        for path in list_of_paths:
+            threshold = 0.8
+            possible = []
+            if not self.main_loop_running:
+                break
+
+            while self.main_loop_running and (not possible and threshold > 0.25):
+                possible = image_tools.get_similarities_in_relative_area(
                     self.window,
                     self.search_areas["pov"],
                     path,
-                    threshold = set_threshold_comparison,
-                    scales =  [0.7, 0.8, 0.9, 1.0]
+                    threshold=threshold,
+                    scales=[0.7, 0.8, 0.9, 1.0]
                 )
-                set_threshold_comparison -=0.03
+                threshold -= 0.03
 
+            for stage in possible:
+                window_tools.click_at(stage.mean_pos_x, stage.mean_pos_y, delay=4)
 
-            for i in range(len(possible_stages)):
-                window_tools.click_at(possible_stages[i].mean_pos_x, possible_stages[i].mean_pos_y, delay = 4)
-                
+                if not self.main_loop_running:
+                    break
+
                 try:
-                    doom_tower_menu_name = image_tools.get_text_in_relative_area(self.reader, self.window,search_area=self.search_areas["doom_tower_menu_name"])[0]
-                    excpected_menu_name = expected_menu_names[path]
-                    try:
-                        number = re.findall(r'\d+', doom_tower_menu_name.text)[0]
-                    except:
-                        number = '10'
+                    menu = image_tools.get_text_in_relative_area(
+                        self.reader, self.window,
+                        search_area=self.search_areas["doom_tower_menu_name"]
+                    )[0]
 
-                    if doom_tower_menu_name.text == 'Torre del Destino':
-                        continue 
+                    number = re.findall(r'\d+', menu.text)
+                    number = number[0] if number else '10'
 
-                    if excpected_menu_name == 'Planta' and excpected_menu_name in doom_tower_menu_name.text:
-                        self.stage_found = possible_stages[i]
-                        window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
+                    print(menu.text)
+                    if self.resembles(menu.text, 'Torre del Destino'):
+                        continue
+
+                    expected = expected_menu_names[path]
+
+                    if expected == 'Planta' and expected in menu.text:
+                        self.stage_found = stage
                         self.highest_stage_available[self.current_difficulty] = number
-                        break
+                        window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
+                        return
 
-                    if excpected_menu_name not in self.doomtower_rotations[self.current_rotation][str(number)] and 'Jefe Final' not in doom_tower_menu_name.text:
+                    if expected not in self.doomtower_rotations[self.current_rotation][str(number)] \
+                       and 'Jefe Final' not in menu.text:
                         window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
                         continue
-                    
 
-                    if 'Jefe Final' in doom_tower_menu_name.text or int(number)%10 == 0:
-                        stage_completed = image_tools.get_simliarities_in_relative_area(
-                        self.window,
-                        self.search_areas["doom_tower_check_boss_stage_complete"],
-                        'pic\\doom_tower_locked_boss.png'
+                    if 'Jefe Final' in menu.text or int(number) % 10 == 0:
+                        locked = image_tools.get_similarities_in_relative_area(
+                            self.window,
+                            self.search_areas["doom_tower_check_boss_stage_complete"],
+                            'pic\\doom_tower_locked_boss.png'
                         )
-                        if  not len(stage_completed)==1 and 'Jefe Final' in doom_tower_menu_name.text:
+
+                        if 'Jefe Final' in menu.text and not locked:
                             self.doomtower_climb_status = 'completed'
-                        if 'Jefe Final' in doom_tower_menu_name.text:
-                            self.highest_stage_available[self.current_difficulty] = 120
-                        else:
-                            self.highest_stage_available[self.current_difficulty] = number
-                        
-                        self.stage_found = possible_stages[i]
+
+                        self.highest_stage_available[self.current_difficulty] = (
+                            120 if 'Jefe Final' in menu.text else number
+                        )
+
+                        self.stage_found = stage
                         window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
-                        break
+                        return
                 except:
                     pass
+
+    # ------------------------- Simple Scan -------------------------
+    def locate_highest_stage_simple(self, target=None, farming=False):
+
+        window_tools.move_up(self.window, strength=15, relative_x=0.1)
+
+        for _ in range(25):
+            if not self.main_loop_running:
+                break
+            self.scan_for_boss_or_current_stage(target=target, farming=farming)
             if self.stage_found:
                 break
+            window_tools.move_down(self.window, strength=0.6, relative_x=0.1)
 
-
-
-    def simple_find_highest_stage(self, target = None):
-        stage_found = False
-        for i in range(7):
-            window_tools.move_up(self.window, strength = 3, relative_x_pos= 0.1)
-        for i in range(25):
-            self.check_for_boss_and_current_stage(target = target)
-            if self.stage_found:
-                break
-            window_tools.move_down(self.window, strength = 0.6, relative_x_pos= 0.1)
-        
-
-            
- 
-    def goto_stage(self):
-        pass
-
-
-
-    def climb_doomtower(self):
+    # ------------------------- Climb -------------------------
+    def progress_doom_tower(self):
         self.set_difficulty('hard')
-        if not self.doomtower_climb_status_hard == 'completed':
-            self.simple_find_highest_stage()
-        if self.doomtower_climb_status == 'completed' or self.doomtower_climb_status_hard == 'completed':
+
+        if self.doomtower_climb_status_hard != 'completed':
+            self.locate_highest_stage_simple()
+
+        if self.doomtower_climb_status in ('completed',) or \
+           self.doomtower_climb_status_hard == 'completed':
+
             self.doomtower_climb_status_hard = 'completed'
             self.set_difficulty('normal')
+
             if not self.doomtower_completed:
-                self.simple_find_highest_stage()
+                self.locate_highest_stage_simple()
+
             if self.doomtower_climb_status == 'completed':
                 self.doomtower_climb_status_normal = 'completed'
                 self.doomtower_completed = True
-        
+
         if not self.doomtower_completed and self.stage_found:
             window_tools.click_at(self.stage_found.mean_pos_x, self.stage_found.mean_pos_y)
-            self.run_encounter()
+            self.execute_encounter()
 
-
-    def farm_doomtower(self):
+    # ------------------------- Farming -------------------------
+    def farm_doom_tower_bosses(self):
         self.set_difficulty(self.setup['difficulty'])
-        for opponent in self.setup['priority_bosses']:
-            if opponent in self.doomtower_rotations[self.current_rotation].keys():
+
+        for i in range(len(self.setup["priority_bosses"])):
+            opponent = self.setup['priority_bosses'][i]
+            if not self.main_loop_running:
+                break
+            if opponent in self.doomtower_rotations[self.current_rotation].values():
                 self.farming_opponent = opponent
                 break
-        self.simple_find_highest_stage(target = opponent)
+
+        self.locate_highest_stage_simple(target=self.farming_opponent, farming=True)
 
         if self.stage_found:
             window_tools.click_at(self.stage_found.mean_pos_x, self.stage_found.mean_pos_y)
-            self.run_encounter(farming = True)
-        
+            self.farm_encounter()
 
-        
-
-
-
-    def run_doomtower(self):
-        """Run Demon Lord Encounter"""    
-        self.reset()  
-        self.check_doomtower_keys()
+    # ------------------------- Runner -------------------------
+    def run_doomtower(self, main_loop_running = True):
+        self.reset_run_state()
+        self.update_available_keys()
         self.no_run_failed = True
-        if self.num_of_gold_keys == 0 and self.num_of_silver_keys<2:
+        self.main_loop_running = main_loop_running
+
+        if self.num_of_gold_keys == 0 and self.num_of_silver_keys < 2:
             return
-        while self.no_run_failed or ((self.doomtower_completed or self.num_of_gold_keys==0) and self.num_of_silver_keys<2):
-            self.stage_found = False
-            if self.num_of_gold_keys>0 and self.doomtower_completed == False:
-                self.climb_doomtower()
-            if self.num_of_silver_keys>1:
-                self.farm_doomtower()
-            if not self.stage_found:
-                break
 
-
-        
-            
+        if self.setup['only_farming']:
+            while self.main_loop_running and self.no_run_failed and self.num_of_silver_keys > 1:
+                self.farm_doom_tower_bosses()
+                if not self.stage_found:
+                    break
+                self.update_available_keys()
                 
-            
+        else:
+            while self.main_loop_running and (self.no_run_failed or (
+                (self.doomtower_completed or self.num_of_gold_keys == 0)
+                and self.num_of_silver_keys > 1
+            )):
+                self.stage_found = False
+                if self.num_of_gold_keys > 0 and not self.doomtower_completed:
+                    self.progress_doom_tower()
+                if self.num_of_silver_keys>1:
+                    self.farm_doom_tower_bosses()
 
+                if not self.stage_found:
+                    break
 
+    # ------------------------- Test -------------------------
     def test(self):
-        # self.check_for_boss_and_current_stage()
-        # if not self.doomtower_completed:
-        #     window_tools.click_at(self.stage_found.mean_pos_x, self.stage_found.mean_pos_y)
-        #     self.run_encounter()
-
         self.run_doomtower()
-

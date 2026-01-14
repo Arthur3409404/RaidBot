@@ -4,6 +4,7 @@ Created on Thu Jun 19 20:04:52 2025
 
 @author: Arthur
 """
+import difflib
 import pygetwindow as gw
 import pyautogui
 import matplotlib.pyplot as plt
@@ -138,6 +139,15 @@ class RSL_Bot_Mainframe():
             
             "Grim_Forest":     [0.55, 0.225, 0.429, 0.762],
 
+
+
+            "internet_connectivity_error_name":      [0.408, 0.335, 0.179, 0.036],
+            "internet_connectivity_error_retry_connection":      [0.506, 0.53, 0.211, 0.084],
+
+            "advert2":      [0.277, 0.622, 0.215, 0.083], 
+
+            "remote_override_error_name":      [0.428, 0.36, 0.121, 0.049],
+            "remote_override_error_retry_connection":      [0.279, 0.539, 0.215, 0.087],
         }
 
              
@@ -165,19 +175,6 @@ class RSL_Bot_Mainframe():
         
         
         # initialize handlers
-        # param_file_classic_arena = os.path.join("data", "params_classicarena.txt")
-        
-        # params_classic_arena = file_tools.read_params(param_file_classic_arena)
-        
-        # param_file_tagteam_arena = os.path.join("data", "params_tagteamarena.txt")
-        # params_tagteam_arena = file_tools.read_params(param_file_tagteam_arena)
-        
-        # param_file_live_arena = os.path.join("data", "params_livearena.txt")
-        # params_live_arena = file_tools.read_params(param_file_live_arena)
-        
-        # param_file_classic_arena = os.path.join("data", "params_classicarena.txt")
-        
-        # params_classic_arena = file_tools.read_params(param_file_classic_arena)
         params_classic_arena = self.params['classic_arena']
         params_tagteam_arena = self.params['tagteam_arena']
         params_live_arena = self.params['live_arena']
@@ -194,382 +191,382 @@ class RSL_Bot_Mainframe():
         self.demonlord_bot = demonlord_tools.RSL_Bot_DemonLord(reader = self.reader, window = self.window, **params_demonlord)
         self.doomtower_bot = doomtower_tools.RSL_Bot_DoomTower(reader = self.reader, window = self.window, **params_doomtower)
         
+        self.bots = [
+            self.classic_arena_bot,
+            self.tagteam_arena_bot,
+            self.live_arena_bot,
+            self.dungeon_bot,
+            self.factionwars_bot,
+            self.demonlord_bot,
+            self.doomtower_bot,
+        ]
+
 
         self.error_handler = error_handler.RSL_Bot_ErrorHandler(reader = self.reader, window = self.window)
-        
+        self.main_loop_running = False
+        self.main_loop_thread = None
+        self.main_loop_stopped = False
+
         self.handler_init_time = time.time()
+        self._start_error_checker()
+        self.remote_override_time_minutes = self.params['mainframe']['override_timer_minutes']
+        
         # ...to be continued
 
         
-     
+    # =========================
+    # Error Handling
+    # =========================
     def _start_error_checker(self):
-        """Start a background thread to call self.check_for_errors() every 15 seconds."""
+        """
+        Start a background thread to monitor errors continuously.
+        If a remote override is detected, it stops the main loop, waits,
+        clicks retry, navigates back to menu, and restarts the main loop.
+        """
+
         def run_loop():
-            while self.running:  # stops when self.running = False
+            while self.running:
                 try:
+                    # Run the error handler once
                     self.error_handler.run_once()
+
+                    # Check for remote override
+                    if getattr(self.error_handler, 'remote_override_detected', True):
+                        print("[ErrorHandler] Remote override detected. Handling...")
+
+                        # Stop main loops
+                        print("[ErrorHandler] Stopping current run_main_loop thread...")
+                        for bot in self.bots:
+                            bot.main_loop_running = True
+                        self.main_loop_running = False  # signal main loop to exit
+                        while not self.main_loop_stopped:
+                            time.sleep(1)
+                        print("[ErrorHandler] Stoppinged main_loop successfully")
+
+                        time.sleep((self.remote_override_time_minutes+0.7)*60)
+                        print("[ErrorHandler] Restarted Errorhandler")
+
+                        # Start main loops
+                        for bot in self.bots:
+                            bot.main_loop_running = False
+                        self.main_loop_running = True
+                        self.main_loop_stopped = False
+                        self.error_handler.remote_override_detected = False
+
+
                 except Exception as e:
-                    print(f"Error in check_for_errors: {e}")
-                
-                if not self.running:
-                    break
+                    print(f"[ErrorHandler] Exception in error checker: {e}")
+
+                # Check every second
                 time.sleep(1)
 
-        thread = threading.Thread(target=run_loop, daemon=True)
-        thread.start()
+        # Start the error checker in a background daemon thread
+        threading.Thread(target=run_loop, daemon=True).start()
+    # =========================
+    # Params Grouping
+    # =========================
+
+    def resembles(self, text, target, threshold=0.8):
+        ratio = difflib.SequenceMatcher(None, text.lower(), target.lower()).ratio()
+        return ratio >= threshold
 
     def group_params(self, params: dict, min_shared_keys: int = 3):
-        """
-        Groups params by common prefixes.
-        Everything not belonging to a detected group goes into 'mainframe'.
-        """
-    
-        # Step 1: find all possible prefixes
         prefix_counts = defaultdict(int)
-    
-        for key in params.keys():
+
+        for key in params:
             parts = key.split("_")
             for i in range(1, len(parts)):
-                prefix = "_".join(parts[:i]) + "_"
-                prefix_counts[prefix] += 1
-    
-        # Step 2: keep only prefixes with enough shared keys
-        valid_prefixes = {
-            p for p, count in prefix_counts.items()
-            if count >= min_shared_keys
-        }
-    
-        # Step 3: prefer the longest matching prefix (avoid overlaps)
-        valid_prefixes = sorted(valid_prefixes, key=len, reverse=True)
-    
+                prefix_counts["_".join(parts[:i]) + "_"] += 1
+
+        valid_prefixes = sorted(
+            (p for p, c in prefix_counts.items() if c >= min_shared_keys),
+            key=len,
+            reverse=True
+        )
+
         grouped = {"mainframe": {}}
-    
+
         for key, value in params.items():
-            matched = False
-    
             for prefix in valid_prefixes:
                 if key.startswith(prefix):
-                    group_name = prefix.rstrip("_")
-                    stripped_key = key[len(prefix):]
-    
-                    grouped.setdefault(group_name, {})
-                    grouped[group_name][stripped_key] = value
-                    matched = True
+                    grouped.setdefault(prefix.rstrip("_"), {})[key[len(prefix):]] = value
                     break
-    
-            if not matched:
+            else:
                 grouped["mainframe"][key] = value
-    
+
         return grouped
-        
-    def manouver_bastion(self, button_area, confirm_area, confirm_string, max_attempts=10):
-        attempts = 0
-        manouver_success = False
-    
-        while attempts < max_attempts:
-            attempts += 1
+
+    # =========================
+    # Navigation Helpers
+    # =========================
+    def navigate_bastion_menu(self, button_area, confirm_area, confirm_string, max_attempts=10):
+        for attempt in range(max_attempts):
+            if not self.main_loop_running:
+                break
             try:
-                # Press ESC to clear any open menus (default delay = 2s)
-                if attempts%2==0:
+                if attempt % 2 == 0:
                     window_tools.sendkey("esc")
-    
-                # Try to close advert popup if present
+
                 try:
                     advert = image_tools.get_text_in_relative_area(
-                        self.reader,
-                        self.window,
+                        self.reader, self.window,
                         self.search_areas["advert"],
-                        powerdetection=False
+                        power_detection=False
                     )[0]
-                    if advert and advert.text == "Cancelar":
-                        window_tools.click_center(
-                            self.window,
-                            self.search_areas["advert"]
-                        )
+                    if self.resembles(advert.text, "Cancelar"):
+                        window_tools.click_center(self.window, self.search_areas["advert"])
                 except Exception:
-                    pass  # Advert not present or unreadable
-    
-                # Click the bastion manoeuvre button
+                    pass
+
+                try:
+                    advert2 = image_tools.get_text_in_relative_area(
+                        self.reader, self.window,
+                        self.search_areas["advert2"],
+                        power_detection=False
+                    )[0]
+                    if self.resembles(advert2.text, "Cerrar"):
+                        window_tools.click_center(self.window, self.search_areas["advert2"])
+                except Exception:
+                    pass
+
                 window_tools.click_center(self.window, button_area)
-    
-                # Confirm manoeuvre menu opened correctly
-                quest_menu_name = image_tools.get_text_in_relative_area(
-                    self.reader,
-                    self.window,
+
+                menu_name = image_tools.get_text_in_relative_area(
+                    self.reader, self.window,
                     confirm_area,
-                    powerdetection=False
+                    power_detection=False
                 )[0]
-    
-                if quest_menu_name.text == confirm_string:
-                    manouver_success = True
-                    break
-    
+
+                if self.resembles(menu_name.text ,confirm_string):
+                    return True
             except Exception:
-                pass  # Any unexpected failure → retry
-    
-        return manouver_success
-     
-    def check_quest_rewards(self, delay = 2):
-        time.sleep(delay)
-        self.go_to_bastion_from_menu()
-        attempts = 0
-        quest_menu_found = self.manouver_bastion(self.search_areas["quest_menu"], self.search_areas["quest_menu_name"], 'Misiones')
+                pass
 
-        if quest_menu_found:
-            window_tools.click_center(self.window, self.search_areas["daily_quest_menu"])
-            window_tools.click_center(self.window, self.search_areas["claim_quest_rewards"])
-            window_tools.click_center(self.window, self.search_areas["weekly_quest_menu"])
-            window_tools.click_center(self.window, self.search_areas["claim_quest_rewards"])
-            window_tools.click_center(self.window, self.search_areas["monthly_quest_menu"])
-            window_tools.click_center(self.window, self.search_areas["claim_quest_rewards"])
-            window_tools.click_center(self.window, self.search_areas["advanced_quest_menu"])
-            window_tools.click_center(self.window, self.search_areas["claim_quest_rewards"])
-            
-            window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
-            
-            # Time Gated Rewards
-            quest_menu_found = self.manouver_bastion(self.search_areas["time_gated_reward_menu"], self.search_areas["time_gated_reward_menu_name"], 'Reclamar todo')
-            window_tools.click_center(self.window, self.search_areas["time_gated_reward_menu_name"])
-            window_tools.click_center(self.window, self.search_areas["time_gated_reward_menu"])
+        return False
 
-            # Guardian Faction Ring
-            obj_found = False
-            for i in range(2):
-                objects = image_tools.get_text_in_relative_area(self.reader, self.window, self.search_areas['pov'], powerdetection=False)
-                for obj in objects:
-                    if obj.text == 'Ring de Guardianes':
-                        obj_found = True
-                        break
-                if obj_found:
-                    window_tools.click_at(obj.mean_pos_x, obj.mean_pos_y, delay = 2)
+    def navigate_to_menu(self, menu_name, max_attempts=5, detect_doomtower_rotation=False):
+        for _ in range(max_attempts):
+            if not self.main_loop_running:
+                break
+            try:
+                texts = image_tools.get_text_in_relative_area(
+                    self.reader, self.window,
+                    self.search_areas["menu_name"],
+                    power_detection=False
+                )
 
-                    # menu_name = image_tools.get_text_in_relative_area(self.reader, self.window, self.search_areas["guardian_faction_menu_name"], powerdetection=False)[0]
-                    # if menu_name == 'Ring de Guardianes'
-                    #     in_menu = True
-                    
-                    for i in range(5):
-                        string = "guardian_faction_character_" + str(i+1)
-                        window_tools.click_center(self.window, self.search_areas[string])
-                    window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
-
+                if texts and 'Modos de' in texts[0].text:
                     break
-                window_tools.move_left(self.window, strength = 1.2)
 
-            
+                window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
+            except Exception:
+                window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
 
+        for direction in ("left", "right"):
+            if not self.main_loop_running:
+                break
+            move = window_tools.move_left if direction == "left" else window_tools.move_right
+            move(self.window, strength=2)
+            time.sleep(2)
 
+            labels = image_tools.get_text_in_relative_area(
+                self.reader, self.window,
+                self.search_areas["main_menu_labels"],
+                power_detection=False
+            )
 
-            main_menu_found = self.manouver_bastion(self.search_areas["bastion_to_main_menu"], self.search_areas["menu_name"], 'Modos de juego')
-            if main_menu_found:
-                return
-            else:
-                print('Main Menu Manouver Failed')
-        else:
-            print('Missions Menu could not be found')
-            window_tools.click_center(self.window, self.search_areas["bastion_to_main_menu"])
-        
-        
-    def go_to_bastion_from_menu(self):
-        self.go_to_menu(self.main_menu_names['Dungeons'])
+            for label in labels:
+                if self.resembles(label.text, menu_name):
+                    if detect_doomtower_rotation:
+                        self.detect_doomtower_rotation()
+                    window_tools.click_at(label.mean_pos_x, label.mean_pos_y)
+                    return
+
+        print(f"[WARN] Menu '{menu_name}' not found")
+
+    def navigate_to_bastion(self):
+        self.navigate_to_menu(self.main_menu_names['Dungeons'])
         window_tools.click_center(self.window, self.search_areas["go_to_bastion"])
 
+    # =========================
+    # Doom Tower
+    # =========================
     def detect_doomtower_rotation(self):
-        self.current_rotation_name = image_tools.get_text_in_relative_area(self.reader, self.window, search_area=self.search_areas["detect_doomtower_rotation"])[0]
-        if 'Arana' in self.current_rotation_name.text:
+        rotation_text = image_tools.get_text_in_relative_area(
+            self.reader, self.window,
+            self.search_areas["detect_doomtower_rotation"]
+        )[0].text
+
+        if 'Arana' in rotation_text:
             self.doomtower_bot.current_rotation = '1'
-        if 'Dragon' in self.current_rotation_name.text:
+        elif 'Dragon' in rotation_text:
             self.doomtower_bot.current_rotation = '2'
-        if 'Hada' in self.current_rotation_name.text:
+        elif 'Hada' in rotation_text:
             self.doomtower_bot.current_rotation = '3'
-        
-        
-    def go_to_menu(self, menu_name, max_attempts=5, detect_doomtower_rotation = False):
-        attempts = 0
-    
-        while attempts < max_attempts:
-            try:
-                # Get current text objects in the menu area
-                objects = image_tools.get_text_in_relative_area(
-                    self.reader,
-                    self.window,
-                    self.search_areas["menu_name"],
-                    powerdetection=False
-                )
-    
-                if not objects:
-                    print("No text objects found. Clicking to higher menu...")
-                    window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
-                    attempts += 1
 
-                    continue
-    
-                first_text = objects[0].text.strip()
-    
-                if 'Modos de' in first_text:
-                    # Found the main menu
+    # =========================
+    # Quest Rewards
+    # =========================
+    def collect_quest_rewards(self, delay=2):
+        time.sleep(delay)
+        self.navigate_to_bastion()
+
+        if not self.navigate_bastion_menu(
+            self.search_areas["quest_menu"],
+            self.search_areas["quest_menu_name"],
+            'Misiones'
+        ):
+            print("[WARN] Missions menu not found")
+            window_tools.click_center(self.window, self.search_areas["bastion_to_main_menu"])
+            return
+
+        for menu in (
+            "daily_quest_menu",
+            "weekly_quest_menu",
+            "monthly_quest_menu",
+            "advanced_quest_menu"
+        ):
+            window_tools.click_center(self.window, self.search_areas[menu])
+            window_tools.click_center(self.window, self.search_areas["claim_quest_rewards"])
+
+        window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
+
+        self.navigate_bastion_menu(
+            self.search_areas["time_gated_reward_menu"],
+            self.search_areas["time_gated_reward_menu_name"],
+            'Reclamar todo'
+        )
+
+        window_tools.click_center(self.window, self.search_areas["time_gated_reward_menu"])
+
+        for _ in range(2):
+            objs = image_tools.get_text_in_relative_area(
+                self.reader, self.window,
+                self.search_areas['pov'],
+                power_detection=False
+            )
+            window_tools.move_right(self.window, strength=1.2)
+            window_tools.move_down(self.window, strength=1.2)
+            for obj in objs:
+                if self.resembles(obj.text, 'Ring de Guardianes'):
+                    window_tools.click_at(obj.mean_pos_x, obj.mean_pos_y, delay=2)
+                    for i in range(1, 6):
+                        window_tools.click_center(
+                            self.window,
+                            self.search_areas[f"guardian_faction_character_{i}"]
+                        )
+                    window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
                     break
-                else:
-                    print(f"Current text: '{first_text}'. Not main menu. Going up one level...")
-                    window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
-                    attempts += 1
-
-    
-            except Exception as e:
-                print(f"Exception occurred: {e}. Trying higher menu...")
-                window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
-                attempts += 1
-
-        window_tools.move_left(self.window, strength = 2)
-        time.sleep(2)
-        objects = image_tools.get_text_in_relative_area(self.reader, self.window, self.search_areas["main_menu_labels"], powerdetection=False)
-        obj_found = False
-        
-        for obj in objects:
-            #print(obj.text)
-            if obj.text == menu_name:
-                if detect_doomtower_rotation:
-                    self.detect_doomtower_rotation()
-                window_tools.click_at(obj.mean_pos_x, obj.mean_pos_y)
-                obj_found = True
-                return
-        window_tools.move_right(self.window, strength = 2)
-        time.sleep(2)
-        objects = image_tools.get_text_in_relative_area(self.reader, self.window, self.search_areas["main_menu_labels"], powerdetection=False)
-        for obj in objects:
-            #print(obj.text)
-            if obj.text == menu_name:
-                if detect_doomtower_rotation:
-                    self.detect_doomtower_rotation()
-                window_tools.click_at(obj.mean_pos_x, obj.mean_pos_y)
-                obj_found = True
-                return
-        window_tools.move_left(self.window, strength = 2)
-        
-        if obj_found == False:
-            print(f'Menu {menu_name} was not found')
             
-    def test_logic(self):
-        run = True
-        self._start_error_checker()
-        # Track first-time entry + timers
-        start_time_classic_arena = None
-        start_time_tagteam_arena = None
-        start_time_live_arena = None
-    
-        REFRESH_INTERVAL = 15.1 * 60  # 15.1 minutes in seconds
-    
-        while run:
 
-            # =========================
-            # 1. CLASSIC ARENA
-            # =========================
-            if self.params['run']['classic_arena']:
-                self.go_to_menu(self.main_menu_names['Arena'])
-                
+        self.navigate_bastion_menu(
+            self.search_areas["bastion_to_main_menu"],
+            self.search_areas["menu_name"],
+            'Modos de juego'
+        )
+
+    # =========================
+    # MAIN LOOP
+    # =========================
+    def run_main_loop(self):
+        print('Starting Main Loop...')
+        self.main_loop_stopped = False
+        timers = {
+            "classic": None,
+            "tagteam": None,
+            "live": None
+        }
+
+        REFRESH_INTERVAL = 15.1 * 60
+        self.main_loop_running = True
+        while self.main_loop_running:
+            print(self.main_loop_running)
+
+            if self.params['run']['classic_arena'] and self.main_loop_running:
+                self.navigate_to_menu(self.main_menu_names['Arena'])
                 window_tools.click_center(self.window, self.search_areas['classic_arena'])
-        
-                if start_time_classic_arena is None:
-                    start_time_classic_arena = time.time()
-                    # If handler was initialized earlier, refresh once
-                    if start_time_classic_arena - self.handler_init_time > REFRESH_INTERVAL:
-                        self.classic_arena_bot.refresh()
-        
-                elif time.time() - start_time_classic_arena > REFRESH_INTERVAL:
-                    start_time_classic_arena = time.time()
-                    self.classic_arena_bot.refresh()
-        
-                self.classic_arena_bot.run_classic_arena_once()
+                self._handle_refresh(self.classic_arena_bot, timers, "classic", REFRESH_INTERVAL)
+                self.classic_arena_bot.run_classic_arena_until_empty(main_loop_running = self.main_loop_running)
                 window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
-            
-            
-            # =========================
-            # 2. TAG TEAM ARENA
-            # =========================
-            if self.params['run']['tagteam_arena']:
-                self.go_to_menu(self.main_menu_names['Arena'])
+
+            if self.params['run']['tagteam_arena'] and self.main_loop_running:
+                self.navigate_to_menu(self.main_menu_names['Arena'])
                 window_tools.click_center(self.window, self.search_areas['tagteam_arena'])
-        
-                if start_time_tagteam_arena is None:
-                    start_time_tagteam_arena = time.time()
-                    if start_time_tagteam_arena - self.handler_init_time > REFRESH_INTERVAL:
-                        self.tagteam_arena_bot.refresh()
-
-        
-                elif time.time() - start_time_tagteam_arena > REFRESH_INTERVAL:
-                    start_time_tagteam_arena = time.time()
-                    self.tagteam_arena_bot.refresh()
-
-        
-                self.tagteam_arena_bot.run_tagteam_arena_once()
+                self._handle_refresh(self.tagteam_arena_bot, timers, "tagteam", REFRESH_INTERVAL)
+                self.tagteam_arena_bot.run_tagteam_arena_single_cycle(main_loop_running = self.main_loop_running)
                 window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
-            
-    
-            # =========================
-            # 3. LIVE ARENA
-            # =========================
-            if self.params['run']['live_arena']:
-                self.go_to_menu(self.main_menu_names['Arena'])
+
+            if self.params['run']['live_arena'] and self.main_loop_running:
+                self.navigate_to_menu(self.main_menu_names['Arena'])
                 window_tools.click_center(self.window, self.search_areas['live_arena'])
-        
-                if start_time_live_arena is None:
-                    start_time_live_arena = time.time()
-
-                self.live_arena_bot.run_live_arena()
-                window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
-            
-            
-            # =========================
-            # 4. Dungeons
-            # =========================   
-            if self.params['run']['dungeons'] and not self.params['run']['effective_unit_leveling']:  
-                self.go_to_menu(self.main_menu_names['Dungeons'])     
-                self.dungeon_bot.run_dungeons()
-                window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
-                
-            # =========================
-            # 5. Faction Wars
-            # =========================
-            if self.params['run']['factionwars']:
-                self.go_to_menu(self.main_menu_names['FactionWars'])     
-                self.factionwars_bot.run_factionwars()
-                window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
-        
-            
-            # =========================
-            # 6. DemonLord Clanboss
-            # =========================
-            if self.params['run']['demonlord']:
-                self.go_to_menu(self.main_menu_names['ClanBoss1'])    
-                window_tools.click_center(self.window, self.search_areas["clanboss_DemonLord"]) 
-                self.demonlord_bot.run_demonlord()
+                self.live_arena_bot.run_live_arena_loop(main_loop_running = self.main_loop_running)
                 window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
 
-            # =========================
-            # 7. DoomTower
-            # =========================
-            if self.params['run']['doomtower']:
-                self.go_to_menu(self.main_menu_names['DoomTower'], detect_doomtower_rotation = True)    
-                self.doomtower_bot.run_doomtower()
+            if self.params['run']['dungeons'] and not self.params['run']['effective_unit_leveling'] and self.main_loop_running:
+                self.navigate_to_menu(self.main_menu_names['Dungeons'])
+                self.dungeon_bot.run_dungeons(main_loop_running = self.main_loop_running)
                 window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
 
-            
+            if self.params['run']['factionwars'] and self.main_loop_running:
+                self.navigate_to_menu(self.main_menu_names['FactionWars'])
+                self.factionwars_bot.run_factionwars(main_loop_running = self.main_loop_running)
+                window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
 
-            # run_classic_arena = True
-            # run_tagteam_arena = True
-            # run_live_arena = True
-            # run_dungeons = True
-            # run_factionwars = True
-            # run_demonlord = True
-            # run_doomtower = True
-            # run_cursedcity = True
-            # run_grimforest = True
-            # run_effective_unit_leveling = False
+            if self.params['run']['demonlord'] and self.main_loop_running:
+                self.navigate_to_menu(self.main_menu_names['ClanBoss1'])
+                window_tools.click_center(self.window, self.search_areas["clanboss_DemonLord"])
+                self.demonlord_bot.run_demonlord(main_loop_running = self.main_loop_running)
+                window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
 
+            if self.params['run']['doomtower'] and self.main_loop_running:
+                self.navigate_to_menu(self.main_menu_names['DoomTower'], detect_doomtower_rotation=True)
+                self.doomtower_bot.run_doomtower(main_loop_running = self.main_loop_running)
+                window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
 
-            # =========================
-            # 99. QuestRewards
-            # =========================
-            self.check_quest_rewards()
+            if self.main_loop_running:
+                self.collect_quest_rewards()
+
+        self.main_loop_stopped = True
+    # =========================
+    # Refresh Helper
+    # =========================
+    def _handle_refresh(self, bot, timers, key, interval):
+        now = time.time()
+        if timers[key] is None:
+            timers[key] = now
+            if now - self.handler_init_time > interval:
+                bot.refresh_enemy_list()
+        elif now - timers[key] > interval:
+            timers[key] = now
+            bot.refresh_enemy_list()
+
+    def start_main_loop(self):
+        remote_overide_possible = True
+        while remote_overide_possible:
+            self.run_main_loop()
+            if self.main_loop_stopped:
+                # Wait before retrying
+                time.sleep(self.remote_override_time_minutes*60)
+
+                # Retry internet connectivity (thread-safe for GUI)
+                window_tools.click_center(
+                    self.window,
+                    self.search_areas["remote_override_error_retry_connection"],
+                    delay=60
+                )
+
+                # Navigate back to main menu (thread-safe)
+                self.main_loop_running = True
+                self.navigate_bastion_menu(
+                    self.search_areas["bastion_to_main_menu"],
+                    self.search_areas["menu_name"],
+                    'Modos de juego'
+                )
+
+                # Restart main loop in a new thread
+                print("[ErrorHandler] Restarting run_main_loop after override.")
+                self.start_main_loop() 
+
 
 
 
@@ -579,18 +576,22 @@ class RSL_Bot_Mainframe():
 # Run test if script is executed directly
 if __name__ == "__main__":
     print('ALWAYS RUN THE PROGRAM IN 1280 x 1024')
-    bot = RSL_Bot_Mainframe()
 
-    bot.test_logic()
-    gui_tools.BotGUI(bot).run()
+    gui = gui_tools.BotGUI()
+    gui.run()
 
-    # bot.factionwars_bot.run_encounter()
-    # bot.doomtower_bot.current_rotation = '1'
-    # bot.doomtower_bot.farm_doomtower()
-    #bot.test_logic()
 
+    #bot = RSL_Bot_Mainframe()
+    # bot.dungeon_bot.check_iron_twins_keys_and_energy()
+    #  bot.tagteam_arena_bot.run_tagteam_arena_single_cycle()
+
+    # bot.doomtower_bot.current_rotation = '2'
+    # bot.doomtower_bot.run_doomtower()
+    #bot.run_main_loop()
+    #bot.classic_arena_bot.run_classic_arena_until_empty()
+    #bot.factionwars_bot.run_factionwars()
     #bot.live_arena_bot.check_arena_coins()
-    #bot.tagteam_arena_bot.run_tagteam_arena_once()
+    #bot.tagteam_arena_bot.run_tagteam_arena_single_cycle()
 
     
     # num = 1

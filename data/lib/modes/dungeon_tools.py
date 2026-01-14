@@ -12,6 +12,7 @@ import re
 from datetime import datetime, timedelta
 import os
 import ast
+import difflib
 
 
 import data.lib.utils.image_tools as image_tools
@@ -60,7 +61,7 @@ class RSL_Bot_Dungeons:
             
             "energy":   [0.599, 0.038, 0.069, 0.027],
             "iron_twins_keys":  [0.510, 0.039, 0.045, 0.04],
-            "iron_twins_keys_and_energy":  [0.51, 0.039, 0.18, 0.04],
+            "iron_twins_keys_and_energy":  [0.49, 0.039, 0.2, 0.04],
             'pov' : [0, 0, 1, 1],
             #"fire_knight_hard_8":   [0.238, 0.659, 0.222, 0.025],
             #"iron_twins_15":   [0.238, 0.659, 0.222, 0.025],
@@ -90,6 +91,7 @@ class RSL_Bot_Dungeons:
             "fire_knight": "Castillo del Caballero de Fuego",
             "sand_devil": "Necropolis de la Arena",
             "shogun": "Arboleda del Shoc",
+            'minotaur': 'Laberinto del Minotauro',
             "hard": "Dificil",
             "normal": "Normal"
         }
@@ -109,10 +111,14 @@ class RSL_Bot_Dungeons:
     def reset_battle_parameters(self):
         self.battle_status = 'menu'
 
+    def resembles(self, text, target, threshold=0.8):
+        ratio = difflib.SequenceMatcher(None, text.lower(), target.lower()).ratio()
+        return ratio >= threshold
+
     def check_difficulty(self):
         try:
             difc_txt = image_tools.get_text_in_relative_area(self.reader, self.window,search_area=self.search_areas["get_dungeon_difficulty"])[0]
-            if difc_txt.text == self.dungeon_menu_names[self.default_difficulty]:
+            if self.resembles(difc_txt.text, self.dungeon_menu_names[self.default_difficulty]):
                 pass
             else:
                 window_tools.click_center(self.window, self.search_areas["get_dungeon_difficulty"])
@@ -125,10 +131,10 @@ class RSL_Bot_Dungeons:
     def get_battle_outcome(self):
         try:
             battle_result = image_tools.get_text_in_relative_area(self.reader, self.window,search_area=self.search_areas["battle_result"])[0]
-            if battle_result.text == "VICTORIA" or battle_result.text == "DERROTA":
+            if self.resembles(battle_result.text ,"VICTORIA") or self.resembles(battle_result.text ,"DERROTA"):
                 self.battle_status = 'Done'
                 self.battles_done +=1
-                if battle_result.text =="VICTORIA":
+                if self.resembles(battle_result.text, "VICTORIA"):
                     self.battles_won +=1
                 return
         except:
@@ -136,10 +142,10 @@ class RSL_Bot_Dungeons:
         
         try:
             battle_result = image_tools.get_text_in_relative_area(self.reader, self.window,search_area=self.search_areas["battle_result_2"])[0]
-            if battle_result.text == "VICTORIA" or battle_result.text == "DERROTA":
+            if self.resembles(battle_result.text, "VICTORIA") or self.resembles(battle_result.text ,"DERROTA"):
                 self.battle_status = 'Done'
                 self.battles_done +=1
-                if battle_result.text =="VICTORIA":
+                if self.resembles(battle_result.text, "VICTORIA"):
                     self.battles_won +=1
                 return
         except:
@@ -150,7 +156,7 @@ class RSL_Bot_Dungeons:
     def get_battle_status(self):
         try:
             auto_button = image_tools.get_text_in_relative_area(self.reader, self.window,search_area=self.search_areas["auto_battle_button"])[0]
-            if auto_button.text == 'Auto':
+            if self.resembles(auto_button.text, 'Auto'):
                 self.battle_status = 'Battle active'
                 battle_running = True
 
@@ -183,17 +189,17 @@ class RSL_Bot_Dungeons:
     def select_encounter(self, encounter_name, max_attempts = 4):
         obj_found = False
         attempts = 0
-        while attempts<max_attempts and not obj_found:
+        while self.main_loop_running and (attempts<max_attempts and not obj_found):
             attempts+=1
 
             time.sleep(2)
-            objects = image_tools.get_text_in_relative_area(self.reader, self.window, self.search_areas['pov'], powerdetection=False)
+            objects = image_tools.get_text_in_relative_area(self.reader, self.window, self.search_areas['pov'], power_detection=False)
             
             name_string = self.dungeon_menu_names[encounter_name]
 
             try:
                 for obj in objects:
-                    if obj.text == name_string:
+                    if self.resembles(obj.text ,name_string):
                         window_tools.click_at(obj.mean_pos_x, obj.mean_pos_y, delay = 4)
                         obj_found = True
                         break
@@ -228,7 +234,7 @@ class RSL_Bot_Dungeons:
         self.reset_battle_parameters()
         window_tools.click_center(self.window, self.search_areas["confirm_button_champion_selection"])
         
-        while self.battle_status != 'Done':
+        while self.main_loop_running and (self.battle_status != 'Done'):
             
             self.get_battle_outcome()
 
@@ -265,13 +271,13 @@ class RSL_Bot_Dungeons:
             self.iron_twins_keys = 0
 
                     
-    def run_dungeons(self):
+    def run_dungeons(self, main_loop_running = True):
         time.sleep(5)
         self.start_time = time.time()
         self.running = True
-        time.sleep(5)
+        self.main_loop_running = main_loop_running
 
-        while self.running:
+        while self.main_loop_running and (self.running):
             # Stop if not enough energy
             self.check_iron_twins_keys_and_energy()
             if self.energy < 60:
