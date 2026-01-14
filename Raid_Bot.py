@@ -577,11 +577,11 @@ class RSL_Bot_Mainframe():
 if __name__ == "__main__":
     print('ALWAYS RUN THE PROGRAM IN 1280 x 1024')
 
-    # gui = gui_tools.BotGUI()
-    # gui.run()
+    gui = gui_tools.BotGUI()
+    gui.run()
 
 
-    bot = RSL_Bot_Mainframe()
+    #bot = RSL_Bot_Mainframe()
     # bot.dungeon_bot.check_iron_twins_keys_and_energy()
     #  bot.tagteam_arena_bot.run_tagteam_arena_single_cycle()
 
@@ -589,7 +589,7 @@ if __name__ == "__main__":
     # bot.doomtower_bot.run_doomtower()
     #bot.run_main_loop()
     #bot.classic_arena_bot.run_classic_arena_until_empty()
-    bot.factionwars_bot.run_factionwars()
+    #bot.factionwars_bot.run_factionwars()
     #bot.live_arena_bot.check_arena_coins()
     #bot.tagteam_arena_bot.run_tagteam_arena_single_cycle()
 
