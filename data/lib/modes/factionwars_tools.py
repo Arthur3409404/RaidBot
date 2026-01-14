@@ -61,6 +61,12 @@ class RSL_Bot_FactionWars:
             'change_difficulty_normal':[0.097, 0.803, 0.065, 0.031],
             'change_difficulty_hard':[0.103, 0.873, 0.061, 0.034],
 
+            "faction_wars_farm_encounter": [0.763, 0.764, 0.211, 0.105],
+            "faction_wars_start_multibattles": [0.254, 0.634, 0.23, 0.075],
+            "faction_wars_multibattles_setup_1": [0.222, 0.458, 0.032, 0.04],
+            "faction_wars_multibattles_setup_2": [0.221, 0.502, 0.034, 0.045],
+            "faction_wars_farming_status": [0.366, 0.609, 0.269, 0.102],
+
             'go_to_map': [0.134, 0.905, 0.059, 0.071],
 
             
@@ -262,11 +268,49 @@ class RSL_Bot_FactionWars:
         if obj_found:
             self.ensure_correct_difficulty()
             stage = np.clip(self.current_stage - 14, 0, 7) if self.current_difficulty == 'hard' else np.clip(self.current_stage - 14, 3, 7)
+            self.current_stage_button_farming_area = self.stages_buttons[stage]
             window_tools.click_center(self.window, self.stages_buttons[stage], delay=2)
 
         return obj_found
 
     # ------------------------- Run Encounter -------------------------
+    def farm_encounter(self):
+        self.battle_status = 'Starting'
+        window_tools.click_center(self.window, self.search_areas["faction_wars_farm_encounter"])
+        faction_wars_multibattles_setup_1 = image_tools.get_similarities_in_relative_area(
+                self.window,
+                self.search_areas["faction_wars_multibattles_setup_1"],
+                'pic\\doom_tower_multibattles_setup.png'
+            )
+        faction_wars_multibattles_setup_2 = image_tools.get_similarities_in_relative_area(
+                self.window,
+                self.search_areas["faction_wars_multibattles_setup_2"],
+                'pic\\doom_tower_multibattles_setup.png'
+            )
+        if not faction_wars_multibattles_setup_1:
+            window_tools.click_center(self.window, self.search_areas["faction_wars_multibattles_setup_1"])
+
+        if not faction_wars_multibattles_setup_2:
+            window_tools.click_center(self.window, self.search_areas["faction_wars_multibattles_setup_2"])
+
+        window_tools.click_center(self.window, self.search_areas["faction_wars_start_multibattles"], delay = 5)
+        self.battle_status = 'Running'
+
+
+        while self.battle_status == "Running":
+            farming_status = image_tools.get_text_in_relative_area(
+                self.reader, self.window,
+                search_area=self.current_stage_button_farming_area
+            )
+
+            time.sleep(2)
+            if getattr(farming_status[0],'text', False):
+                if self.resembles(farming_status[0].text, "Resultados"):
+                    self.battle_status = 'Finished'
+                    window_tools.click_center(self.window, self.search_areas["faction_wars_farming_status"])
+                    window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
+
+
     def execute_faction_encounter(self):
         window_tools.click_center(self.window, self.search_areas["confirm_button_champion_selection"])
         self.reset_battle_state()
@@ -287,7 +331,7 @@ class RSL_Bot_FactionWars:
         while self.main_loop_running and (self.running):
             encounter_found = self.locate_faction_encounter()
             if encounter_found:
-                self.execute_faction_encounter()
+                self.farm_encounter()
                 self.report_run_status()
             else:
                 print('Could not find encounter')

@@ -61,7 +61,7 @@ class RSL_Bot_Dungeons:
             
             "energy":   [0.599, 0.038, 0.069, 0.027],
             "iron_twins_keys":  [0.510, 0.039, 0.045, 0.04],
-            "iron_twins_keys_and_energy":  [0.51, 0.039, 0.18, 0.04],
+            "iron_twins_keys_and_energy":  [0.49, 0.039, 0.2, 0.04],
             'pov' : [0, 0, 1, 1],
             #"fire_knight_hard_8":   [0.238, 0.659, 0.222, 0.025],
             #"iron_twins_15":   [0.238, 0.659, 0.222, 0.025],
