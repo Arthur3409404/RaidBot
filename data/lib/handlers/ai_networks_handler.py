@@ -756,3 +756,172 @@ class EvaluationNetworkCNN_ImageOnly(nn.Module):
                 print(f"Checkpoint saved at epoch {epoch}")
                 print(f"Epoch [{epoch}/{epochs}] | Train Loss: {epoch_loss:.4f} | "
                       f"Train Acc: {epoch_acc:.4f} | Val Loss: {val_loss:.4f} | Val Acc: {val_acc:.4f}")
+                
+
+
+class TagTeamEvaluationNetworkCNN(nn.Module):
+    """
+    CNN-based Win/Loss predictor for enemy lineup images + power vector (4 values).
+    """
+
+    def __init__(self, weights_path: str | None = None):
+        super().__init__()
+
+        # -----------------------------
+        # Image Encoder
+        # -----------------------------
+        self.cnn = nn.Sequential(
+            nn.Conv2d(3, 32, kernel_size=5, stride=2, padding=2),  
+            nn.ReLU(),
+            nn.Conv2d(32, 64, kernel_size=5, stride=2, padding=2), 
+            nn.ReLU(),
+            nn.Conv2d(64, 128, kernel_size=3, stride=2, padding=1),
+            nn.ReLU(),
+            nn.Conv2d(128, 256, kernel_size=3, stride=2, padding=1),
+            nn.ReLU(),
+            nn.AdaptiveAvgPool2d((1,1))  # -> [B, 256, 1, 1]
+        )
+
+        self.image_fc = nn.Linear(256, 12)
+
+        # -----------------------------
+        # Power Encoder (4 inputs)
+        # -----------------------------
+        self.power_fc = nn.Sequential(
+            nn.Linear(4, 16),
+            nn.ReLU(),
+            nn.Linear(16, 4)
+        )
+
+        # -----------------------------
+        # Decision Head
+        # -----------------------------
+        self.head = nn.Linear(16, 1)  # 8 image + 8 power
+
+        # Optional weight loading
+        if weights_path is not None:
+            self.load_state_dict(torch.load(weights_path, map_location="cpu"))
+
+    # --------------------------------------------------
+    # Forward Pass
+    # --------------------------------------------------
+    def forward(self, image, power):
+        # Image branch
+        x = self.cnn(image)
+        x = x.view(x.size(0), -1)   # [B, 256]
+        x = self.image_fc(x)       # [B, 8]
+
+        # Power branch
+        power = power.view(power.size(0), -1)  # ensure [B, 4]
+        p = self.power_fc(power)               # [B, 8]
+
+        # Combine
+        combined = torch.cat([x, p], dim=1)    # [B, 16]
+
+        return self.head(combined)
+
+    # --------------------------------------------------
+    # Prediction
+    # --------------------------------------------------
+    def predict(self, image_np, power_vals, threshold=0.5):
+        """
+        image_np   : numpy image (H, W, 3)
+        power_vals : array-like of shape (4,)
+        """
+        self.eval()
+        with torch.no_grad():
+            image = (
+                torch.from_numpy(image_np.astype(np.float32) / 255.0)
+                .permute(2, 0, 1)
+                .unsqueeze(0)
+            )
+
+            power = torch.tensor([power_vals], dtype=torch.float32)
+
+            logits = self(image, power)
+            prob = torch.sigmoid(logits).item()
+            label = int(prob >= threshold)
+
+        return prob, label
+
+    # --------------------------------------------------
+    # Training
+    # --------------------------------------------------
+    def train_network(self,
+                      dataset_path: str,
+                      epochs: int = 50,
+                      batch_size: int = 32,
+                      lr: float = 1e-3,
+                      checkpoint_interval: int = 10,
+                      checkpoint_path: str = "checkpoint.pt",
+                      val_split: float = 0.2,
+                      device: str = "cuda" if torch.cuda.is_available() else "cpu"):
+
+        dataset = EnemyDataset(dataset_path)
+
+        # Train/Validation split
+        val_size = int(val_split * len(dataset))
+        train_size = len(dataset) - val_size
+        train_set, val_set = random_split(dataset, [train_size, val_size])
+
+        train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
+        val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=False)
+
+        # Device, Loss, Optimizer
+        self.to(device)
+        criterion = nn.BCEWithLogitsLoss()
+        optimizer = optim.Adam(self.parameters(), lr=lr)
+
+        for epoch in range(1, epochs + 1):
+            self.train()
+            epoch_loss = 0.0
+            correct = 0
+            total = 0
+
+            for images, powers, labels in train_loader:
+                images = images.to(device)
+                powers = powers.to(device)
+                labels = labels.to(device)
+
+                optimizer.zero_grad()
+                logits = self(images, powers)
+                loss = criterion(logits, labels)
+                loss.backward()
+                optimizer.step()
+
+                epoch_loss += loss.item() * images.size(0)
+                preds = (torch.sigmoid(logits) >= 0.5).float()
+                correct += (preds == labels).sum().item()
+                total += labels.size(0)
+
+            epoch_loss /= total
+            epoch_acc = correct / total
+
+            # Validation
+            self.eval()
+            val_loss, val_correct, val_total = 0.0, 0, 0
+            with torch.no_grad():
+                for images, powers, labels in val_loader:
+                    images = images.to(device)
+                    powers = powers.to(device)
+                    labels = labels.to(device)
+
+                    logits = self(images, powers)
+                    loss = criterion(logits, labels)
+                    val_loss += loss.item() * images.size(0)
+
+                    preds = (torch.sigmoid(logits) >= 0.5).float()
+                    val_correct += (preds == labels).sum().item()
+                    val_total += labels.size(0)
+
+            val_loss /= val_total
+            val_acc = val_correct / val_total
+
+            if epoch % checkpoint_interval == 0:
+                torch.save(self.state_dict(), f"{checkpoint_path}_epoch{epoch}.pt")
+                print(f"Checkpoint saved at epoch {epoch}")
+                print(
+                    f"Epoch [{epoch}/{epochs}] | "
+                    f"Train Loss: {epoch_loss:.4f} | Train Acc: {epoch_acc:.4f} | "
+                    f"Val Loss: {val_loss:.4f} | Val Acc: {val_acc:.4f}"
+                )

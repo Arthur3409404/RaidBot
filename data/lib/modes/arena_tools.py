@@ -15,7 +15,7 @@ from datetime import  timedelta
 import os
 import data.lib.utils.image_tools as image_tools
 import data.lib.utils.window_tools as window_tools
-from data.lib.handlers.ai_networks_handler import EnemyDataset, EvaluationNetworkCNN, EvaluationNetworkCNN_ImageOnly
+from data.lib.handlers.ai_networks_handler import EnemyDataset, TagTeamEvaluationNetworkCNN, EvaluationNetworkCNN_ImageOnly
 import difflib
 
 
@@ -443,8 +443,8 @@ class RSL_Bot_TagTeamArena:
         )
 
         # AI evaluation network
-        weights_path = r"neural_networks\enemy_eval_tagteam_arena\_epoch300.pt"
-        self.evaluation_ai = EvaluationNetworkCNN_ImageOnly(weights_path=weights_path)
+        weights_path = r"neural_networks\enemy_eval_tagteam_arena\_epoch350.pt"
+        self.evaluation_ai = TagTeamEvaluationNetworkCNN(weights_path=weights_path)
         self.evaluation_ai.eval()
 
         # Window coordinates
@@ -665,10 +665,12 @@ class RSL_Bot_TagTeamArena:
                 )
 
                 image_np = np.array(screenshot).astype(np.float32)
-                #prob, label = self.evaluation_ai.predict(image_np)
+                powers = np.array([enemy_power, enemy_power_team1, enemy_power_team2, enemy_power_team3])/350000
+                prob, label = self.evaluation_ai.predict(image_np, powers)
+                print(prob)
                 #print(f"Team1: {enemy_power_team1} Team2:{enemy_power_team2} Team3: {enemy_power_team3}  Total:{enemy_power}")
-                #if label == 1 and enemy_power not in self.tagteam_arena_enemies_lost and enemy_power>500:
-                if enemy_power not in self.tagteam_arena_enemies_lost and enemy_power<1300000:
+                if label == 1 and enemy_power not in self.tagteam_arena_enemies_lost and enemy_power>500:
+                #if enemy_power not in self.tagteam_arena_enemies_lost and enemy_power<1300000:
                     self.execute_tagteam_battle(obj, power_obj, enemy_power)
                     self.battles_done += 1
                     self.battle_occured = True
