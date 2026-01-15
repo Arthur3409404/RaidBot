@@ -16,13 +16,13 @@ import matplotlib.pyplot as plt
 # =============================
 # Paths
 # =============================
-DATASET_PATH = "data/database_champions/datasets/enemy_dataset_tagteam_arena.npz"
+DATASET_PATH = "data/database_champions/datasets/dataset_fixed.npz"
 CHECKPOINT_PATH = "neural_networks/enemy_eval_tagteam_arena/"
 
 # =============================
 # Training Routine
 # =============================
-def train_enemy_evaluation_model(image_only: bool = True):
+def train_enemy_evaluation_model(image_only: bool = False, tagteam: bool = True):
     print("Starting training...")
 
     # -----------------------------
@@ -73,19 +73,19 @@ def train_enemy_evaluation_model(image_only: bool = True):
     # Initialize network
     # -----------------------------
     if image_only:
-        model = EvaluationNetworkCNN_ImageOnly()
+        model = TagTeamEvaluationNetworkCNN_ImageOnly()
     else:
-        model = EvaluationNetworkCNN()
+        model = TagTeamEvaluationNetworkCNN()
 
     # -----------------------------
     # Train the network
     # -----------------------------
     model.train_network(
-        dataset_path=balanced_dataset_path,
+        dataset_path=DATASET_PATH,
         epochs=1000,
         batch_size=16,
         lr=1e-4,
-        val_split=0.02,
+        val_split=0.01,
         checkpoint_interval=50,
         checkpoint_path=CHECKPOINT_PATH,
         device="cuda" if torch.cuda.is_available() else "cpu"
@@ -202,11 +202,39 @@ def plot_images_with_labels(dataset_path=DATASET_PATH, grid_size=(15, 15)):
     plt.tight_layout()
     plt.show()
 
+
+
+def fix_tagteam_dataset():
+    import numpy as np
+
+    data = np.load(DATASET_PATH)
+
+    images = data["images"]
+    labels = data["labels"]
+    powers = data["powers"]
+
+    # Keep every 4th image and label
+    images_fixed = images[::4]
+    labels_fixed = labels[::4]
+
+    # Group powers into blocks of 4
+    powers_fixed = powers.reshape(-1, 4)
+
+    print("Images:", images_fixed.shape)
+    print("Labels:", labels_fixed.shape)
+    print("Powers:", powers_fixed.shape)
+
+    # Save corrected dataset
+    np.savez("data/database_champions/datasets/dataset_fixed.npz",
+            images=images_fixed,
+            labels=labels_fixed,
+            powers=powers_fixed)
+
 # =============================
 # Main
 # =============================
 if __name__ == "__main__":
-    #plot_images_with_labels()
-    analyze_power_label_correlation()
-    # train_enemy_evaluation_model()
+    plot_images_with_labels()
+    # analyze_power_label_correlation()
+    #train_enemy_evaluation_model()
     # power_only_baseline_accuracy()
