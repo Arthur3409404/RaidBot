@@ -685,7 +685,7 @@ class RSL_Bot_TagTeamArena:
                     pass
 
             except Exception as e:
-                print(f"[!] Error parsing '{power_obj[0].text}': {e}")
+                print(f"[!] Error parsing Power Object")
 
         return False
 

@@ -290,12 +290,13 @@ class RSL_Bot_FactionWars:
         if not faction_wars_multibattles_setup_1:
             window_tools.click_center(self.window, self.search_areas["faction_wars_multibattles_setup_1"])
 
-        if not faction_wars_multibattles_setup_2:
+        if faction_wars_multibattles_setup_2:
             window_tools.click_center(self.window, self.search_areas["faction_wars_multibattles_setup_2"])
 
         window_tools.click_center(self.window, self.search_areas["faction_wars_start_multibattles"], delay = 5)
         self.battle_status = 'Running'
 
+        window_tools.move_down(self.window)
 
         while self.battle_status == "Running":
             farming_status = image_tools.get_text_in_relative_area(
@@ -304,11 +305,14 @@ class RSL_Bot_FactionWars:
             )
 
             time.sleep(2)
-            if getattr(farming_status[0],'text', False):
-                if self.resembles(farming_status[0].text, "Resultados"):
-                    self.battle_status = 'Finished'
-                    window_tools.click_center(self.window, self.search_areas["faction_wars_farming_status"])
-                    window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
+            try:
+                if getattr(farming_status[0],'text', False):
+                    if self.resembles(farming_status[0].text, "Resultados"):
+                        self.battle_status = 'Finished'
+                        window_tools.click_center(self.window, self.search_areas["faction_wars_farming_status"])
+                        window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
+            except:
+                pass
 
 
     def execute_faction_encounter(self):
@@ -331,7 +335,8 @@ class RSL_Bot_FactionWars:
         while self.main_loop_running and (self.running):
             encounter_found = self.locate_faction_encounter()
             if encounter_found:
-                self.farm_encounter()
+                self.execute_faction_encounter()
+                #self.farm_encounter()
                 self.report_run_status()
             else:
                 print('Could not find encounter')
