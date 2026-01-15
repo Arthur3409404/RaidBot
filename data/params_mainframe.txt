@@ -18,7 +18,7 @@ classic_arena_multi_refresh = True
 classic_arena_num_multi_refresh = 0
 classic_arena_power_threshold = 500000
 classic_arena_use_gems = False
-classic_arena_enemies_lost = [0, 1.1, 1.0, 1.2, 1.3, 1.4, 200680.0, 53000.0, 481120.0, 482220.0, 485440.0, 378320.0]
+classic_arena_enemies_lost = [0, 1.1, 1.0, 1.2, 1.3, 1.4, 200680.0, 53000.0, 481120.0, 482220.0, 485440.0, 378320.0, 119830.0]
 
 live_arena_verbose = True
 live_arena_use_gems = True
