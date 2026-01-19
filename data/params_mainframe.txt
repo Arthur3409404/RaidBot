@@ -8,7 +8,7 @@ run_live_arena = True
 run_dungeons = True
 run_factionwars = True
 run_demonlord = True
-run_doomtower = True
+run_doomtower = False
 run_cursedcity = False
 run_grimforest = False
 run_effective_unit_leveling = False
@@ -18,7 +18,7 @@ classic_arena_multi_refresh = True
 classic_arena_num_multi_refresh = 0
 classic_arena_power_threshold = 500000
 classic_arena_use_gems = False
-classic_arena_enemies_lost = [0, 1.1, 1.0, 1.2, 1.3, 1.4, 200680.0, 53000.0, 481120.0, 482220.0, 485440.0, 378320.0, 119830.0]
+classic_arena_enemies_lost = [0, 1.1, 1.0, 1.2, 1.3, 1.4, 200680.0, 53000.0, 481120.0, 482220.0, 485440.0, 378320.0, 119830.0, 223670.0, 280540.0, 286590.0, 493750.0, 450360.0, 429940.0, 371810.0, 347270.0, 360300.0, 452780.0, 477300.0, 180090.0, 458810.0, 305380.0, 69000.0, 327920.0, 4000.0, 6000.0, 475080.0, 9000.0, 51000.0, 458360.0, 7000.0, 388320.0, 31000.0, 3000.0, 97000.0, 423370.0, 404940.0, 54000.0, 113240.0]
 
 live_arena_verbose = True
 live_arena_use_gems = True
@@ -30,7 +30,7 @@ tagteam_arena_multi_refresh = True
 tagteam_arena_num_multi_refresh = 0
 tagteam_arena_power_threshold = 1300000
 tagteam_arena_use_gems = False
-tagteam_arena_enemies_lost = [0, 1.1, 1.0, 1.2, 1.3, 1.4, 904260.0, 10, 1150000.0, 1040000.0, 1290000.0, 1240000.0, 1000000.0, 1680000.0]
+tagteam_arena_enemies_lost = [[0, 1.1, 1.0, 1.2],[1, 1, 1.3, 1.4]]
 
 dungeons_verbose = True
 dungeons_iron_twins_priority = True

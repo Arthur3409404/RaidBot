@@ -247,6 +247,7 @@ class RSL_Bot_FactionWars:
                     self.current_difficulty = self.farm_stages[key[0]][1]
 
                     current_fw_keys = self.get_available_fw_keys()
+                    print(current_fw_keys)
                     if (int(current_fw_keys) < 4 * self.multiplier and self.current_difficulty == 'normal') or \
                        (int(current_fw_keys) < 6 * self.multiplier and self.current_difficulty == 'hard'):
                         window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])

@@ -589,7 +589,7 @@ if __name__ == "__main__":
     # bot.doomtower_bot.run_doomtower()
     #bot.run_main_loop()
     #bot.classic_arena_bot.run_classic_arena_until_empty()
-    #bot.factionwars_bot.run_factionwars()
+    # bot.factionwars_bot.run_factionwars()
     #bot.live_arena_bot.check_arena_coins()
     #bot.tagteam_arena_bot.run_tagteam_arena_single_cycle()
 

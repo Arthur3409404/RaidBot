@@ -558,8 +558,11 @@ class RSL_Bot_TagTeamArena:
                 finished = image_tools.get_text_in_relative_area(
                     self.reader, self.window, self.search_areas["battle_finished"]
                 )[0]
+                finished_2 = image_tools.get_text_in_relative_area(
+                    self.reader, self.window, self.search_areas["battle_finished"]
+                )[0]
 
-                if self.resembles(finished.text, "PULSA PARA CONTINUAR"):
+                if self.resembles(finished.text, "PULSA PARA CONTINUAR") and self.resembles(finished_2.text, "PULSA PARA CONTINUAR"):
                     time.sleep(3)
                     self.update_battle_outcome(enemy_power)
 
@@ -654,6 +657,10 @@ class RSL_Bot_TagTeamArena:
                     enemy_power_team3 = self._parse_enemy_power_value(power_team3[0].text)
                 except:
                     enemy_power = 10
+                    enemy_power_team1 = 10
+                    enemy_power_team2 = 10
+                    enemy_power_team3 = 10
+
 
                 screenshot = pyautogui.screenshot(
                     region=(
@@ -668,10 +675,12 @@ class RSL_Bot_TagTeamArena:
                 powers = np.array([enemy_power, enemy_power_team1, enemy_power_team2, enemy_power_team3])/350000
                 prob, label = self.evaluation_ai.predict(image_np, powers)
                 print(prob)
+                enemy_power_collection = [enemy_power, enemy_power_team1, enemy_power_team2, enemy_power_team3]
                 #print(f"Team1: {enemy_power_team1} Team2:{enemy_power_team2} Team3: {enemy_power_team3}  Total:{enemy_power}")
-                if label == 1 and enemy_power not in self.tagteam_arena_enemies_lost and enemy_power>500:
+                #if label == 1 and enemy_power not in self.tagteam_arena_enemies_lost and enemy_power>500:
                 #if enemy_power not in self.tagteam_arena_enemies_lost and enemy_power<1300000:
-                    self.execute_tagteam_battle(obj, power_obj, enemy_power)
+                if enemy_power_collection not in self.tagteam_arena_enemies_lost :
+                    self.execute_tagteam_battle(obj, power_obj, enemy_power_collection)
                     self.battles_done += 1
                     self.battle_occured = True
                     enemy_power_collection = np.array([enemy_power,enemy_power_team1,enemy_power_team2,enemy_power_team3])

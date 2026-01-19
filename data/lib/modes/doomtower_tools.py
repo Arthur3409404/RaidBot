@@ -398,9 +398,15 @@ class RSL_Bot_DoomTower():
                 search_area=self.search_areas["doom_tower_farming_status"]
             )
 
+            time.sleep(5)
+            farming_status_2 = image_tools.get_text_in_relative_area(
+                self.reader, self.window,
+                search_area=self.search_areas["doom_tower_farming_status"]
+            )
+
             time.sleep(2)
-            if getattr(farming_status[0],'text', False):
-                if self.resembles(farming_status[0].text, "Resultados"):
+            if getattr(farming_status[0],'text', False) and getattr(farming_status_2[0],'text', False):
+                if self.resembles(farming_status[0].text, "Resultados") and self.resembles(farming_status_2[0].text, "Resultados"):
                     self.battle_status = 'Finished'
                     window_tools.click_center(self.window, self.search_areas["doom_tower_farming_status"])
                     window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
