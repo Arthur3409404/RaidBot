@@ -67,6 +67,10 @@ class RSL_Bot_ClassicArena:
         else:
             self.coords = None
 
+        weights_path = r"neural_networks\enemy_eval_classic_arena\_epoch400.pt"
+        self.evaluation_ai = EvaluationNetworkCNN_ImageOnly(weights_path=weights_path)
+        self.evaluation_ai.eval()
+
         # Search Areas
         self.search_areas = {
             "bronce_medals": [0.235, 0.038, 0.066, 0.03],
@@ -194,18 +198,22 @@ class RSL_Bot_ClassicArena:
                             power_val = num * 1_000_000
                         else:
                             power_val = num
+                        image_np_enemy = np.array(screenshot_enemy)
+                        prob, label = self.evaluation_ai.predict(image_np_enemy)
 
-                        if power_val < self.classic_arena_power_threshold and power_val >= 500 and power_val not in self.classic_arena_enemies_lost:
+                        #if power_val < self.classic_arena_power_threshold and power_val >= 500 and power_val not in self.classic_arena_enemies_lost:
+                        if label == 1 and power_val not in self.classic_arena_enemies_lost:    
                             screenshot_enemy = pyautogui.screenshot(
                                 region=(int(obj.mean_pos_x - 500), int(obj.mean_pos_y - 65), 440, 130)
                             )
-                            image_np_enemy = np.array(screenshot_enemy)
+                            
                             print(f"Power {power_val} < threshold {self.classic_arena_power_threshold}")
                             self.execute_arena_battle(obj, next_obj, power_val)
                             time.sleep(3)
                             self.battle_occured = True
                             self.battles_done += 1
                             self.dataset.append_entry(image_np_enemy, power_val, self.recent_battle_outcome)
+                            print(f"Battle outcome: {self.recent_battle_outcome} (Win prob: {prob:.2f})")
                             return self.battle_occured
                     except Exception as e:
                         print(f"[!] Error parsing '{next_obj.text}': {e}")
@@ -679,7 +687,7 @@ class RSL_Bot_TagTeamArena:
                 #print(f"Team1: {enemy_power_team1} Team2:{enemy_power_team2} Team3: {enemy_power_team3}  Total:{enemy_power}")
                 #if label == 1 and enemy_power not in self.tagteam_arena_enemies_lost and enemy_power>500:
                 #if enemy_power not in self.tagteam_arena_enemies_lost and enemy_power<1300000:
-                if enemy_power_collection not in self.tagteam_arena_enemies_lost :
+                if enemy_power_collection not in self.tagteam_arena_enemies_lost  and enemy_power<1300000:
                     self.execute_tagteam_battle(obj, power_obj, enemy_power_collection)
                     self.battles_done += 1
                     self.battle_occured = True

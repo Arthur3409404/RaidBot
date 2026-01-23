@@ -17,12 +17,14 @@ import matplotlib.pyplot as plt
 # Paths
 # =============================
 DATASET_PATH = "data/database_champions/datasets/dataset_fixed.npz"
-CHECKPOINT_PATH = "neural_networks/enemy_eval_tagteam_arena/"
+DATASET_PATH = "data/database_champions/datasets/enemy_dataset_classic_arena.npz"
+# "data/database_champions/datasets/enemy_dataset_tagteam_arena.npz"
+CHECKPOINT_PATH = "neural_networks/enemy_eval_classic_arena/"
 
 # =============================
 # Training Routine
 # =============================
-def train_enemy_evaluation_model(image_only: bool = False, tagteam: bool = True):
+def train_enemy_evaluation_model(image_only: bool = True, tagteam: bool = True):
     print("Starting training...")
 
     # -----------------------------
@@ -73,7 +75,7 @@ def train_enemy_evaluation_model(image_only: bool = False, tagteam: bool = True)
     # Initialize network
     # -----------------------------
     if image_only:
-        model = TagTeamEvaluationNetworkCNN_ImageOnly()
+        model = EvaluationNetworkCNN_ImageOnly()
     else:
         model = TagTeamEvaluationNetworkCNN()
 
@@ -85,7 +87,7 @@ def train_enemy_evaluation_model(image_only: bool = False, tagteam: bool = True)
         epochs=1000,
         batch_size=16,
         lr=1e-4,
-        val_split=0.01,
+        val_split=0.03,
         checkpoint_interval=50,
         checkpoint_path=CHECKPOINT_PATH,
         device="cuda" if torch.cuda.is_available() else "cpu"
@@ -235,6 +237,6 @@ def fix_tagteam_dataset():
 # =============================
 if __name__ == "__main__":
     plot_images_with_labels()
-    # analyze_power_label_correlation()
+    #analyze_power_label_correlation()
     #train_enemy_evaluation_model()
     # power_only_baseline_accuracy()
