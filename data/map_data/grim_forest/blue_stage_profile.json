@@ -1,0 +1,102 @@
+{
+  "generated_at": "2026-04-12T22:19:58",
+  "mode_slug": "grim_forest",
+  "reference_fingerprint": {
+    "count": 49,
+    "max_mtime_ns": 1776024881090447600,
+    "min_mtime_ns": 1776007144448694300
+  },
+  "profile": {
+    "profile_name": "grim_forest",
+    "mode_slug": "grim_forest",
+    "hue_min": 90,
+    "hue_max": 130,
+    "sat_min": 46,
+    "val_min": 58,
+    "pale_sat_max": 132,
+    "pale_val_min": 128,
+    "blue_bias_min": 8,
+    "pale_blue_bias_min": 1,
+    "blue_minus_green_min": 1,
+    "min_area": 90,
+    "max_area_ratio": 0.028,
+    "min_fill": 0.08,
+    "max_fill": 0.8201135301589966,
+    "min_side": 10,
+    "min_side_ratio": 0.01,
+    "min_aspect_ratio": 0.5,
+    "max_aspect_ratio": 2.1,
+    "max_side_ratio": 0.15,
+    "ring_thickness_ratio": 0.16,
+    "min_ring_score": 0.1,
+    "min_border_fill": 0.14,
+    "min_center_fill": 0.04,
+    "max_core_fill": 0.6125482535362243,
+    "min_circularity": 0.09,
+    "min_solidity": 0.4,
+    "open_kernel": 3,
+    "close_kernel": 5,
+    "safe_bounds": [
+      0.08,
+      0.08,
+      0.91,
+      0.94
+    ],
+    "ignore_regions": [
+      [
+        0.0,
+        0.0,
+        0.1,
+        0.55
+      ],
+      [
+        0.88,
+        0.58,
+        1.0,
+        1.0
+      ]
+    ],
+    "accent_enabled": true,
+    "accent_hue_min": 84,
+    "accent_hue_max": 108,
+    "accent_sat_min": 24,
+    "accent_val_min": 124,
+    "accent_min_fill": 0.012,
+    "accent_weight": 0.18,
+    "min_score": 0.36,
+    "reference_summary": {
+      "source": "map_data_png_references",
+      "reference_count": 49,
+      "reference_paths": [
+        "C:/Users/Arthur/Documents/MyPython/Raid/RaidBot/data/map_data/grim_forest/last_session/viewports/000_scan_000.png",
+        "C:/Users/Arthur/Documents/MyPython/Raid/RaidBot/data/map_data/grim_forest/last_session/viewports/001_scan_001.png",
+        "C:/Users/Arthur/Documents/MyPython/Raid/RaidBot/data/map_data/grim_forest/last_session/viewports/002_scan_002.png",
+        "C:/Users/Arthur/Documents/MyPython/Raid/RaidBot/data/map_data/grim_forest/last_session/viewports/003_scan_003.png",
+        "C:/Users/Arthur/Documents/MyPython/Raid/RaidBot/data/map_data/grim_forest/last_session/viewports/004_scan_004.png",
+        "C:/Users/Arthur/Documents/MyPython/Raid/RaidBot/data/map_data/grim_forest/last_session/viewports/005_scan_005.png",
+        "C:/Users/Arthur/Documents/MyPython/Raid/RaidBot/data/map_data/grim_forest/last_session/viewports/006_scan_006.png",
+        "C:/Users/Arthur/Documents/MyPython/Raid/RaidBot/data/map_data/grim_forest/last_session/viewports/007_scan_007.png",
+        "C:/Users/Arthur/Documents/MyPython/Raid/RaidBot/data/map_data/grim_forest/last_session/viewports/008_scan_008.png",
+        "C:/Users/Arthur/Documents/MyPython/Raid/RaidBot/data/map_data/grim_forest/last_session/viewports/009_scan_009.png",
+        "C:/Users/Arthur/Documents/MyPython/Raid/RaidBot/data/map_data/grim_forest/sessions/session_20260412_171851/viewports/000_scan_000.png",
+        "C:/Users/Arthur/Documents/MyPython/Raid/RaidBot/data/map_data/grim_forest/sessions/session_20260412_171851/viewports/001_scan_001.png",
+        "C:/Users/Arthur/Documents/MyPython/Raid/RaidBot/data/map_data/grim_forest/sessions/session_20260412_171851/viewports/002_scan_002.png",
+        "C:/Users/Arthur/Documents/MyPython/Raid/RaidBot/data/map_data/grim_forest/sessions/session_20260412_171851/viewports/003_scan_003.png",
+        "C:/Users/Arthur/Documents/MyPython/Raid/RaidBot/data/map_data/grim_forest/sessions/session_20260412_171851/viewports/004_scan_004.png",
+        "C:/Users/Arthur/Documents/MyPython/Raid/RaidBot/data/map_data/grim_forest/sessions/session_20260412_171851/viewports/005_scan_005.png",
+        "C:/Users/Arthur/Documents/MyPython/Raid/RaidBot/data/map_data/grim_forest/sessions/session_20260412_171851/viewports/006_scan_006.png",
+        "C:/Users/Arthur/Documents/MyPython/Raid/RaidBot/data/map_data/grim_forest/sessions/session_20260412_171851/viewports/007_scan_007.png",
+        "C:/Users/Arthur/Documents/MyPython/Raid/RaidBot/data/map_data/grim_forest/sessions/session_20260412_171851/viewports/008_scan_008.png",
+        "C:/Users/Arthur/Documents/MyPython/Raid/RaidBot/data/map_data/grim_forest/sessions/session_20260412_171851/viewports/009_scan_009.png",
+        "C:/Users/Arthur/Documents/MyPython/Raid/RaidBot/data/map_data/grim_forest/sessions/session_20260412_171851/viewports/010_scan_010.png",
+        "C:/Users/Arthur/Documents/MyPython/Raid/RaidBot/data/map_data/grim_forest/sessions/session_20260412_171851/viewports/011_scan_011.png",
+        "C:/Users/Arthur/Documents/MyPython/Raid/RaidBot/data/map_data/grim_forest/sessions/session_20260412_171851/viewports/012_scan_012.png",
+        "C:/Users/Arthur/Documents/MyPython/Raid/RaidBot/data/map_data/grim_forest/sessions/session_20260412_171851/viewports/013_scan_013.png",
+        "C:/Users/Arthur/Documents/MyPython/Raid/RaidBot/data/map_data/grim_forest/sessions/session_20260412_171851/viewports/014_scan_014.png"
+      ],
+      "seed_pixel_count": 20423710,
+      "component_count": 2408,
+      "generated_at": "2026-04-12T22:19:56"
+    }
+  }
+}

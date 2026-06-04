@@ -10,7 +10,7 @@ import stat
 # Public repository URL
 REPO_URL = "https://github.com/Arthur3409404/RaidBot.git"
 TEMP_DIR = "RaidBot_update_tmp"
-ENTRY_POINT = "main.py"
+ENTRY_POINT = "Raid_Bot.py"
 
 # Files / folders that should never be replaced
 EXCLUDE = {

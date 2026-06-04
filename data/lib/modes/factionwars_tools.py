@@ -1,14 +1,52 @@
-import numpy as np
 import time
 import re
 from datetime import  timedelta
+import data.lib.utils.auto_battle_tools as auto_battle_tools
 import data.lib.utils.image_tools as image_tools
 import data.lib.utils.window_tools as window_tools
 import difflib
 
+MAX_RUN_DURATION_SECONDS = int(3.5 * 60 * 60)
+DEFAULT_FW_FACTIONS = [
+    "Banner Lords",
+    "Barbarians",
+    "Dark Elves",
+    "Demonspawn",
+    "Dwarves",
+    "High Elves",
+    "Knight Revenant",
+    "Lizardmen",
+    "Ogryn Tribes",
+    "Orcs",
+    "Sacred Order",
+    "Undead Hordes",
+    "Shadowkin",
+    "Skinwalkers",
+    "Sylvan Watchers",
+]
+
+
+def _start_run_deadline(bot, max_run_duration_seconds=None):
+    limit = (
+        bot.max_run_duration_seconds
+        if max_run_duration_seconds is None
+        else float(max_run_duration_seconds)
+    )
+    bot._run_deadline = time.time() + limit
+
+
+def _ensure_within_run_deadline(bot, context: str):
+    deadline = getattr(bot, "_run_deadline", None)
+    if deadline and time.time() > deadline:
+        hours = getattr(bot, "max_run_duration_seconds", MAX_RUN_DURATION_SECONDS) / 3600.0
+        raise TimeoutError(
+            f"{bot.__class__.__name__} exceeded max runtime of {hours:.1f}h while {context}."
+        )
+
+
 class RSL_Bot_FactionWars:
     
-    def __init__(self, title_substring="Raid: Shadow Legends", reader = None, window =None, verbose = True, farm_stages = {"Banner Lords":[17,"normal"],"Barbarians":[17,"normal"],"Dark Elves":[17,"normal"],"Demonspawn":[17,"normal"],"Dwarves":[17,"normal"],"High Elves":[17,"normal"],"Knight Revenant":[17,"normal"],"Lizardmen":[17,"normal"],"Ogryn Tribes":[17,"normal"],"Orcs":[17,"normal"],"Sacred Order":[17,"normal"],"Undead Hordes":[17,"normal"],"Shadowkin":[17,"normal"],"Skinwalkers":[17,"normal"],"Sylvan Watchers":[17,"normal"]}, farm_superraid = True):
+    def __init__(self, title_substring="Raid: Shadow Legends", reader = None, window =None, verbose = True, farm_stages = {"Banner Lords":[17,"normal"],"Barbarians":[17,"normal"],"Dark Elves":[17,"normal"],"Demonspawn":[17,"normal"],"Dwarves":[17,"normal"],"High Elves":[17,"normal"],"Knight Revenant":[17,"normal"],"Lizardmen":[17,"normal"],"Ogryn Tribes":[17,"normal"],"Orcs":[17,"normal"],"Sacred Order":[17,"normal"],"Undead Hordes":[17,"normal"],"Shadowkin":[17,"normal"],"Skinwalkers":[17,"normal"],"Sylvan Watchers":[17,"normal"]}, farm_superraid = True, progress_mode_factions = None, progress_mode = None):
 
         if reader is None:
             print('Error When Loading Reader')
@@ -24,15 +62,26 @@ class RSL_Bot_FactionWars:
         self.verbose = verbose
         self.farm_stages = farm_stages
         self.farm_superraid = farm_superraid
+        self.progress_mode_factions = progress_mode_factions
+        self.progress_mode = progress_mode
         self.multiplier = 1
         if self.farm_superraid:
             self.multiplier+=1
+        self.progress_failed_factions_runtime = set()
+        self.current_faction_key = None
+        self.current_base_stage = None
+        self.progress_attempt_active = False
+        self.last_battle_result = None
+        self.persist_stage_update_callback = None
 
         self.window = window
         self.init_time = time.time()
         
         self.battle_status = 'menu'
         self.auto_button_clicked = False
+        self._pausa_esc_sent = False
+        self.max_run_duration_seconds = MAX_RUN_DURATION_SECONDS
+        self._run_deadline = None
         
         
         if self.window:
@@ -44,7 +93,7 @@ class RSL_Bot_FactionWars:
         # Search Areas
         self.search_areas = {
             
-            "faction_wars_keys":   [0.611, 0.041, 0.072, 0.036],
+            "faction_wars_keys":   [0.50, 0.036, 0.4, 0.04],
             "faction_name":   [0.01, 0.033, 0.448, 0.046],
             'pov' : [0, 0, 1, 1],
             "go_to_higher_menu":   [0.928, 0.031, 0.046, 0.039],
@@ -57,15 +106,18 @@ class RSL_Bot_FactionWars:
             "battle_result_2":    [0.38, 0.085, 0.224, 0.059],
             "restart_encounter":   [0.423, 0.877, 0.211, 0.106],
 
-            'get_difficulty':[0.029, 0.924, 0.084, 0.035],
-            'change_difficulty_normal':[0.097, 0.803, 0.065, 0.031],
-            'change_difficulty_hard':[0.103, 0.873, 0.061, 0.034],
+            'get_difficulty':[0.032, 0.903, 0.166, 0.051],
+            'change_difficulty_normal':[0.062, 0.778, 0.117, 0.047],
+            'change_difficulty_hard':[0.046, 0.841, 0.139, 0.056],
 
             "faction_wars_farm_encounter": [0.763, 0.764, 0.211, 0.105],
             "faction_wars_start_multibattles": [0.254, 0.634, 0.23, 0.075],
             "faction_wars_multibattles_setup_1": [0.222, 0.458, 0.032, 0.04],
             "faction_wars_multibattles_setup_2": [0.221, 0.502, 0.034, 0.045],
             "faction_wars_farming_status": [0.366, 0.609, 0.269, 0.102],
+
+            "faction_wars_etapa_window": [0.3364, 0.0716, 0.159, 0.93],
+
 
             'go_to_map': [0.134, 0.905, 0.059, 0.071],
 
@@ -93,10 +145,11 @@ class RSL_Bot_FactionWars:
             'hard': "Dificil",
             "normal": "Normal"
         }
+        self._refresh_progress_mode_faction_set()
         
         self.current_difficulty = 'normal'
 
-        self.stages_buttons = [[0.787, 0.083, 0.177, 0.071],
+        self.stages_buttons = [[0.804, 0.114, 0.163, 0.083],
                                [0.785, 0.192, 0.176, 0.078],
                                [0.785, 0.311, 0.176, 0.074],
                                [0.785, 0.429, 0.179, 0.079],
@@ -105,11 +158,205 @@ class RSL_Bot_FactionWars:
                                [0.784, 0.784, 0.18, 0.078],
                                [0.783, 0.898, 0.181, 0.082],
                                ]
+        self.stages_buttons_hard = [[0.787, 0.083, 0.177, 0.071],
+                    [0.804, 0.232, 0.159, 0.082],
+                    [0.815, 0.359, 0.145, 0.072],
+                    [0.815, 0.5, 0.145, 0.072],
+                    ]
+
+    def _max_stage_for_difficulty(self, difficulty):
+        return 21 if difficulty == "hard" else 21
+
+    def _clear_progress_context(self):
+        self.current_faction_key = None
+        self.current_base_stage = None
+        self.progress_attempt_active = False
+
+    def _refresh_progress_mode_faction_set(self):
+        configured = self.progress_mode_factions
+
+        if configured is None:
+            configured = list(DEFAULT_FW_FACTIONS)
+        elif isinstance(configured, dict):
+            configured = [name for name, enabled in configured.items() if bool(enabled)]
+        elif not isinstance(configured, (list, tuple, set)):
+            configured = []
+
+        normalized = []
+        for faction_name in configured:
+            if not isinstance(faction_name, str):
+                continue
+            cleaned = faction_name.strip()
+            if cleaned:
+                normalized.append(cleaned)
+
+        if self.progress_mode is False:
+            normalized = []
+        elif self.progress_mode is True and self.progress_mode_factions is None:
+            normalized = list(DEFAULT_FW_FACTIONS)
+
+        self.progress_mode_factions = normalized
+        self.progress_mode_faction_set = set(normalized)
+
+    def _should_try_progress_stage(self, faction_key, configured_stage, configured_difficulty):
+        if faction_key not in self.progress_mode_faction_set:
+            return False
+        if configured_difficulty != "hard":
+            return False
+        if faction_key in self.progress_failed_factions_runtime:
+            return False
+        return configured_stage < self._max_stage_for_difficulty(configured_difficulty)
+
+    def _build_relative_area_around_abs_point(self, abs_x, abs_y, rel_width=0.17, rel_height=0.08):
+        rel_center_x = (abs_x - self.window.left) / self.window.width
+        rel_center_y = (abs_y - self.window.top) / self.window.height
+
+        rel_left = max(0.0, min(1.0 - rel_width, rel_center_x - rel_width / 2))
+        rel_top = max(0.0, min(1.0 - rel_height, rel_center_y - rel_height / 2))
+        return [rel_left, rel_top, rel_width, rel_height]
+
+    def _extract_stage_number(self, raw_text):
+        if not raw_text:
+            return None
+        normalized = str(raw_text).replace("O", "0").replace("o", "0")
+        matches = re.findall(r"\d+", normalized)
+        if not matches:
+            return None
+        try:
+            return int(matches[0])
+        except ValueError:
+            return None
+
+    def _select_stage_button_area_dynamic(self, target_stage, max_scroll_attempts=8):
+        for _ in range(max_scroll_attempts):
+            stage_objects = image_tools.get_text_in_relative_area(
+                self.reader,
+                self.window,
+                self.search_areas["faction_wars_etapa_window"],
+            )
+
+            stage_candidates = []
+            for obj in stage_objects:
+                stage_number = self._extract_stage_number(getattr(obj, "text", ""))
+                if stage_number is None:
+                    continue
+                stage_candidates.append((stage_number, obj))
+
+            for stage_number, obj in stage_candidates:
+                if stage_number == int(target_stage):
+                    return self._build_relative_area_around_abs_point(
+                        obj.mean_pos_x,
+                        obj.mean_pos_y,
+                    )
+
+            if not stage_candidates:
+                window_tools.move_down(self.window, strength=0.6)
+                continue
+
+            stage_values = [value for value, _ in stage_candidates]
+            if int(target_stage) > max(stage_values):
+                window_tools.move_down(self.window, strength=0.8)
+            elif int(target_stage) < min(stage_values):
+                window_tools.move_up(self.window, strength=0.8)
+            else:
+                break
+
+        return None
+
+    def _select_stage_button_area_legacy_fallback(self):
+        if self.current_difficulty == "hard":
+            if self.current_stage >= 15:
+                hard_index = self.current_stage - 14
+            else:
+                hard_index = self.current_stage
+            hard_index = max(1, min(int(hard_index), len(self.stages_buttons_hard))) - 1
+            return self.stages_buttons_hard[hard_index]
+
+        normal_index = max(1, min(int(self.current_stage), len(self.stages_buttons))) - 1
+        return self.stages_buttons[normal_index]
+
+    def _persist_won_progress_stage(self, faction_key, stage, difficulty):
+        farm_data = self.farm_stages.get(faction_key)
+        if isinstance(farm_data, (list, tuple)) and len(farm_data) >= 2:
+            self.farm_stages[faction_key][0] = int(stage)
+            self.farm_stages[faction_key][1] = difficulty
+        else:
+            self.farm_stages[faction_key] = [int(stage), difficulty]
+
+        callback = getattr(self, "persist_stage_update_callback", None)
+        if callable(callback):
+            try:
+                callback(faction_key, int(stage), difficulty)
+            except Exception as exc:
+                print(f"Failed to persist faction wars stage update for {faction_key}: {exc}")
+
+    def _resolve_progress_result(self):
+        if not self.progress_attempt_active or not self.current_faction_key:
+            self._clear_progress_context()
+            return
+
+        attempted_stage = self.current_stage
+        if self.last_battle_result == "victory":
+            self._persist_won_progress_stage(
+                self.current_faction_key,
+                attempted_stage,
+                self.current_difficulty,
+            )
+            print(
+                f"Progress mode: {self.current_faction_key} advanced to stage {attempted_stage} ({self.current_difficulty})."
+            )
+        elif self.last_battle_result == "defeat":
+            self.progress_failed_factions_runtime.add(self.current_faction_key)
+            self.current_stage = self.current_base_stage
+            print(
+                f"Progress mode: {self.current_faction_key} failed stage {attempted_stage}. "
+                f"Falling back to stage {self.current_base_stage} for this runtime."
+            )
+
+        self._clear_progress_context()
         
         
     # ------------------------- Reset Methods -------------------------
     def reset_battle_state(self):
         self.battle_status = 'menu'
+        self.last_battle_result = None
+        self._pausa_esc_sent = False
+        auto_battle_tools.reset_auto_battle_watchdog(self)
+
+    def _read_battle_result_once(self):
+        for result_area in ("battle_result", "battle_result_2"):
+            try:
+                text_objects = image_tools.get_text_in_relative_area(
+                    self.reader,
+                    self.window,
+                    search_area=self.search_areas[result_area],
+                )
+            except Exception:
+                continue
+
+            for text_object in text_objects:
+                result_text = (getattr(text_object, "text", "") or "").strip()
+                if not result_text:
+                    continue
+                if self.resembles(result_text, "VICTORIA"):
+                    return "VICTORIA"
+                if self.resembles(result_text, "DERROTA"):
+                    return "DERROTA"
+
+        try:
+            pov_objects = image_tools.get_text_in_relative_area(
+                self.reader,
+                self.window,
+                search_area=self.search_areas["pov"],
+            )
+            for text_object in pov_objects:
+                result_text = (getattr(text_object, "text", "") or "").strip()
+                if result_text and self.resembles(result_text, "Pausa"):
+                    return "PAUSA"
+        except Exception:
+            pass
+
+        return None
 
     def resembles(self, text, target, threshold=0.8):
         ratio = difflib.SequenceMatcher(None, text.lower(), target.lower()).ratio()
@@ -130,19 +377,35 @@ class RSL_Bot_FactionWars:
 
     # ------------------------- Battle Outcome -------------------------
     def update_battle_outcome(self):
-        for result_area in ["battle_result", "battle_result_2"]:
-            try:
-                battle_result = image_tools.get_text_in_relative_area(
-                    self.reader, self.window, search_area=self.search_areas[result_area]
-                )[0]
-                if battle_result.text in ["VICTORIA", "DERROTA"]:
-                    self.battle_status = 'Done'
-                    self.battles_done += 1
-                    if self.resembles(battle_result.text, "VICTORIA"):
-                        self.battles_won += 1
-                    return
-            except:
-                continue
+        first_result = self._read_battle_result_once()
+        if first_result is None:
+            return
+
+        time.sleep(10)
+        second_result = self._read_battle_result_once()
+        if second_result is None or first_result != second_result:
+            if self.verbose:
+                print(
+                    "Faction Wars battle result mismatch between checks. "
+                    f"First='{first_result}', second='{second_result}'."
+                )
+            return
+
+        if first_result == "PAUSA":
+            if not self._pausa_esc_sent:
+                window_tools.sendkey("esc", delay=0.2, window=self.window)
+                self._pausa_esc_sent = True
+            return
+
+        self._pausa_esc_sent = False
+        self.battle_status = 'Done'
+        self.battles_done += 1
+        if first_result == "VICTORIA":
+            self.battles_won += 1
+            self.last_battle_result = "victory"
+        else:
+            self.last_battle_result = "defeat"
+        return
 
     # ------------------------- Battle Status -------------------------
     def update_battle_activity_status(self):
@@ -174,9 +437,10 @@ class RSL_Bot_FactionWars:
     # ------------------------- FW Keys -------------------------
     def get_available_fw_keys(self):
         try:
-            fw_keys = image_tools.get_text_in_relative_area(
+            keys = image_tools.get_text_in_relative_area(
                 self.reader, self.window, search_area=self.search_areas['faction_wars_keys']
-            )[0]
+            )
+            fw_keys = [key for key in keys if "/" in key.text][0]
             fw_keys = re.findall(r"\d+", fw_keys.text)[0]
         except:
             fw_keys = 0
@@ -195,6 +459,7 @@ class RSL_Bot_FactionWars:
         flat_values = self.faction_menu_names.values()
 
         while self.main_loop_running and (attempts < max_attempts and not obj_found):
+            _ensure_within_run_deadline(self, "searching faction wars encounter")
             attempts += 1
             time.sleep(2)
 
@@ -243,12 +508,22 @@ class RSL_Bot_FactionWars:
                         print("Matched faction_name but could not find corresponding key, skipping.")
                         continue
 
-                    self.current_stage = self.farm_stages[key[0]][0]
-                    self.current_difficulty = self.farm_stages[key[0]][1]
+                    configured_stage = int(self.farm_stages[key[0]][0])
+                    configured_difficulty = self.farm_stages[key[0]][1]
+                    self.current_stage = configured_stage
+                    self.current_difficulty = configured_difficulty
+                    self.current_faction_key = key[0]
+                    self.current_base_stage = configured_stage
+                    self.progress_attempt_active = False
+
+                    if self._should_try_progress_stage(key[0], configured_stage, configured_difficulty):
+                        self.current_stage = configured_stage + 1
+                        self.progress_attempt_active = True
 
                     current_fw_keys = self.get_available_fw_keys()
-                    if (int(current_fw_keys) < 4 * self.multiplier and self.current_difficulty == 'normal') or \
-                       (int(current_fw_keys) < 6 * self.multiplier and self.current_difficulty == 'hard'):
+                    print(current_fw_keys)
+                    if (int(current_fw_keys) < int(3 * self.multiplier) and self.current_difficulty == 'normal') or \
+                       (int(current_fw_keys) < int(5 * self.multiplier) and self.current_difficulty == 'hard'):
                         window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
                         continue
 
@@ -267,9 +542,26 @@ class RSL_Bot_FactionWars:
 
         if obj_found:
             self.ensure_correct_difficulty()
-            stage = np.clip(self.current_stage - 14, 0, 7) if self.current_difficulty == 'hard' else np.clip(self.current_stage - 14, 3, 7)
-            self.current_stage_button_farming_area = self.stages_buttons[stage]
-            window_tools.click_center(self.window, self.stages_buttons[stage], delay=2)
+
+            # This is the location where we want our update to take place for dynamic selection mode
+
+            self.current_stage_button_farming_area = self._select_stage_button_area_dynamic(self.current_stage)
+            if self.current_stage_button_farming_area is None:
+                if self.progress_attempt_active:
+                    self.current_stage = self.current_base_stage
+                    self.progress_attempt_active = False
+                    self.current_stage_button_farming_area = self._select_stage_button_area_dynamic(self.current_stage)
+                if self.current_stage_button_farming_area is None:
+                    self.current_stage_button_farming_area = self._select_stage_button_area_legacy_fallback()
+            offset = [0.4946, 0.0047, 0, 0]
+            self.current_stage_button_farming_area = [
+                base + add for base, add in zip(self.current_stage_button_farming_area, offset)
+            ]
+
+            window_tools.click_center(self.window, self.current_stage_button_farming_area, delay=2)
+            # This is the end of that update location.
+        else:
+            self._clear_progress_context()
 
         return obj_found
 
@@ -290,48 +582,71 @@ class RSL_Bot_FactionWars:
         if not faction_wars_multibattles_setup_1:
             window_tools.click_center(self.window, self.search_areas["faction_wars_multibattles_setup_1"])
 
-        if not faction_wars_multibattles_setup_2:
+        if faction_wars_multibattles_setup_2:
             window_tools.click_center(self.window, self.search_areas["faction_wars_multibattles_setup_2"])
 
         window_tools.click_center(self.window, self.search_areas["faction_wars_start_multibattles"], delay = 5)
         self.battle_status = 'Running'
+        auto_battle_tools.reset_auto_battle_watchdog(self)
 
+        window_tools.move_down(self.window)
 
         while self.battle_status == "Running":
+            _ensure_within_run_deadline(self, "waiting for faction wars farming result")
+            auto_battle_tools.ensure_auto_battle_running(self)
             farming_status = image_tools.get_text_in_relative_area(
                 self.reader, self.window,
                 search_area=self.current_stage_button_farming_area
             )
 
             time.sleep(2)
-            if getattr(farming_status[0],'text', False):
-                if self.resembles(farming_status[0].text, "Resultados"):
-                    self.battle_status = 'Finished'
-                    window_tools.click_center(self.window, self.search_areas["faction_wars_farming_status"])
-                    window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
+            try:
+                if getattr(farming_status[0],'text', False):
+                    if self.resembles(farming_status[0].text, "Resultados"):
+                        self.battle_status = 'Finished'
+                        window_tools.click_center(self.window, self.search_areas["faction_wars_farming_status"])
+                        window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
+            except:
+                pass
 
 
     def execute_faction_encounter(self):
         window_tools.click_center(self.window, self.search_areas["confirm_button_champion_selection"])
+        if not image_tools.check_startup(self):
+            window_tools.click_center(self.window, self.search_areas["confirm_button_champion_selection"])
+
+        
         self.reset_battle_state()
 
         while self.main_loop_running and (self.battle_status != 'Done'):
+            _ensure_within_run_deadline(self, "waiting for faction wars encounter result")
             self.update_battle_outcome()
+            auto_battle_tools.ensure_auto_battle_running(self)
             self.update_battle_activity_status()
 
         window_tools.click_center(self.window, self.search_areas["go_to_map"])
 
     # ------------------------- Main Loop -------------------------
-    def run_factionwars(self, main_loop_running = True):
+    def run_factionwars(
+        self,
+        main_loop_running=True,
+        max_run_duration_seconds=MAX_RUN_DURATION_SECONDS,
+    ):
+        _start_run_deadline(self, max_run_duration_seconds)
         time.sleep(5)
         self.start_time = time.time()
         self.running = True
         self.main_loop_running = main_loop_running
 
         while self.main_loop_running and (self.running):
+            _ensure_within_run_deadline(self, "running faction wars loop")
             encounter_found = self.locate_faction_encounter()
             if encounter_found:
-                self.farm_encounter()
+
+
+                self.execute_faction_encounter()
+                self._resolve_progress_result()
+                #self.farm_encounter()
                 self.report_run_status()
             else:
                 print('Could not find encounter')

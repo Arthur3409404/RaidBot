@@ -14,6 +14,8 @@ import numpy as np
 import pyautogui
 import matplotlib.pyplot as plt
 from skimage.metrics import structural_similarity as ssim
+import time
+from typing import Optional, Tuple, List
 
 
 class TextObject:
@@ -23,6 +25,18 @@ class TextObject:
         self.text = text
         self.mean_pos_x = mean_pos_x
         self.mean_pos_y = mean_pos_y
+
+
+def serialize_text_objects(text_objects: List[TextObject]) -> List[dict]:
+    """Convert OCR text objects into JSON-safe dictionaries."""
+    return [
+        {
+            "text": obj.text,
+            "mean_pos_x": round(float(obj.mean_pos_x), 3),
+            "mean_pos_y": round(float(obj.mean_pos_y), 3),
+        }
+        for obj in text_objects
+    ]
 
 
 # -------------------- Color Detection -------------------- #
@@ -253,6 +267,85 @@ def get_text_in_relative_area(
 
     return text_objects
 
+
+def extract_fraction_counter(
+    text: Optional[str],
+    expected_denominator: Optional[int] = None,
+) -> Optional[Tuple[int, int]]:
+    """Parse OCR text that resembles a fraction counter such as ``2/8``."""
+    if not text:
+        return None
+
+    normalized = text.lower().replace(" ", "")
+    normalized = normalized.replace("\\", "/").replace(":", "/").replace(",", "")
+    normalized = normalized.replace("o", "0")
+    normalized = re.sub(r"(?<=\d)[|il](?=\d)", "/", normalized)
+
+    candidates = [normalized]
+    digits = re.findall(r"\d+", normalized)
+    if expected_denominator is not None and digits:
+        compact_digits = "".join(digits)
+        denominator_text = str(expected_denominator)
+        if compact_digits.endswith(denominator_text) and compact_digits != denominator_text:
+            numerator_text = compact_digits[: -len(denominator_text)]
+            if numerator_text:
+                candidates.append(f"{numerator_text}/{denominator_text}")
+
+    for candidate in candidates:
+        for current_text, max_text in re.findall(r"(\d{1,3})\s*/\s*(\d{1,3})", candidate):
+            current = int(current_text)
+            maximum = int(max_text)
+            if expected_denominator is not None and maximum != int(expected_denominator):
+                continue
+            return current, maximum
+
+    return None
+
+
+def read_fraction_counter_in_relative_area(
+    reader,
+    window,
+    search_area: Tuple[float, float, float, float],
+    expected_denominator: Optional[int] = None,
+) -> dict:
+    """OCR a relative area and extract a fraction-style counter."""
+    text_objects = get_text_in_relative_area(reader, window, search_area=search_area)
+    ordered = sorted(text_objects, key=lambda obj: (round(obj.mean_pos_y, 1), obj.mean_pos_x))
+    raw_texts = [obj.text for obj in ordered if obj.text]
+
+    candidate_texts = list(raw_texts)
+    if raw_texts:
+        candidate_texts.append("".join(raw_texts))
+        candidate_texts.append(" ".join(raw_texts))
+        for idx in range(len(raw_texts) - 1):
+            candidate_texts.append(raw_texts[idx] + raw_texts[idx + 1])
+            candidate_texts.append(f"{raw_texts[idx]} {raw_texts[idx + 1]}")
+
+    seen = set()
+    for candidate in candidate_texts:
+        if candidate in seen:
+            continue
+        seen.add(candidate)
+        parsed = extract_fraction_counter(candidate, expected_denominator=expected_denominator)
+        if parsed:
+            current, maximum = parsed
+            return {
+                "current": current,
+                "maximum": maximum,
+                "matched_text": candidate,
+                "raw_texts": raw_texts,
+                "objects": serialize_text_objects(ordered),
+            }
+
+    return {
+        "current": None,
+        "maximum": expected_denominator,
+        "matched_text": None,
+        "raw_texts": raw_texts,
+        "objects": serialize_text_objects(ordered),
+    }
+
+
 def get_text_from_cluster_area(reader, window, search_areas, power_detection=False):
     """
     Extract text from multiple cluster areas in a window.
@@ -430,3 +523,51 @@ def visualize_search_area(coords, search_area):
     plt.title("Relative Search Area")
     plt.axis("off")
     plt.show()
+
+
+# -------------------- Keyboard & Mouse -------------------- #
+
+def sendkey(key: str, delay: float = 3.0):
+    """
+    Sends a single key press and waits for a delay.
+    """
+    try:
+        pyautogui.press(key)
+        time.sleep(delay)
+    except Exception:
+        print(f"SendKey failed for '{key}'")
+
+
+def click_at(x: int, y: int, delay: float = 3.0):
+    """Click at absolute screen coordinates."""
+    pyautogui.click(x, y)
+    time.sleep(delay)
+
+def check_startup(self):
+    """
+    After attempting to start a battle, verify that battle actually started.
+    If only one OCR entity is found in the target area and it is 'Resultados',
+    close result screen and signal caller to retry battle start.
+    Returns:
+        True  -> battle startup looks OK
+        False -> battle did not start; retry needed
+    """
+    startup_area = [0.364, 0.609, 0.27, 0.106]
+    time.sleep(5)
+    objs = get_text_in_relative_area(
+        self.reader,
+        self.window,
+        search_area=startup_area,
+        power_detection=False
+    )
+
+    if len(objs) == 1:
+        text = objs[0].text.strip().lower()
+        if text == "resultados":
+            click_at(objs[0].mean_pos_x, objs[0].mean_pos_y, delay=0)
+            time.sleep(2)
+            sendkey("esc", delay=0)
+            time.sleep(2)
+            return False  # caller should start battle again
+
+    return True

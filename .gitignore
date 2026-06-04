@@ -1,2 +1,13 @@
 # Python
 **/__pycache__/
+**/*.npz
+.ssh
+
+# Local debug artifacts
+debug/
+
+# Debug artifacts and map captures
+debug/**
+data/map_data/**/*.png
+data/.raidbot_slow_laptop
+

@@ -1,0 +1,67 @@
+{
+  "mode": "grim_forest",
+  "benchmark": true,
+  "benchmark_label": 6,
+  "benchmark_run": "",
+  "template_mode": "grayscale",
+  "optimized_strip_path": "pic/grimforest/optimized_strip_256x64.png",
+  "debug_dir": "debug/grim_forest_standalone",
+  "output_template_dir": "pic/grimforest",
+  "template_count": 4,
+  "selected_pool_indices": [],
+  "matrix_shape_hw": [
+    64,
+    256
+  ],
+  "optimizer": {
+    "name": "adam",
+    "objective": "soft_count_mae",
+    "lr": 0.05,
+    "beta1": 0.9,
+    "beta2": 0.999,
+    "epsilon": 1e-08,
+    "grad_delta": 0.02,
+    "grad_samples": 1,
+    "iterations": 1,
+    "soft_temperature": 0.08,
+    "soft_topk_per_map": 16,
+    "soft_score_center": 0.38,
+    "workers": 0
+  },
+  "fixed_detector_params": {
+    "max_objects": 12,
+    "min_score": 0.48,
+    "min_template_score_raw": 0.0
+  },
+  "metrics_soft": {
+    "mae": 5.707821,
+    "quality": 5.707821,
+    "true_total": 6.0,
+    "pred_total_soft": 0.292179,
+    "pred_total_rounded": 0.0
+  },
+  "metrics_hard": {
+    "mae": 2.0,
+    "exact": 0,
+    "exact_rate": 0.0,
+    "over": 1,
+    "under": 0,
+    "quality": 2.75
+  },
+  "per_run_soft": [
+    {
+      "run": "run_20260517_142946",
+      "true": 6,
+      "pred_soft": 0.29217928647994995,
+      "abs_err_soft": 5.70782071352005
+    }
+  ],
+  "per_run_hard": [
+    {
+      "run": "run_20260517_142946",
+      "true": 6,
+      "pred": 8,
+      "abs_err": 2
+    }
+  ]
+}

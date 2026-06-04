@@ -1,0 +1,20 @@
+{
+  "hard": {
+    "index": 2,
+    "score": 0.727003,
+    "center_rel_x": 0.5239197530864198,
+    "center_rel_y": 0.5296331138287864,
+    "bbox_rel": {
+      "x": 0.5146604938271605,
+      "y": 0.49388523047977423,
+      "width": 0.019290123456790122,
+      "height": 0.07149576669802446
+    },
+    "center_abs_x": 689,
+    "center_abs_y": 573,
+    "difficulty": "hard",
+    "outcome": "Derrota",
+    "recorded_at": "2026-05-28T20:57:28"
+  },
+  "normal": null
+}

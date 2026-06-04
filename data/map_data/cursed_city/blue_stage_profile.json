@@ -1,0 +1,82 @@
+{
+  "generated_at": "2026-04-12T22:11:55",
+  "mode_slug": "cursed_city",
+  "reference_fingerprint": {
+    "count": 11,
+    "max_mtime_ns": 1776004691738246000,
+    "min_mtime_ns": 1776004576684030200
+  },
+  "profile": {
+    "profile_name": "cursed_city",
+    "mode_slug": "cursed_city",
+    "hue_min": 82,
+    "hue_max": 146,
+    "sat_min": 24,
+    "val_min": 58,
+    "pale_sat_max": 118,
+    "pale_val_min": 126,
+    "blue_bias_min": 1,
+    "pale_blue_bias_min": 1,
+    "blue_minus_green_min": -14,
+    "min_area": 120,
+    "max_area_ratio": 0.05,
+    "min_fill": 0.1,
+    "max_fill": 0.8844333267211915,
+    "min_side": 10,
+    "min_side_ratio": 0.009,
+    "min_aspect_ratio": 0.45,
+    "max_aspect_ratio": 2.4,
+    "max_side_ratio": 0.16,
+    "ring_thickness_ratio": 0.16,
+    "min_ring_score": 0.09,
+    "min_border_fill": 0.12,
+    "min_center_fill": 0.03,
+    "max_core_fill": 0.6079411804676056,
+    "min_circularity": 0.06,
+    "min_solidity": 0.35,
+    "open_kernel": 3,
+    "close_kernel": 5,
+    "safe_bounds": [
+      0.05,
+      0.04,
+      0.95,
+      0.93
+    ],
+    "ignore_regions": [
+      [
+        0.88,
+        0.6,
+        1.0,
+        1.0
+      ]
+    ],
+    "accent_enabled": true,
+    "accent_hue_min": 82,
+    "accent_hue_max": 106,
+    "accent_sat_min": 18,
+    "accent_val_min": 120,
+    "accent_min_fill": 0.01,
+    "accent_weight": 0.14,
+    "min_score": 0.33,
+    "reference_summary": {
+      "source": "map_data_png_references",
+      "reference_count": 11,
+      "reference_paths": [
+        "C:/Users/Arthur/Documents/MyPython/Raid/RaidBot/data/map_data/cursed_city/sessions/session_20260412_163614/viewports/000_scan_000.png",
+        "C:/Users/Arthur/Documents/MyPython/Raid/RaidBot/data/map_data/cursed_city/sessions/session_20260412_163614/viewports/001_scan_001.png",
+        "C:/Users/Arthur/Documents/MyPython/Raid/RaidBot/data/map_data/cursed_city/sessions/session_20260412_163614/viewports/002_scan_002.png",
+        "C:/Users/Arthur/Documents/MyPython/Raid/RaidBot/data/map_data/cursed_city/sessions/session_20260412_163614/viewports/003_scan_003.png",
+        "C:/Users/Arthur/Documents/MyPython/Raid/RaidBot/data/map_data/cursed_city/sessions/session_20260412_163614/viewports/004_scan_004.png",
+        "C:/Users/Arthur/Documents/MyPython/Raid/RaidBot/data/map_data/cursed_city/sessions/session_20260412_163614/viewports/005_scan_005.png",
+        "C:/Users/Arthur/Documents/MyPython/Raid/RaidBot/data/map_data/cursed_city/sessions/session_20260412_163614/viewports/006_scan_006.png",
+        "C:/Users/Arthur/Documents/MyPython/Raid/RaidBot/data/map_data/cursed_city/sessions/session_20260412_163614/viewports/007_scan_007.png",
+        "C:/Users/Arthur/Documents/MyPython/Raid/RaidBot/data/map_data/cursed_city/sessions/session_20260412_163614/viewports/008_scan_008.png",
+        "C:/Users/Arthur/Documents/MyPython/Raid/RaidBot/data/map_data/cursed_city/sessions/session_20260412_163614/viewports/009_scan_009.png",
+        "C:/Users/Arthur/Documents/MyPython/Raid/RaidBot/data/map_data/cursed_city/sessions/session_20260412_163614/viewports/011_scan_011.png"
+      ],
+      "seed_pixel_count": 2205536,
+      "component_count": 516,
+      "generated_at": "2026-04-12T22:11:55"
+    }
+  }
+}

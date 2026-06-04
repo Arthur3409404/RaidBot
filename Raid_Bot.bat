@@ -1,32 +1,36 @@
-@echo OFF
-set BATCHPATH=%cd%
-set ENVNAME=RaidEnv
-set CONDAPATH= C:\Users\%USERNAME%\anaconda3
-set BASE = base
+@echo off
+setlocal
 
-if %ENVNAME%==base (set ENVPATH=%CONDAPATH%) else (set ENVPATH=%CONDAPATH%\envs\%ENVNAME%)
+set "BATCHPATH=%~dp0"
+set "ENVNAME=RaidEnv"
+set "ENVFILE=%BATCHPATH%data\env.yml"
 
-if not exist %CONDAPATH%\Scripts\activate.bat (
-echo "Default Folder Not Found Please paste the PATH to your anaconda3 Folder"
-set /p "CONDAPATH= "
-set ENVPATH=%CONDAPATH%\envs\%ENVNAME%
+for /f "delims=" %%I in ('where conda 2^>nul') do if not defined CONDA_CMD set "CONDA_CMD=%%I"
+if defined CONDA_CMD (
+    rem Found Conda on PATH.
+) else if exist "%USERPROFILE%\anaconda3\condabin\conda.bat" (
+    set "CONDA_CMD=%USERPROFILE%\anaconda3\condabin\conda.bat"
+) else if exist "%USERPROFILE%\miniconda3\condabin\conda.bat" (
+    set "CONDA_CMD=%USERPROFILE%\miniconda3\condabin\conda.bat"
+) else (
+    echo Conda was not found.
+    echo Install Anaconda or Miniconda, then run this file again.
+    pause
+    exit /b 1
 )
 
-if not exist %ENVPATH%\python.exe (
-echo "Environment not found. Press ENTER to install the required Python Environment."
-echo "The Installation does not require Admin rights and will have NO IMPACT ON GLOBAL PATH VARIABLE or PROGRAM FILES."
-echo "The Environment will be INSTALLED for the USER ONLY."
-echo "IF THE INSTALLATION PROCESS IS INTERRUPTED, PLEASE REINSTALL THE ENV MANUALLY --> SEE CONDA DOCS."
-echo "THIS PROCESS TAKES UP TO APPROXIMATLY 5 MINUTES"
-echo "PRESS ANY BUTTON TO PROCEED"
-pause
-set BASEPATH=%CONDAPATH%
-call %CONDAPATH%\Scripts\activate.bat %BASEPATH%
-call conda env create --file %BATCHPATH%\data\env.yml
-call conda deactivate
+call "%CONDA_CMD%" env list | findstr /R /C:"^%ENVNAME%[ ]" >nul
+if %ERRORLEVEL% NEQ 0 (
+    echo Environment "%ENVNAME%" not found.
+    echo Creating it from "%ENVFILE%". This can take several minutes.
+    pause
+    call "%CONDA_CMD%" env create --file "%ENVFILE%"
+    if %ERRORLEVEL% NEQ 0 (
+        echo Failed to create "%ENVNAME%".
+        pause
+        exit /b %ERRORLEVEL%
+    )
 )
 
-call %CONDAPATH%\Scripts\activate.bat %ENVPATH%
-python %BATCHPATH%/Raid_Bot.py
+call "%CONDA_CMD%" run --no-capture-output -n "%ENVNAME%" python "%BATCHPATH%Raid_Bot.py"
 pause
-call conda deactivate

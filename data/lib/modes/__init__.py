@@ -1,14 +1,23 @@
-import os
-import importlib
+"""Mode package exports with lazy module loading."""
 
-# Get the folder path of this __init__.py
-folder = os.path.dirname(__file__)
+from importlib import import_module
 
-# Automatically import all Python files in this folder (except __init__.py)
-for filename in os.listdir(folder):
-    if filename.endswith(".py") and filename != "__init__.py":
-        modulename = filename[:-3]  # strip '.py'
-        globals()[modulename] = importlib.import_module(f".{modulename}", package=__name__)
+__all__ = [
+    "arena_tools",
+    "chimera_tools",
+    "cursedcity_tools",
+    "demonlord_tools",
+    "doomtower_tools",
+    "dungeon_tools",
+    "factionwars_tools",
+    "grimforest_tools",
+    "hydra_tools",
+]
 
-# Optional: define __all__ to control what import * does
-__all__ = [name for name in globals() if not name.startswith("_")]
+
+def __getattr__(name):
+    if name in __all__:
+        module = import_module(f"{__name__}.{name}")
+        globals()[name] = module
+        return module
+    raise AttributeError(f"module '{__name__}' has no attribute '{name}'")

@@ -1,23 +1,35 @@
 # -*- coding: utf-8 -*-
-import tkinter as tk
-from tkinter import messagebox
-import threading
+"""Desktop control panel for starting/stopping/updating the bot runtime."""
+
+from __future__ import annotations
+
+import os
 import subprocess
 import sys
-import os
-from collections import defaultdict
+import tkinter as tk
+from tkinter import messagebox
 
-import data.lib.utils.file_tools as file_tools
+from data.lib.utils import file_tools
 
 
 class BotGUI:
-    def __init__(self):
-        param_file = os.path.join("data", "params_mainframe.txt")
-        params = file_tools.read_params(param_file)
-        self.params = self.group_params(params)
+    PID_FILE = os.path.join("data", "tmp", "run_bot.pid")
 
+    def __init__(self):
+        requested_account = os.environ.get(
+            "RAID_ACCOUNT_NAME",
+            file_tools.DEFAULT_MAIN_ACCOUNT_NAME,
+        )
+        self.profile_resolution = file_tools.resolve_profile_params_file(
+            account_name=requested_account,
+            allow_main_profile_fallback_for_missing_account=False,
+        )
+        self.param_store = file_tools.ParameterStore(self.profile_resolution.selected_param_file)
+        self.params = self.param_store.get_grouped_copy()
+        self._log_profile_resolution()
 
         self.bot_process = None
+        self.bot_pid = None
         self.start_btn = None
         self.stop_btn = None
 
@@ -25,54 +37,48 @@ class BotGUI:
         self.root.title("Raid Bot Control Panel")
         self.root.resizable(False, False)
 
-        # -----------------------------
-        # Set window icon (.ico file)
-        # -----------------------------
         try:
-            self.root.iconbitmap("pic\icon.ico")  
-        except Exception as e:
-            print(f"[WARNING] Could not set icon: {e}")
+            self.root.iconbitmap(r"pic\icon.ico")
+        except Exception as exc:
+            print(f"[WARNING] Could not set icon: {exc}")
 
         self.build_layout()
+        self._schedule_process_poll()
 
-    def group_params(self, params: dict, min_shared_keys: int = 3):
-        """
-        Groups params by common prefixes.
-        Everything not belonging to a detected group goes into 'mainframe'.
-        """
-        prefix_counts = defaultdict(int)
+    def _log_profile_resolution(self):
+        print(
+            "[INFO] Loaded GUI profile params: "
+            f"account='{self.profile_resolution.account_name}', "
+            f"profile_account='{self.profile_resolution.selected_profile_account_name}', "
+            f"file='{self.profile_resolution.selected_param_file}'."
+        )
+        if self.profile_resolution.migrated_legacy:
+            print(
+                "[INFO] Migrated legacy params file "
+                f"'{self.profile_resolution.legacy_param_file}' -> "
+                f"'{self.profile_resolution.main_profile_file}'."
+            )
+        elif self.profile_resolution.used_legacy_fallback:
+            print(
+                "[WARNING] Using legacy params fallback file: "
+                f"{self.profile_resolution.legacy_param_file}"
+            )
 
-        for key in params.keys():
-            parts = key.split("_")
-            for i in range(1, len(parts)):
-                prefix = "_".join(parts[:i]) + "_"
-                prefix_counts[prefix] += 1
+        if self.profile_resolution.used_main_profile_fallback:
+            print(
+                "[WARNING] Missing requested account profile. "
+                f"Using main profile: {self.profile_resolution.main_profile_file}"
+            )
 
-        valid_prefixes = {
-            p for p, count in prefix_counts.items()
-            if count >= min_shared_keys
-        }
+        for missing_path in self.profile_resolution.missing_profile_files:
+            print(f"[WARNING] Missing profile params file: {missing_path}")
 
-        valid_prefixes = sorted(valid_prefixes, key=len, reverse=True)
-        grouped = {"mainframe": {}}
-
-        for key, value in params.items():
-            matched = False
-
-            for prefix in valid_prefixes:
-                if key.startswith(prefix):
-                    group_name = prefix.rstrip("_")
-                    stripped_key = key[len(prefix):]
-
-                    grouped.setdefault(group_name, {})
-                    grouped[group_name][stripped_key] = value
-                    matched = True
-                    break
-
-            if not matched:
-                grouped["mainframe"][key] = value
-
-        return grouped
+        for generated_path in self.profile_resolution.generated_secondary_profiles:
+            generated_name = generated_path.stem.split("_params_mainframe")[0]
+            print(
+                "[INFO] Generated secondary profile params for account "
+                f"'{generated_name}': {generated_path}"
+            )
 
     # -------------------------------------------------
     # UI LAYOUT
@@ -86,52 +92,41 @@ class BotGUI:
         frame = tk.LabelFrame(self.root, text="Modules To Run", padx=10, pady=10)
         frame.pack(padx=10, pady=10, fill="both")
 
-        run_flags = [
-            ("Classic Arena", "classic_arena"),
-            ("Tag Team Arena", "tagteam_arena"),
-            ("Live Arena", "live_arena"),
-            ("Dungeons", "dungeons"),
-            ("Faction Wars", "factionwars"),
-            ("Demon Lord", "demonlord"),
-            ("Doom Tower", "doomtower"),
-            ("Cursed City", "cursedcity"),
-            ("Grim Forest", "grimforest"),
-            ("Effective Unit Leveling", "effective_unit_leveling"),
-        ]
+        run_flags = self.params.get("run", {})
+        if not run_flags:
+            tk.Label(frame, text="No run flags detected in params file.").grid(row=0, column=0, sticky="w")
+            return
 
-        for row, (label, key) in enumerate(run_flags):
-            value = self.params.get("run", {}).get(key, False)
-            status = "✔ ENABLED" if value else "✖ DISABLED"
+        for row, key in enumerate(sorted(run_flags.keys())):
+            value = bool(run_flags[key])
+            label = key.replace("_", " ").title()
+            status = "ENABLED" if value else "DISABLED"
 
-            tk.Label(frame, text=f"{label}:",
-                     anchor="w", width=25).grid(row=row, column=0, sticky="w")
-
-            tk.Label(frame, text=status,
-                     fg="green" if value else "red",
-                     width=12).grid(row=row, column=1, sticky="w")
+            tk.Label(frame, text=f"{label}:", anchor="w", width=30).grid(row=row, column=0, sticky="w")
+            tk.Label(
+                frame,
+                text=status,
+                fg="green" if value else "red",
+                width=12,
+            ).grid(row=row, column=1, sticky="w")
 
     def build_log_display(self):
         log_frame = tk.LabelFrame(self.root, text="Bot Feedback", padx=5, pady=5)
-        log_frame.pack(padx=10, pady=(0,10), fill="both", expand=True)
+        log_frame.pack(padx=10, pady=(0, 10), fill="both", expand=True)
 
-        # Text widget
-        self.log_text = tk.Text(log_frame, height=3, state="disabled", wrap="word")
+        self.log_text = tk.Text(log_frame, height=4, state="disabled", wrap="word")
         self.log_text.pack(side="left", fill="both", expand=True)
 
-        # Scrollbar attached to frame, not to Text itself
         scrollbar = tk.Scrollbar(log_frame, command=self.log_text.yview)
         scrollbar.pack(side="right", fill="y")
         self.log_text.config(yscrollcommand=scrollbar.set)
 
     def log_message(self, message, is_error=False):
-        """Insert a message and always scroll to the bottom."""
         self.log_text.configure(state="normal")
-        if is_error:
-            self.log_text.insert(tk.END, f"[ERROR] {message}\n")
-        else:
-            self.log_text.insert(tk.END, f"{message}\n")
-        self.log_text.see(tk.END)  # Scroll reliably
-        self.log_text.update_idletasks()  # Force update immediately
+        prefix = "[ERROR]" if is_error else "[INFO]"
+        self.log_text.insert(tk.END, f"{prefix} {message}\n")
+        self.log_text.see(tk.END)
+        self.log_text.update_idletasks()
         self.log_text.configure(state="disabled")
 
     def build_controls(self):
@@ -143,7 +138,7 @@ class BotGUI:
             text="START BOT",
             width=20,
             height=2,
-            command=self.start_bot
+            command=self.start_bot,
         )
         self.start_btn.grid(row=0, column=0, padx=5)
 
@@ -153,7 +148,7 @@ class BotGUI:
             width=20,
             height=2,
             command=self.stop_bot,
-            state="disabled"
+            state="disabled",
         )
         self.stop_btn.grid(row=0, column=1, padx=5)
 
@@ -162,71 +157,112 @@ class BotGUI:
             text="UPDATE BOT",
             width=20,
             height=2,
-            command=self.run_updater
+            command=self.run_updater,
         )
         update_btn.grid(row=0, column=2, padx=5)
+
+    def _is_pid_running(self, pid: int | None) -> bool:
+        if not pid or pid <= 0:
+            return False
+
+        result = subprocess.run(
+            ["tasklist", "/FI", f"PID eq {pid}", "/FO", "CSV", "/NH"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True,
+            check=False,
+        )
+        output = (result.stdout or "").strip()
+        return bool(output and not output.startswith("INFO:"))
+
+    def _read_pid_file(self) -> int | None:
+        if not os.path.exists(self.PID_FILE):
+            return None
+
+        try:
+            with open(self.PID_FILE, "r", encoding="utf-8") as handle:
+                raw_pid = handle.read().strip()
+        except OSError:
+            return None
+
+        if not raw_pid:
+            return None
+
+        try:
+            pid = int(raw_pid)
+        except ValueError:
+            return None
+
+        if self._is_pid_running(pid):
+            return pid
+
+        try:
+            os.remove(self.PID_FILE)
+        except OSError:
+            pass
+        return None
+
+    def _sync_button_state(self):
+        tracked_pid = self._read_pid_file()
+        if self.bot_process and self.bot_process.poll() is not None:
+            self.bot_process = None
+
+        self.bot_pid = tracked_pid
+        is_running = bool(
+            self.bot_pid
+            or (self.bot_process and self.bot_process.poll() is None)
+        )
+
+        self.start_btn.config(state="disabled" if is_running else "normal")
+        self.stop_btn.config(state="normal" if is_running else "disabled")
+
+    def _schedule_process_poll(self):
+        self._sync_button_state()
+        self.root.after(1000, self._schedule_process_poll)
 
     # -------------------------------------------------
     # BOT CONTROL
     # -------------------------------------------------
     def start_bot(self):
-        if self.bot_process:
+        if (self.bot_process and self.bot_process.poll() is None) or self._read_pid_file():
+            self.log_message("Bot is already running.")
             return
+        self.bot_process = None
 
         try:
-            self.log_message("[INFO] Starting bot...")
-
-            # Start the bot process
-            self.bot_process = subprocess.Popen(
-                [sys.executable, "run_bot.py"]
-            )
-
-            self.start_btn.config(state="disabled")
-            self.stop_btn.config(state="normal")
-
-            # Start a thread to wait for the bot to finish
-            # threading.Thread(target=self.wait_for_bot, daemon=True).start()
-
-            # Start the error handler subprocess
-            #self.start_error_handler()
-
-        except Exception as e:
-            messagebox.showerror("Bot Error", str(e))
-
+            self.log_message("Starting bot process...")
+            self.bot_process = subprocess.Popen([sys.executable, "run_bot.py"], cwd=os.getcwd())
+            self.bot_pid = self.bot_process.pid
+            self._sync_button_state()
+        except Exception as exc:
+            messagebox.showerror("Bot Error", str(exc))
+            self.log_message(str(exc), is_error=True)
 
     def stop_bot(self):
-        if self.bot_process:
-            self.log_message("[INFO] Stopping bot...")
-            self.bot_process.terminate()
-            self.bot_process = None
+        tracked_pid = self._read_pid_file()
 
-            # Stop the error handler subprocess
-            #self.stop_error_handler()
-
-            self.start_btn.config(state="normal")
-            self.stop_btn.config(state="disabled")
-
-
-    # -----------------------------
-    # ERROR HANDLER
-    # -----------------------------
-    def start_error_handler(self):
-        """Start the error handler as a separate subprocess."""
-        if getattr(self, "error_process", None):
+        if not self.bot_process and not tracked_pid:
+            self.log_message("Bot is not running.")
             return
 
-        self.log_message("[INFO] Starting error handler...")
-        self.error_process = subprocess.Popen(
-            [sys.executable, "run_error_handler.py"]
-        )
+        self.log_message("Stopping bot process...")
+        if self.bot_process and self.bot_process.poll() is None:
+            self.bot_process.terminate()
+            try:
+                self.bot_process.wait(timeout=5)
+            except Exception:
+                self.bot_process.kill()
+        elif tracked_pid:
+            subprocess.run(
+                ["taskkill", "/F", "/PID", str(tracked_pid)],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                check=False,
+            )
 
-
-    def stop_error_handler(self):
-        """Stop the error handler subprocess."""
-        if getattr(self, "error_process", None):
-            self.log_message("[INFO] Stopping error handler...")
-            self.error_process.terminate()
-            self.error_process = None
+        self.bot_process = None
+        self.bot_pid = None
+        self._sync_button_state()
 
     # -------------------------------------------------
     # UPDATE LOGIC
@@ -234,19 +270,17 @@ class BotGUI:
     def run_updater(self):
         if not messagebox.askyesno(
             "Update Bot",
-            "The bot will close and update itself.\nContinue?"
+            "The bot will close and update itself.\nContinue?",
         ):
             return
 
         try:
             updater_path = os.path.join(os.getcwd(), "updater.py")
-
             subprocess.Popen([sys.executable, updater_path])
             self.root.destroy()
+        except Exception as exc:
+            messagebox.showerror("Update Failed", str(exc))
+            self.log_message(str(exc), is_error=True)
 
-        except Exception as e:
-            messagebox.showerror("Update Failed", str(e))
-
-    # -------------------------------------------------
     def run(self):
         self.root.mainloop()

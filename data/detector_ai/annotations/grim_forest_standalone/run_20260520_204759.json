@@ -1,0 +1,49 @@
+{
+  "image_path": "C:/Users/Arthur/Documents/MyPython/RaidBot/debug/grim_forest_standalone/run_20260520_204759/pov_cyan_brighter_binary.png",
+  "image_name": "pov_cyan_brighter_binary.png",
+  "image_size": {
+    "width": 1298,
+    "height": 1069
+  },
+  "class_names": [
+    "label"
+  ],
+  "boxes": [
+    {
+      "x1": 652,
+      "y1": 173,
+      "x2": 743,
+      "y2": 279
+    },
+    {
+      "x1": 363,
+      "y1": 87,
+      "x2": 446,
+      "y2": 185
+    },
+    {
+      "x1": 2,
+      "y1": 132,
+      "x2": 73,
+      "y2": 283
+    },
+    {
+      "x1": 250,
+      "y1": 309,
+      "x2": 336,
+      "y2": 420
+    },
+    {
+      "x1": 291,
+      "y1": 492,
+      "x2": 392,
+      "y2": 604
+    },
+    {
+      "x1": 1109,
+      "y1": 640,
+      "x2": 1201,
+      "y2": 749
+    }
+  ]
+}

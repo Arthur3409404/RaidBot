@@ -7,9 +7,32 @@ Created on Sat Oct 25 14:00:37 2025
 
 import numpy as np
 import re
+import time
+import data.lib.utils.auto_battle_tools as auto_battle_tools
 import data.lib.utils.image_tools as image_tools
 import data.lib.utils.window_tools as window_tools
 import difflib
+
+MAX_RUN_DURATION_SECONDS = int(3.5 * 60 * 60)
+
+
+def _start_run_deadline(bot, max_run_duration_seconds=None):
+    limit = (
+        bot.max_run_duration_seconds
+        if max_run_duration_seconds is None
+        else float(max_run_duration_seconds)
+    )
+    bot._run_deadline = time.time() + limit
+
+
+def _ensure_within_run_deadline(bot, context: str):
+    deadline = getattr(bot, "_run_deadline", None)
+    if deadline and time.time() > deadline:
+        hours = getattr(bot, "max_run_duration_seconds", MAX_RUN_DURATION_SECONDS) / 3600.0
+        raise TimeoutError(
+            f"{bot.__class__.__name__} exceeded max runtime of {hours:.1f}h while {context}."
+        )
+
 
 class RSL_Bot_DemonLord():
     def __init__(self, title_substring="Raid: Shadow Legends", reader = None, window = None, verbose = True, player_names = None, difficulty_order = None):
@@ -50,6 +73,8 @@ class RSL_Bot_DemonLord():
         }
 
         self.demonlord_encounter_difficulty = None 
+        self.max_run_duration_seconds = MAX_RUN_DURATION_SECONDS
+        self._run_deadline = None
 
     # ------------------------- Keys -------------------------
 
@@ -135,24 +160,37 @@ class RSL_Bot_DemonLord():
         window_tools.click_center(self.window, self.search_areas["DemonLord_EnterEncounter"])
         window_tools.click_center(self.window, self.search_areas["DemonLord_StartEncounter"])
 
+        if not image_tools.check_startup(self):
+            window_tools.click_center(self.window, self.search_areas["DemonLord_StartEncounter"])
+
+
         self.battle_status = 'Starting'
+        auto_battle_tools.reset_auto_battle_watchdog(self)
         while self.main_loop_running and (self.battle_status != 'Done'):
+            _ensure_within_run_deadline(self, "waiting for demon lord encounter result")
             self.update_battle_status()
+            auto_battle_tools.ensure_auto_battle_running(self)
 
         window_tools.click_center(self.window, self.search_areas["DemonLord_EndEncounter"])
         window_tools.click_center(self.window, self.search_areas["go_to_higher_menu"])
 
     # ------------------------- Main Runner -------------------------
-    def run_demonlord(self, main_loop_running = True):
+    def run_demonlord(
+        self,
+        main_loop_running=True,
+        max_run_duration_seconds=MAX_RUN_DURATION_SECONDS,
+    ):
         """Run Demon Lord encounters."""
+        _start_run_deadline(self, max_run_duration_seconds)
         self.update_available_keys()
-        self.main_loop_running = True
+        self.main_loop_running = main_loop_running
         if self.num_of_keys == 0:
             return
 
         self.detect_cleared_difficulties()
 
         while self.main_loop_running and (len(self.demonlord_encounters_cleared) < len(self.difficulty_order)):
+            _ensure_within_run_deadline(self, "running demon lord loop")
             self.update_available_keys()
             if self.num_of_keys == 0:
                 break

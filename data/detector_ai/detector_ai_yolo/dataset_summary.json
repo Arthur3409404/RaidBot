@@ -1,0 +1,21 @@
+{
+  "dataset_root": "data\\detector_ai\\detector_ai_yolo",
+  "annotation_root": "data\\detector_ai\\annotations",
+  "dataset_name": "detector_ai_yolo",
+  "class_names": [
+    "label"
+  ],
+  "created_at": "2026-06-04T10:31:30Z",
+  "splits": {
+    "train": {
+      "images": 246,
+      "boxes": 405
+    },
+    "val": {
+      "images": 62,
+      "boxes": 84
+    }
+  },
+  "total_images": 308,
+  "total_boxes": 489
+}
