@@ -80,4 +80,6 @@ dungeons_build_name = 'Fusion'
 dungeons_disable_fusion_override = True
 
 classic_arena_update_dataset = False
+classic_arena_pushrank = False
 tagteam_arena_update_dataset = False
+tagteam_arena_pushrank = False

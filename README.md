@@ -1,96 +1,107 @@
-# RSL Automation Bot (Mainframe)
+# RSL Automation Bot
 
-[![Python](https://img.shields.io/badge/python-conda%20env-blue)](https://www.python.org/)
-[![License](https://img.shields.io/badge/license-Personal-use-lightgrey)](https://choosealicense.com/)
+Windows automation runtime for Raid: Shadow Legends. The bot orchestrates multiple game-mode routines, uses OCR and image matching for navigation, supports Discord remote commands, and includes recovery helpers for common runtime failures.
 
-Automated multi-mode controller for Raid: Shadow Legends with OCR navigation, runtime mode switching, Discord remote commands, crash recovery, and update tooling.
+This is a personal automation project. Use at your own risk.
 
-## What This Project Is
+## Main Features
 
-This project is a mainframe-style automation runtime that orchestrates multiple game-mode bots in a loop.
+- Mainframe loop that runs enabled game modes in sequence.
+- OCR-driven navigation and runtime status reporting.
+- Discord command handling for status, parameter updates, pausing, resuming, and restart requests.
+- Crash handling with screenshot capture and restart handoff.
+- Mode modules for Arena, Dungeons, Faction Wars, Demon Lord, Hydra, Chimera, Cursed City, Grim Forest, and Doom Tower.
+- Utility scripts for model training, detector tuning, map labeling, manual run capture, benchmarks, and updates.
 
-Core responsibilities:
-- Load and apply all runtime config from `data/profiles/artus_params_mainframe.txt`
-- Navigate game menus with OCR and mouse/keyboard automation
-- Run enabled modes in sequence
-- Collect quest and timed rewards between cycles
-- Handle recoverable errors automatically
-- Accept live remote commands (Discord) for status, toggles, and config updates
+## Repository Structure
 
-## Quick Start
+```text
+.
+|-- src/raid_bot/          # Application package and runtime modules
+|-- tests/                 # Unit tests
+|-- scripts/               # Operational, developer, and benchmark scripts
+|-- data/                  # Profiles, config, assets, models, datasets, and local output
+|-- Raid_Bot.py            # Main runtime entry point
+|-- run_bot.py             # Compatibility launcher for the direct runner
+|-- Raid_Bot.bat           # Windows Conda launcher
+|-- pyproject.toml         # Test/tool configuration
+`-- README.md
+```
 
-1. Set Raid to windowed mode, language Spanish, resolution `1280 x 1024`.
-2. Start Raid and log into the game account.
-3. Run `Raid_Bot.bat`.
-4. On first run, let Conda create environment `RaidEnv` (can take up to ~5 minutes).
-5. The mainframe loop starts after the Raid window is available.
+Generated runtime output such as `data/output/`, `data/tmp/`, and logs is ignored by Git.
 
 ## Requirements
 
-- Windows desktop environment
-- Anaconda/Conda installed
-- Raid running in windowed mode
-- Resolution exactly `1280 x 1024` (other resolutions are not supported)
-- Game language set to Spanish
-- Window title containing `Raid: Shadow Legends`
+- Windows desktop environment.
+- Anaconda or Miniconda.
+- Raid: Shadow Legends running in windowed mode.
+- Game resolution exactly `1280 x 1024`.
+- Game language set to Spanish.
+- Raid window title containing `Raid: Shadow Legends`.
 
 ## Installation
 
-Installation behavior is handled by `Raid_Bot.bat`:
+The normal setup path is handled by `Raid_Bot.bat`.
 
-1. Detect Conda and environment `RaidEnv`.
-2. If missing, create `RaidEnv` from `data/env.yml`.
-3. Activate environment and start `Raid_Bot.py`.
+1. Install Anaconda or Miniconda.
+2. Start Raid and log into the game account.
+3. Run `Raid_Bot.bat`.
+4. If Conda environment `RaidEnv` is missing, the launcher creates it from `data/config/env.yml`.
+5. Later launches reuse the existing environment.
 
-Notes:
-- First setup is slower because dependencies are installed.
-- Later launches skip setup and start immediately.
+## Running
 
-## Launch Flows
+Normal Windows launcher:
 
-### Flow A: Normal Batch Flow (Recommended)
+```bat
+Raid_Bot.bat
+```
 
-`Raid_Bot.bat` -> `Raid_Bot.py` -> mainframe loop
-
-What happens:
-1. Startup checks for the Raid window and can launch Plarium Play automatically if needed.
-2. `Raid_Bot.py` creates `RSL_Bot_Mainframe` and starts the continuous automation loop.
-
-### Flow B: Alternate Direct Runner
-
-`run_bot.py` creates `RSL_Bot_Mainframe` directly and also supports the restart-helper and PID-file flow:
+Direct mainframe launcher and canonical Python entry point:
 
 ```bash
-conda activate RaidEnv
+python Raid_Bot.py
+```
+
+Use `Raid_Bot.py` for normal runs and restart handoffs. It owns the mainframe
+startup flow, Raid window launch/wait behavior, duplicate-process/PID
+protection, and restart replacement logic.
+
+If `Raid_Bot.py` is started outside the `RaidEnv` Conda environment, it
+relaunches itself through Conda and continues from the same entry point.
+
+Legacy direct runner:
+
+```bash
 python run_bot.py
 ```
 
-### Flow C: Self-Update
+Package runner, useful during development:
 
-Run `python updater.py`.
+```bash
+python -m raid_bot
+```
 
-Updater flow:
-1. Finds latest remote branch matching `vX.Y.Z`
-2. Clones to temp folder
-3. Replaces local project files (excluding protected paths)
-4. Restarts bot process
+## Configuration
 
-### Flow D: Stop Automation
+Runtime profiles are stored in `data/profiles`.
 
-- If running direct/main terminal: close the process (`Ctrl+C`).
-- If using Discord control: send `stop` or `pause` to enter manual mode.
+- Default account: `data/profiles/artus_params_mainframe.txt`
+- Additional accounts: `data/profiles/{account_name}_params_mainframe.txt`
+- Runtime account selector: `RAID_ACCOUNT_NAME`
 
-## Main Automation Cycle
+Profile files use `key = value` lines. Values are parsed as Python literals where possible, so booleans, numbers, lists, and dictionaries can be written naturally.
 
-Each cycle follows this order:
+Sensitive local values are not committed. The Discord token is read from `.ssh` in the project root:
 
-1. Process pending remote command (if any)
-2. Run each enabled mode in configured sequence
-3. Send mode heartbeat/status update
-4. After all enabled modes: collect quest rewards and timed rewards
-5. Repeat
+```text
+DISCORD_TOKEN=your_discord_bot_token
+```
 
-Mode sequence in mainframe:
+## Mode Sequence
+
+The mainframe checks enabled modes in this order:
+
 1. Classic Arena
 2. Tag Team Arena
 3. Live Arena
@@ -103,167 +114,52 @@ Mode sequence in mainframe:
 10. Grim Forest
 11. Doom Tower
 
-## Mode Reference
+After a mode pass, the bot collects configured quest and timed rewards before starting the next cycle.
 
-| Mode | Toggle Key | Runtime Behavior | Typical Stop Condition |
-|---|---|---|---|
-| Classic Arena | `run_classic_arena` | Evaluates enemies, fights acceptable targets, refreshes list based on timer/settings | No usable coins / cycle done |
-| Tag Team Arena | `run_tagteam_arena` | Evaluates team power sets and runs one cycle per mainframe pass | No usable coins / cycle done |
-| Live Arena | `run_live_arena` | Checks active window state, claims rewards, auto-picks from preset slots, runs encounter loop | Live Arena inactive or no coins |
-| Dungeons | `run_dungeons` | Chooses encounter (Iron Twins priority optional) and farms selected dungeon/stage | Energy too low or selection fails |
-| Faction Wars | `run_factionwars` | Detects open crypts, selects configured stage/difficulty per faction | No valid encounter found |
-| Demon Lord | `run_demonlord` | Reads keys, detects already-cleared difficulties by player names, runs remaining order | No keys left |
-| Hydra | `run_hydra` | Selects difficulty and saved team, fights until score threshold, retries when below threshold | All configured difficulties cleared or retry fail |
-| Chimera | `run_chimera` | Similar to Demon Lord flow with score threshold gate | Keys depleted or threshold not reached |
-| Cursed City | `run_cursedcity` | Current wrapper runs scaffold demo probe (keys + blue-stage candidate check) | Demo probe completes |
-| Grim Forest | `run_grimforest` | Selects difficulty, detects selectable structures, fights stages, handles level rewards, and avoids the most recent defeat location | Keys depleted, candidate/battle failure, or defeat |
-| Doom Tower | `run_doomtower` | Rotation-aware boss loop, key tracking, setup selection, debug snapshots | Silver keys depleted, no valid boss tile, or 15-minute mode cap |
+## Useful Scripts
 
-Important behavior:
-- Quest rewards are collected after mode pass, not as separate run toggle.
-- If `run_effective_unit_leveling = True`, dungeon mode is conditionally suppressed in the main loop.
-
-## Configuration Guide
-
-All runtime settings are in:
-
-`data/profiles/artus_params_mainframe.txt`
-
-Per-account profiles follow:
-- `data/profiles/{account_name}_params_mainframe.txt`
-- runtime account selection env var: `RAID_ACCOUNT_NAME` (defaults to `artus`)
-
-File format:
-- `key = value`
-- Values are parsed as Python literals where possible (`True`, `123`, `[1,2]`, `{"a":1}`)
-
-Main groups (prefix-based):
-- `run_...` mode on/off switches
-- `classic_arena_...`
-- `tagteam_arena_...`
-- `live_arena_...`
-- `dungeons_...`
-- `faction_wars_...`
-- `demon_lord_...`
-- `hydra_...`
-- `chimera_...`
-- `doom_tower_...`
-- `cursed_city_...`
-- `grim_forest_...`
-- mainframe-level keys such as `verbose`, `screen_drift`, `override_timer_minutes`
-
-Do not manually edit:
-- `classic_arena_enemies_lost`
-- `tagteam_arena_enemies_lost`
-
-These avoid-lists are updated automatically by the arena bots.
-
-## Dungeon Tournament Override Flow
-
-Before dungeon runs, mainframe checks Fastidious calendar for active dungeon tournaments.
-
-If active:
-- Effective dungeon is forced to `normal`, level `20`, matching active tournament dungeon.
-
-If not active:
-- Uses your configured `dungeons_difficulty`, `dungeons_level`, `dungeons_dungeon`.
-
-## Discord Remote Control
-
-### Setup
-
-Create `.ssh` in project root with token:
-
-```text
-DISCORD_TOKEN=your_discord_bot_token
+```bash
+python scripts/run_error_handler.py
+python scripts/configure_manual_player.py
+python scripts/networks.py
+python scripts/tune_grimforest_adam.py
+python scripts/tune_map_mode_detector.py
+python scripts/updater.py
+python scripts/benchmarks/multi_account_startup.py
 ```
 
-Default runtime target is hardcoded to:
-- Guild: `Discord_Sandbox`
-- Channel: `raid_sandbox`
+Detector AI helpers live in `src/raid_bot/detector_ai`. Required detector datasets remain in `data/detector_ai`. Benchmark helpers live in `scripts/benchmarks`.
 
-### Supported Commands
+## Development
 
-- `help`
-- `status`
-- `modes`
-- `params [filter]`
-- `get <parameter_name>`
-- `set <parameter_name> <value>`
-- `toggle <mode_name> [on|off]`
-- `reload` or `reload_config`
-- `start` or `resume`
-- `stop` or `pause`
-- `restart`
-- `ping`
+Run tests:
 
-### Live Config Flow Example
+```bash
+python -m pytest
+```
 
-1. `stop`
-2. `params dungeons`
-3. `set dungeons_level 25`
-4. `toggle hydra off`
-5. `reload`
-6. `start`
+Compile-check source and scripts:
 
-## Error Handling and Recovery Flows
+```bash
+python -m compileall src scripts Raid_Bot.py run_bot.py
+```
 
-### Connectivity Popup
+The project uses a `src` layout. `pyproject.toml` configures pytest to include `src` on `PYTHONPATH`.
 
-- Background checker detects internet error popups and clicks retry.
+## Runtime Artifacts
 
-### Remote Override Popup
+Ignored local/generated paths include:
 
-- Main loop pauses all mode loops.
-- Waits `override_timer_minutes`.
-- Clicks reconnect area.
-- Returns to mode menu and resumes automation.
+- `data/output/`
+- `data/tmp/`
+- `data/logs/`
+- Python caches and tool caches
 
-### Fatal Exception
-
-1. Error is logged
-2. Screenshot captured to `data/tmp/raid_error_latest.png`
-3. Error + screenshot sent to Discord (if configured)
-4. Bot waits for `restart` command
-5. Current bot process exits completely
-6. Restart helper closes Raid/Plarium, launches Raid again, starts a fresh bot process, and posts a Discord success message
-
-## Map-Scaffold Artifacts and Debug Output
-
-Generated runtime artifacts:
-- Doom Tower debug: `debug/doomtower/run_*`
-- Map mode debug: `debug/map_modes/<mode>/run_*`
-- Persisted map memory: `data/map_data/<mode>/latest.json`
-- Last map session (overwritten each run): `data/map_data/<mode>/last_session/map_state.json`
-
-## Optional Utility Scripts
-
-These are not required for normal bot operation:
-
-- `python updater.py`
-  - Self-update runtime from latest version branch.
-
-- `python run_error_handler.py`
-  - Runs standalone OCR error popup watcher.
-
-- `python networks.py`
-  - Trains or analyzes arena evaluation models (developer workflow).
-
-- `web_page_handler.HellhadesScraper`
-  - Scrapes champion tier list into `data/database_champions/hellhades_tier_list.csv`.
-  - Example run:
-    ```bash
-    python -c "from data.lib.handlers.web_page_handler import HellhadesScraper; s=HellhadesScraper(headless=True); s.run()"
-    ```
+Some generated artifacts were already tracked before this cleanup. They should be removed from Git tracking with `git rm --cached` commands after review, while leaving local files on disk if you still need them.
 
 ## Known Constraints
 
-- OCR is probabilistic; occasional misreads are expected.
-- Manual keyboard/mouse usage can interfere during automation.
-- Resolution/language assumptions are strict.
-- Project is for personal experimental use; no stability or account-safety guarantees.
-
-## Disclaimer
-
-This project is a personal automation experiment.
-Use at your own risk.
+- OCR and image matching are probabilistic.
+- Manual mouse or keyboard use can interfere while automation is running.
+- Resolution and language assumptions are strict.
+- This project is for personal experimental use and does not provide account-safety guarantees.

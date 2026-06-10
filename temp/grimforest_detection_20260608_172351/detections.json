@@ -1,0 +1,172 @@
+{
+  "created_at": "2026-06-08T17:24:05",
+  "window_title": "Raid: Shadow Legends",
+  "window": {
+    "left": 10,
+    "top": 10,
+    "width": 1281,
+    "height": 1063
+  },
+  "capture_region_abs": {
+    "left": 10,
+    "top": 10,
+    "width": 1281,
+    "height": 1063
+  },
+  "detector": {
+    "method": "yolo",
+    "model_path": "C:\\Users\\Arthur\\Documents\\MyPython\\Raid\\RaidBot\\data\\models\\grimforest_detector\\best.pt",
+    "confidence": 0.25,
+    "imgsz": 640,
+    "min_accepted_score": 0.5,
+    "max_objects": 5
+  },
+  "artifacts": {
+    "screenshot": "C:\\Users\\Arthur\\Documents\\MyPython\\Raid\\RaidBot\\temp\\grimforest_detection_20260608_172351\\raid_window_pov.png",
+    "mask": "C:\\Users\\Arthur\\Documents\\MyPython\\Raid\\RaidBot\\temp\\grimforest_detection_20260608_172351\\pov_cyan_brighter_binary.png",
+    "overlay": "C:\\Users\\Arthur\\Documents\\MyPython\\Raid\\RaidBot\\temp\\grimforest_detection_20260608_172351\\detections_overlay.png"
+  },
+  "detections_count": 5,
+  "detections": [
+    {
+      "index": 1,
+      "score": 0.723502,
+      "bbox_px": {
+        "x": 911,
+        "y": 302,
+        "width": 73,
+        "height": 82
+      },
+      "bbox_rel": {
+        "x": 0.7111631537861046,
+        "y": 0.28410159924741296,
+        "width": 0.05698672911787666,
+        "height": 0.07714016933207903
+      },
+      "center_px": {
+        "x": 947,
+        "y": 343
+      },
+      "center_rel": {
+        "x": 0.7392661982825918,
+        "y": 0.32267168391345247
+      },
+      "center_abs": {
+        "x": 957,
+        "y": 353
+      }
+    },
+    {
+      "index": 2,
+      "score": 0.69963,
+      "bbox_px": {
+        "x": 469,
+        "y": 639,
+        "width": 69,
+        "height": 78
+      },
+      "bbox_rel": {
+        "x": 0.366120218579235,
+        "y": 0.6011288805268109,
+        "width": 0.053864168618266976,
+        "height": 0.07337723424270931
+      },
+      "center_px": {
+        "x": 503,
+        "y": 678
+      },
+      "center_rel": {
+        "x": 0.39266198282591724,
+        "y": 0.6378174976481655
+      },
+      "center_abs": {
+        "x": 513,
+        "y": 688
+      }
+    },
+    {
+      "index": 3,
+      "score": 0.655332,
+      "bbox_px": {
+        "x": 627,
+        "y": 626,
+        "width": 44,
+        "height": 54
+      },
+      "bbox_rel": {
+        "x": 0.4894613583138173,
+        "y": 0.5888993414863594,
+        "width": 0.03434816549570648,
+        "height": 0.05079962370649106
+      },
+      "center_px": {
+        "x": 649,
+        "y": 653
+      },
+      "center_rel": {
+        "x": 0.5066354410616706,
+        "y": 0.6142991533396049
+      },
+      "center_abs": {
+        "x": 659,
+        "y": 663
+      }
+    },
+    {
+      "index": 4,
+      "score": 0.624655,
+      "bbox_px": {
+        "x": 970,
+        "y": 634,
+        "width": 65,
+        "height": 83
+      },
+      "bbox_rel": {
+        "x": 0.7572209211553473,
+        "y": 0.5964252116650988,
+        "width": 0.0507416081186573,
+        "height": 0.07808090310442145
+      },
+      "center_px": {
+        "x": 1002,
+        "y": 675
+      },
+      "center_rel": {
+        "x": 0.7822014051522248,
+        "y": 0.6349952963311383
+      },
+      "center_abs": {
+        "x": 1012,
+        "y": 685
+      }
+    },
+    {
+      "index": 5,
+      "score": 0.598236,
+      "bbox_px": {
+        "x": 534,
+        "y": 355,
+        "width": 45,
+        "height": 55
+      },
+      "bbox_rel": {
+        "x": 0.4168618266978923,
+        "y": 0.3339604891815616,
+        "width": 0.0351288056206089,
+        "height": 0.05174035747883349
+      },
+      "center_px": {
+        "x": 556,
+        "y": 382
+      },
+      "center_rel": {
+        "x": 0.4340359094457455,
+        "y": 0.35936030103480715
+      },
+      "center_abs": {
+        "x": 566,
+        "y": 392
+      }
+    }
+  ]
+}

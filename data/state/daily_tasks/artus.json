@@ -1,0 +1,13 @@
+{
+  "dungeons": {
+    "shogun:highest:25:60": {
+      "completed": true,
+      "difficulty": "highest",
+      "dungeon": "shogun",
+      "energy_spent": 80,
+      "energy_target": 60,
+      "level": 25
+    }
+  },
+  "utc_date": "2026-06-10"
+}

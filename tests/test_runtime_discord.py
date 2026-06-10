@@ -2,7 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from data.lib.core import runtime_discord
+from raid_bot.core import runtime_discord
 
 
 class RuntimeDiscordTests(unittest.TestCase):

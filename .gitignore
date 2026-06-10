@@ -1,13 +1,50 @@
-# Python
-**/__pycache__/
-**/*.npz
+# Environment and secrets
+.env
+.env.*
+!.env.example
 .ssh
+data/keys/
 
-# Local debug artifacts
-debug/
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/
 
-# Debug artifacts and map captures
-debug/**
-data/map_data/**/*.png
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Runtime state and generated output
+data/output/
+data/tmp/
+data/logs/
 data/.raidbot_slow_laptop
+data/map_data/**/*.png
+data/detector_ai/detector_ai_yolo/**/*.cache
+data/assets/images/_template_opt_scratch/
+data/assets/images/*_optimisation_legacy/
 
+# Training/export artifacts
+*.npz
+
+# Logs
+logs/
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE/editor
+.idea/
+.vscode/.ropeproject/
+.vscode/*.log

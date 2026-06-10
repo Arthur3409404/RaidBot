@@ -2,7 +2,7 @@ import threading
 import time
 import unittest
 
-from data.lib.core import runtime_connectivity
+from raid_bot.core import runtime_connectivity
 
 
 class RuntimeConnectivityTests(unittest.TestCase):
@@ -22,6 +22,7 @@ class RuntimeConnectivityTests(unittest.TestCase):
             connectivity_probe=probe,
             online_poll_interval_seconds=0.01,
             reconnect_check_interval_seconds=0.01,
+            outage_confirmation_seconds=0,
             on_connection_lost=lambda *_: lost_event.set(),
             on_retry_attempt=lambda attempt, *_: retry_attempts.append(attempt),
             on_connection_restored=lambda *_: restored_event.set(),
@@ -49,6 +50,7 @@ class RuntimeConnectivityTests(unittest.TestCase):
             connectivity_probe=failing_probe,
             online_poll_interval_seconds=0.01,
             reconnect_check_interval_seconds=0.05,
+            outage_confirmation_seconds=0,
             on_connection_lost=lambda *_: lost_event.set(),
         )
 

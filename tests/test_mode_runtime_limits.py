@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import patch
 
-from data.lib.modes import (
+from raid_bot.modes import (
     arena_tools,
     chimera_tools,
     cursedcity_tools,

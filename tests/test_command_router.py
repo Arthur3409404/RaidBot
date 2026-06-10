@@ -1,7 +1,7 @@
 import unittest
 
-from data.lib.core import BotCommandRouter
-from data.lib.utils.file_tools import ParameterUpdate
+from raid_bot.core import BotCommandRouter
+from raid_bot.utils.file_tools import ParameterUpdate
 
 
 class FakeBotRuntime:

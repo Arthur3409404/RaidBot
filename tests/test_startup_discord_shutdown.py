@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from data.lib.core import runtime_startup
+from raid_bot.core import runtime_startup
 
 
 class StartupDiscordShutdownTests(unittest.TestCase):
@@ -37,12 +37,12 @@ class StartupDiscordShutdownTests(unittest.TestCase):
 
     def test_launchers_call_shared_helper_before_startup(self):
         repo_root = Path(__file__).resolve().parents[1]
-        raid_bot_source = (repo_root / "Raid_Bot.py").read_text(encoding="utf-8")
-        run_bot_source = (repo_root / "run_bot.py").read_text(encoding="utf-8")
+        raid_bot_source = (repo_root / "src" / "raid_bot" / "mainframe.py").read_text(encoding="utf-8")
+        run_bot_source = (repo_root / "src" / "raid_bot" / "run_bot.py").read_text(encoding="utf-8")
 
         self.assertIn("close_discord_desktop_app()", raid_bot_source)
         self.assertIn("close_discord_desktop_app()", run_bot_source)
-        self.assertIn("from data.lib.core.runtime_startup import close_discord_desktop_app", run_bot_source)
+        self.assertIn("from raid_bot.core.runtime_startup import close_discord_desktop_app", run_bot_source)
 
 
 if __name__ == "__main__":

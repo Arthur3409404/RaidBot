@@ -1,6 +1,6 @@
 import unittest
 
-from data.lib.core import runtime_reporting
+from raid_bot.core import runtime_reporting
 
 
 class RuntimeReportingTests(unittest.TestCase):

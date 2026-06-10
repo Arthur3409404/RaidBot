@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from data.lib.core import runtime_launch
+from raid_bot.core import runtime_launch
 
 
 PLARIUM_ENV = "PLARIUM_PLAY_EXE"

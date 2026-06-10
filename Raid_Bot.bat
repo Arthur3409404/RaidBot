@@ -3,7 +3,7 @@ setlocal
 
 set "BATCHPATH=%~dp0"
 set "ENVNAME=RaidEnv"
-set "ENVFILE=%BATCHPATH%data\env.yml"
+set "ENVFILE=%BATCHPATH%data\config\env.yml"
 
 for /f "delims=" %%I in ('where conda 2^>nul') do if not defined CONDA_CMD set "CONDA_CMD=%%I"
 if defined CONDA_CMD (

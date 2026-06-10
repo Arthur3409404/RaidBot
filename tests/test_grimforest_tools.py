@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from data.lib.modes import cursedcity_tools, grimforest_tools
+from raid_bot.modes import cursedcity_tools, grimforest_tools
 
 
 class SimulatedLossBot(grimforest_tools.RSL_Bot_GrimForest):
@@ -134,8 +134,178 @@ class GrimForestToolsTests(unittest.TestCase):
             payload = json.loads(Path(setup["last_defeat_path"]).read_text(encoding="utf-8"))
             self.assertEqual(payload["hard"]["outcome"], "Derrota")
 
+    def test_cursed_city_uses_six_step_expanding_spiral_by_default(self):
+        with patch.object(cursedcity_tools.random, "randrange", return_value=0):
+            bot = cursedcity_tools.RSL_Bot_CursedCity(window=object())
+        self.assertEqual(bot._max_spiral_repositions_when_no_candidates(), 6)
+
+        moves = []
+        with patch.object(cursedcity_tools.window_tools, "move_right", side_effect=lambda *_, **__: moves.append("right")):
+            with patch.object(cursedcity_tools.window_tools, "move_down", side_effect=lambda *_, **__: moves.append("down")):
+                with patch.object(cursedcity_tools.window_tools, "move_left", side_effect=lambda *_, **__: moves.append("left")):
+                    with patch.object(cursedcity_tools.window_tools, "move_up", side_effect=lambda *_, **__: moves.append("up")):
+                        for _ in range(6):
+                            bot._move_random_direction_once()
+
+        self.assertEqual(
+            moves,
+            ["right", "down", "left", "left", "up", "up"],
+        )
+
+    def test_grim_forest_uses_twenty_step_expanding_spiral_by_default(self):
+        with tempfile.TemporaryDirectory() as directory:
+            with patch.object(grimforest_tools.random, "randrange", return_value=0):
+                bot = grimforest_tools.RSL_Bot_GrimForest(window=object(), setup=self._setup_paths(directory))
+
+        self.assertEqual(bot._max_spiral_repositions_when_no_candidates(), 20)
+
+        moves = []
+        with patch.object(grimforest_tools.window_tools, "move_right", side_effect=lambda *_, **__: moves.append("right")):
+            with patch.object(grimforest_tools.window_tools, "move_down", side_effect=lambda *_, **__: moves.append("down")):
+                with patch.object(grimforest_tools.window_tools, "move_left", side_effect=lambda *_, **__: moves.append("left")):
+                    with patch.object(grimforest_tools.window_tools, "move_up", side_effect=lambda *_, **__: moves.append("up")):
+                        for _ in range(10):
+                            bot._move_random_direction_once()
+
+        self.assertEqual(
+            moves,
+            ["right", "down", "left", "left", "up", "up", "right", "right", "right", "down"],
+        )
+
+    def test_spiral_start_direction_is_randomized_clockwise(self):
+        with patch.object(cursedcity_tools.random, "randrange", return_value=2):
+            bot = cursedcity_tools.RSL_Bot_CursedCity(window=object())
+
+        moves = []
+        with patch.object(cursedcity_tools.window_tools, "move_right", side_effect=lambda *_, **__: moves.append("right")):
+            with patch.object(cursedcity_tools.window_tools, "move_down", side_effect=lambda *_, **__: moves.append("down")):
+                with patch.object(cursedcity_tools.window_tools, "move_left", side_effect=lambda *_, **__: moves.append("left")):
+                    with patch.object(cursedcity_tools.window_tools, "move_up", side_effect=lambda *_, **__: moves.append("up")):
+                        for _ in range(4):
+                            bot._move_random_direction_once()
+
+        self.assertEqual(moves, ["left", "up", "right", "right"])
+
+    def test_no_detection_escalates_stride_and_detection_resets_it(self):
+        bot = cursedcity_tools.RSL_Bot_CursedCity(
+            window=object(),
+            setup={"max_spiral_repositions_when_no_candidates": 6},
+        )
+        self.assertEqual(bot._spiral_stride_for_difficulty("hard"), 1)
+        bot._record_candidate_scan_result("hard", found=False)
+        self.assertEqual(bot._spiral_stride_for_difficulty("hard"), 2)
+        bot._record_candidate_scan_result("hard", found=False)
+        self.assertEqual(bot._spiral_stride_for_difficulty("hard"), 2)
+        bot._record_candidate_scan_result("hard", found=False)
+        self.assertEqual(bot._spiral_stride_for_difficulty("hard"), 3)
+        bot._record_candidate_scan_result("hard", found=True)
+        self.assertEqual(bot._spiral_stride_for_difficulty("hard"), 1)
+
+    def test_stride_controls_moves_before_next_detection(self):
+        bot = cursedcity_tools.RSL_Bot_CursedCity(
+            window=object(),
+            setup={"max_spiral_repositions_when_no_candidates": 6},
+        )
+        bot.no_candidate_failures_by_difficulty["hard"] = 1
+
+        moves = []
+        with patch.object(bot, "detect_cursed_city_candidates", return_value=[]) as detect:
+            with patch.object(cursedcity_tools.window_tools, "move_right", side_effect=lambda *_, **__: moves.append("right")):
+                with patch.object(cursedcity_tools.window_tools, "move_down", side_effect=lambda *_, **__: moves.append("down")):
+                    with patch.object(cursedcity_tools.window_tools, "move_left", side_effect=lambda *_, **__: moves.append("left")):
+                        with patch.object(cursedcity_tools.window_tools, "move_up", side_effect=lambda *_, **__: moves.append("up")):
+                            self.assertEqual(bot.detect_candidates_with_random_reposition("hard"), [])
+
+        self.assertEqual(len(moves), 6)
+        self.assertEqual(detect.call_count, 4)
+
+    def test_grim_forest_stride_three_starts_opposite_previous_failed_start(self):
+        with tempfile.TemporaryDirectory() as directory:
+            bot = grimforest_tools.RSL_Bot_GrimForest(
+                window=object(),
+                setup=self._setup_paths(directory, max_spiral_repositions_when_no_candidates=3),
+            )
+        bot.no_candidate_failures_by_difficulty["hard"] = 3
+        bot.last_no_candidate_start_direction_by_difficulty["hard"] = 0
+
+        moves = []
+        with patch.object(bot, "detect_grim_forest_candidates", return_value=[]):
+            with patch.object(grimforest_tools.random, "randrange", return_value=1):
+                with patch.object(grimforest_tools.window_tools, "move_right", side_effect=lambda *_, **__: moves.append("right")):
+                    with patch.object(grimforest_tools.window_tools, "move_down", side_effect=lambda *_, **__: moves.append("down")):
+                        with patch.object(grimforest_tools.window_tools, "move_left", side_effect=lambda *_, **__: moves.append("left")):
+                            with patch.object(grimforest_tools.window_tools, "move_up", side_effect=lambda *_, **__: moves.append("up")):
+                                self.assertEqual(bot.detect_candidates_with_random_reposition("hard"), [])
+
+        self.assertEqual(moves[0], "left")
+        self.assertEqual(bot.last_no_candidate_start_direction_by_difficulty["hard"], 2)
+
+    def test_grim_forest_candidate_detection_resets_stride_and_start_memory(self):
+        with tempfile.TemporaryDirectory() as directory:
+            bot = grimforest_tools.RSL_Bot_GrimForest(window=object(), setup=self._setup_paths(directory))
+        bot.no_candidate_failures_by_difficulty["hard"] = 3
+        bot.last_no_candidate_start_direction_by_difficulty["hard"] = 2
+
+        candidate = {"score": 1.0, "bbox_rel": {"x": 0.1, "y": 0.1, "width": 0.1, "height": 0.1}}
+        with patch.object(bot, "detect_grim_forest_candidates", return_value=[candidate]):
+            self.assertEqual(bot.detect_candidates_with_random_reposition("hard"), [candidate])
+
+        self.assertEqual(bot._spiral_stride_for_difficulty("hard"), 1)
+        self.assertIsNone(bot.last_no_candidate_start_direction_by_difficulty["hard"])
+
+    def test_grim_forest_hard_rejects_mimeto_encounter_after_candidate_click(self):
+        with tempfile.TemporaryDirectory() as directory:
+            bot = grimforest_tools.RSL_Bot_GrimForest(
+                window=object(),
+                setup=self._setup_paths(directory, stage_select_delay_seconds=0),
+            )
+        bot.current_run_difficulty = "hard"
+        candidate = {"center_abs_x": 100, "center_abs_y": 200}
+
+        with patch.object(grimforest_tools.window_tools, "click_at") as click_at:
+            with patch.object(grimforest_tools.window_tools, "sendkey") as sendkey:
+                with patch.object(bot, "_read_menu_name", return_value="Mimetohadwe"):
+                    self.assertFalse(bot.select_grim_forest_candidate(candidate))
+
+        click_at.assert_called_once()
+        sendkey.assert_called_once_with("esc", delay=1.0, window=bot.window)
+
+    def test_grim_forest_normal_allows_mimeto_encounter_name(self):
+        with tempfile.TemporaryDirectory() as directory:
+            bot = grimforest_tools.RSL_Bot_GrimForest(
+                window=object(),
+                setup=self._setup_paths(directory, stage_select_delay_seconds=0),
+            )
+        bot.current_run_difficulty = "normal"
+        candidate = {"center_abs_x": 100, "center_abs_y": 200}
+
+        with patch.object(grimforest_tools.window_tools, "click_at"):
+            with patch.object(grimforest_tools.window_tools, "sendkey") as sendkey:
+                with patch.object(bot, "_read_menu_name", return_value="Mimetohadwe"):
+                    self.assertTrue(bot.select_grim_forest_candidate(candidate))
+
+        sendkey.assert_not_called()
+
+    def test_cursed_city_rejects_forbidden_encounter_names(self):
+        bot = cursedcity_tools.RSL_Bot_CursedCity(window=object())
+
+        self.assertTrue(bot._is_forbidden_encounter_name("Borgoth the Scarab King"))
+        self.assertTrue(bot._is_forbidden_encounter_name("Siroth"))
+        self.assertFalse(bot._is_forbidden_encounter_name("Amius"))
+
+    def test_legacy_random_reposition_config_still_controls_spiral_limit(self):
+        cursed = cursedcity_tools.RSL_Bot_CursedCity(
+            setup={"max_random_repositions_when_no_candidates": 4}
+        )
+        self.assertEqual(cursed._max_spiral_repositions_when_no_candidates(), 4)
+
+        with tempfile.TemporaryDirectory() as directory:
+            setup = self._setup_paths(directory, max_random_repositions_when_no_candidates=7)
+            grim = grimforest_tools.RSL_Bot_GrimForest(setup=setup)
+        self.assertEqual(grim._max_spiral_repositions_when_no_candidates(), 7)
+
     def test_raidbot_source_registers_and_dispatches_grim_forest_tool(self):
-        source = Path("Raid_Bot.py").read_text(encoding="utf-8")
+        source = Path("src/raid_bot/mainframe.py").read_text(encoding="utf-8")
         self.assertIn("grimforest_tools.RSL_Bot_GrimForest(", source)
         self.assertIn('key="grimforest"', source)
         self.assertIn("self.grimforest_bot.run_grimforest(", source)

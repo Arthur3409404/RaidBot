@@ -3,7 +3,7 @@ import unittest
 from datetime import datetime
 from pathlib import Path
 
-from data.lib.utils import file_tools
+from raid_bot.utils import file_tools
 
 
 class FileToolsTests(unittest.TestCase):
@@ -34,6 +34,7 @@ class FileToolsTests(unittest.TestCase):
                 "verbose": True,
                 "run_hydra": False,
                 "dungeons_difficulty": "normal",
+                "daily_tasks_dungeons": "[dungeon= shogun, level = 25, energy = 60]",
                 "faction_wars_farm_superraid": True,
             }
         )
@@ -41,6 +42,10 @@ class FileToolsTests(unittest.TestCase):
         self.assertEqual(grouped["mainframe"], {"verbose": True})
         self.assertEqual(grouped["run"], {"hydra": False})
         self.assertEqual(grouped["dungeons"], {"difficulty": "normal"})
+        self.assertEqual(
+            grouped["daily_tasks"],
+            {"dungeons": "[dungeon= shogun, level = 25, energy = 60]"},
+        )
         self.assertEqual(grouped["faction_wars"], {"farm_superraid": True})
 
     def test_coerce_value_follows_the_existing_reference_type(self):
@@ -101,7 +106,7 @@ class FileToolsTests(unittest.TestCase):
             )
 
     def test_raidbot_source_mentions_separate_event_dungeon_level_config(self):
-        raid_bot_source = Path("Raid_Bot.py").read_text(encoding="utf-8")
+        raid_bot_source = Path("src/raid_bot/mainframe.py").read_text(encoding="utf-8")
         profile_source = Path("data/profiles/artus_params_mainframe.txt").read_text(encoding="utf-8")
 
         self.assertIn("dungeons_eventdungeon_level", raid_bot_source)
