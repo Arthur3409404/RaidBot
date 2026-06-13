@@ -1233,7 +1233,7 @@ class RSL_Bot_GrimForest:
             if self._is_in_game_modes_menu(menu_text):
                 self.mode_transitioned_out = True
                 return "game_modes"
-            window_tools.sendkey("esc", delay=1.2, window=self.window)
+            window_tools.sendkey("esc", delay=4.0, window=self.window)
         menu_text = self._read_menu_name()
         if menu_text and self.resembles(menu_text, MENU_TITLE, threshold=0.55):
             return "mode"
@@ -1286,6 +1286,8 @@ class RSL_Bot_GrimForest:
         if not self._perform_startup_check():
             return False
 
+        self.post_battle_stat_choice = self.select_post_battle_stat_reward()
+
         planned_difficulty = self._plan_and_commit_run_difficulty()
         confirmed_difficulty = self.set_difficulty(planned_difficulty)
         self.current_run_difficulty = confirmed_difficulty if confirmed_difficulty in {"normal", "hard"} else planned_difficulty
@@ -1320,6 +1322,7 @@ class RSL_Bot_GrimForest:
             self.battle_outcome = self.get_battle_outcome()
             self.post_battle_menu_status = self.return_to_mode_root_after_battle()
             if self.post_battle_menu_status == "mode":
+                time.sleep(5.0)
                 self.post_battle_stat_choice = self.select_post_battle_stat_reward()
             self.completed_battles += 1
 

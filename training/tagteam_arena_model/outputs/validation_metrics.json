@@ -1,0 +1,82 @@
+{
+  "binary_cross_entropy": 0.6279804706573486,
+  "accuracy": 0.6457564575645757,
+  "roc_auc": 0.672185061315496,
+  "confusion_matrix": {
+    "tn": 57,
+    "fp": 58,
+    "fn": 38,
+    "tp": 118
+  },
+  "precision": 0.6704545454545454,
+  "recall": 0.7564102564102564,
+  "f1": 0.7108433734939757,
+  "calibration": [
+    {
+      "bin_low": 0.1,
+      "bin_high": 0.2,
+      "count": 1,
+      "mean_predicted_probability": 0.18600067496299744,
+      "observed_win_rate": 0.0
+    },
+    {
+      "bin_low": 0.2,
+      "bin_high": 0.30000000000000004,
+      "count": 18,
+      "mean_predicted_probability": 0.2569407522678375,
+      "observed_win_rate": 0.4444444477558136
+    },
+    {
+      "bin_low": 0.30000000000000004,
+      "bin_high": 0.4,
+      "count": 30,
+      "mean_predicted_probability": 0.35119858384132385,
+      "observed_win_rate": 0.3333333432674408
+    },
+    {
+      "bin_low": 0.4,
+      "bin_high": 0.5,
+      "count": 46,
+      "mean_predicted_probability": 0.4490712285041809,
+      "observed_win_rate": 0.43478259444236755
+    },
+    {
+      "bin_low": 0.5,
+      "bin_high": 0.6000000000000001,
+      "count": 48,
+      "mean_predicted_probability": 0.547884464263916,
+      "observed_win_rate": 0.6041666865348816
+    },
+    {
+      "bin_low": 0.6000000000000001,
+      "bin_high": 0.7000000000000001,
+      "count": 58,
+      "mean_predicted_probability": 0.6450413465499878,
+      "observed_win_rate": 0.5862069129943848
+    },
+    {
+      "bin_low": 0.7000000000000001,
+      "bin_high": 0.8,
+      "count": 46,
+      "mean_predicted_probability": 0.74957275390625,
+      "observed_win_rate": 0.717391312122345
+    },
+    {
+      "bin_low": 0.8,
+      "bin_high": 0.9,
+      "count": 9,
+      "mean_predicted_probability": 0.8418872952461243,
+      "observed_win_rate": 0.7777777910232544
+    },
+    {
+      "bin_low": 0.9,
+      "bin_high": 1.0,
+      "count": 15,
+      "mean_predicted_probability": 0.9854210615158081,
+      "observed_win_rate": 1.0
+    }
+  ],
+  "best_epoch": 42,
+  "split": "validation",
+  "note": "hidden p1/p2/p3 are latent estimates and are not directly supervised."
+}

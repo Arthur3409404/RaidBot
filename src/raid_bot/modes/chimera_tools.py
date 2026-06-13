@@ -206,6 +206,7 @@ class RSL_Bot_Chimera():
                     self.chimera_encounter_difficulty
                 )
             window_tools.click_center(self.window, self.search_areas["Chimera_EndEncounter"])
+            time.sleep(5)
             window_tools.click_center(self.window, self.search_areas["Chimera_EndEncounter"])
         else:
             window_tools.click_center(self.window, self.search_areas["Chimera_FreeEncounter"])

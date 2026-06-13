@@ -1,0 +1,47 @@
+{
+  "binary_cross_entropy": 0.51644366979599,
+  "accuracy": 0.7857142857142857,
+  "roc_auc": 0.5757575757575758,
+  "confusion_matrix": {
+    "tn": 0,
+    "fp": 3,
+    "fn": 0,
+    "tp": 11
+  },
+  "precision": 0.7857142857142857,
+  "recall": 1.0,
+  "f1": 0.88,
+  "calibration": [
+    {
+      "bin_low": 0.5,
+      "bin_high": 0.6000000000000001,
+      "count": 6,
+      "mean_predicted_probability": 0.572136640548706,
+      "observed_win_rate": 0.8333333134651184
+    },
+    {
+      "bin_low": 0.6000000000000001,
+      "bin_high": 0.7000000000000001,
+      "count": 1,
+      "mean_predicted_probability": 0.6202965974807739,
+      "observed_win_rate": 1.0
+    },
+    {
+      "bin_low": 0.7000000000000001,
+      "bin_high": 0.8,
+      "count": 4,
+      "mean_predicted_probability": 0.7289382219314575,
+      "observed_win_rate": 0.5
+    },
+    {
+      "bin_low": 0.9,
+      "bin_high": 1.0,
+      "count": 3,
+      "mean_predicted_probability": 0.9922475814819336,
+      "observed_win_rate": 1.0
+    }
+  ],
+  "best_epoch": 7,
+  "split": "validation",
+  "note": "hidden p1/p2/p3 are latent estimates and are not directly supervised."
+}

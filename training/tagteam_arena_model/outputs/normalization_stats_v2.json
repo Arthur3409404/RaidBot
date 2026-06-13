@@ -1,0 +1,5 @@
+{
+  "power_transform": "log1p_then_standardize",
+  "log1p_mean": 0.8413366079330444,
+  "log1p_std": 0.37969970703125
+}

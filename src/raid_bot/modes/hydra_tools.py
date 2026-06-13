@@ -194,12 +194,9 @@ class RSL_Bot_Hydra:
     def detect_cleared_difficulties(self, max_attempts=3):
         self.hydra_encounters_cleared = []
         for difficulty in self.difficulty_order:
-            key = f"Hydra_{difficulty}"
-            if key not in self.search_areas:
-                self.log.warning("Missing search area for difficulty '%s'.", key)
+            if not self._click_hydra_difficulty(difficulty):
                 continue
 
-            window_tools.click_center(self.window, self.search_areas[key])
             window_tools.move_up(self.window, strength=3, relative_x=0.25)
             found = False
 
@@ -224,6 +221,21 @@ class RSL_Bot_Hydra:
                 return difficulty
         self.hydra_encounter_difficulty = None
         return None
+
+    def _click_hydra_difficulty(self, difficulty, repetitions=3, delay_seconds=2.0):
+        difficulty = self.normalize_difficulty(difficulty)
+        key = f"Hydra_{difficulty}"
+        if key not in self.search_areas:
+            self.log.warning("Missing search area for difficulty '%s'.", key)
+            return False
+
+        for _ in range(max(1, int(repetitions))):
+            window_tools.click_center(
+                self.window,
+                self.search_areas[key],
+                delay=float(delay_seconds),
+            )
+        return True
 
     def _parse_score_value(self, text):
         matches = re.findall(r"(\d[\d.,]*)([a-zA-Z]*)", text or "")
@@ -367,7 +379,7 @@ class RSL_Bot_Hydra:
         if difficulty_key not in self.search_areas:
             raise RuntimeError(f"Missing search area for selected difficulty: {difficulty_key}")
 
-        window_tools.click_center(self.window, self.search_areas[difficulty_key])
+        self._click_hydra_difficulty(difficulty)
 
         reclaim_status = image_tools.get_text_in_relative_area(
             self.reader,

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import difflib
 import atexit
+import inspect
 import logging
 import os
 import shutil
@@ -402,6 +403,24 @@ from raid_bot.utils import file_tools, image_tools, window_tools
 logger = logging.getLogger(__name__)
 
 
+def _constructor_config(cls, config: dict) -> dict:
+    parameters = inspect.signature(cls.__init__).parameters
+    if any(param.kind == inspect.Parameter.VAR_KEYWORD for param in parameters.values()):
+        return dict(config)
+
+    accepted_keys = {
+        key
+        for key, param in parameters.items()
+        if key != "self"
+        and param.kind
+        in {
+            inspect.Parameter.POSITIONAL_OR_KEYWORD,
+            inspect.Parameter.KEYWORD_ONLY,
+        }
+    }
+    return {key: value for key, value in config.items() if key in accepted_keys}
+
+
 class _DiscordConsoleFilter(logging.Filter):
     """Hide Discord-related log spam from terminal output."""
 
@@ -671,29 +690,44 @@ class RSL_Bot_Mainframe:
             reader=self.reader,
             window=self.window,
             param_file=self.param_file,
-            **self.params.get("classic_arena", {}),
+            **_constructor_config(
+                arena_tools.RSL_Bot_ClassicArena,
+                self.params.get("classic_arena", {}),
+            ),
         )
         self.tagteam_arena_bot = arena_tools.RSL_Bot_TagTeamArena(
             reader=self.reader,
             window=self.window,
             param_file=self.param_file,
-            **self.params.get("tagteam_arena", {}),
+            **_constructor_config(
+                arena_tools.RSL_Bot_TagTeamArena,
+                self.params.get("tagteam_arena", {}),
+            ),
         )
         self.live_arena_bot = arena_tools.RSL_Bot_LiveArena(
             reader=self.reader,
             window=self.window,
-            **self.params.get("live_arena", {}),
+            **_constructor_config(
+                arena_tools.RSL_Bot_LiveArena,
+                self.params.get("live_arena", {}),
+            ),
         )
         self.dungeon_bot = dungeon_tools.RSL_Bot_Dungeons(
             reader=self.reader,
             window=self.window,
-            **self.params.get("dungeons", {}),
+            **_constructor_config(
+                dungeon_tools.RSL_Bot_Dungeons,
+                self.params.get("dungeons", {}),
+            ),
         )
         self.dungeon_bot.fusion_active = self._dungeon_fusion_active
         self.factionwars_bot = factionwars_tools.RSL_Bot_FactionWars(
             reader=self.reader,
             window=self.window,
-            **self.params.get("faction_wars", {}),
+            **_constructor_config(
+                factionwars_tools.RSL_Bot_FactionWars,
+                self.params.get("faction_wars", {}),
+            ),
         )
         self.factionwars_bot.persist_stage_update_callback = (
             self._persist_faction_wars_stage_update
@@ -701,32 +735,50 @@ class RSL_Bot_Mainframe:
         self.demonlord_bot = demonlord_tools.RSL_Bot_DemonLord(
             reader=self.reader,
             window=self.window,
-            **self.params.get("demon_lord", {}),
+            **_constructor_config(
+                demonlord_tools.RSL_Bot_DemonLord,
+                self.params.get("demon_lord", {}),
+            ),
         )
         self.hydra_bot = hydra_tools.RSL_Bot_Hydra(
             reader=self.reader,
             window=self.window,
-            **self.params.get("hydra", {}),
+            **_constructor_config(
+                hydra_tools.RSL_Bot_Hydra,
+                self.params.get("hydra", {}),
+            ),
         )
         self.chimera_bot = chimera_tools.RSL_Bot_Chimera(
             reader=self.reader,
             window=self.window,
-            **self.params.get("chimera", {}),
+            **_constructor_config(
+                chimera_tools.RSL_Bot_Chimera,
+                self.params.get("chimera", {}),
+            ),
         )
         self.doomtower_bot = doomtower_tools.RSL_Bot_DoomTower(
             reader=self.reader,
             window=self.window,
-            **self.params.get("doom_tower", {}),
+            **_constructor_config(
+                doomtower_tools.RSL_Bot_DoomTower,
+                self.params.get("doom_tower", {}),
+            ),
         )
         self.cursedcity_bot = cursedcity_tools.RSL_Bot_CursedCity(
             reader=self.reader,
             window=self.window,
-            **self.params.get("cursed_city", {}),
+            **_constructor_config(
+                cursedcity_tools.RSL_Bot_CursedCity,
+                self.params.get("cursed_city", {}),
+            ),
         )
         self.grimforest_bot = grimforest_tools.RSL_Bot_GrimForest(
             reader=self.reader,
             window=self.window,
-            **self.params.get("grim_forest", {}),
+            **_constructor_config(
+                grimforest_tools.RSL_Bot_GrimForest,
+                self.params.get("grim_forest", {}),
+            ),
         )
 
         self.bots = [

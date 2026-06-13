@@ -13,6 +13,7 @@ import time
 import re
 from datetime import  timedelta
 import os
+from pathlib import Path
 import raid_bot.utils.auto_battle_tools as auto_battle_tools
 import raid_bot.utils.image_tools as image_tools
 import raid_bot.utils.window_tools as window_tools
@@ -20,6 +21,71 @@ from raid_bot.handlers.ai_networks_handler import EnemyDataset, TagTeamEvaluatio
 import difflib
 
 MAX_RUN_DURATION_SECONDS = int(3.5 * 60 * 60)
+
+
+class TagTeamArenaModelPredictor:
+    """Runtime adapter for the standalone Tag Team Arena PyTorch model."""
+
+    def __init__(self, checkpoint_path, device=None):
+        import torch
+
+        from training.tagteam_arena_model.models.tagteam_model import TagTeamArenaModel
+
+        self.torch = torch
+        self.device = torch.device(device or ("cuda" if torch.cuda.is_available() else "cpu"))
+        checkpoint = torch.load(checkpoint_path, map_location=self.device)
+        in_channels = int(checkpoint.get("in_channels", 3))
+        self.normalization_stats = checkpoint.get("normalization_stats", {})
+        self.model = TagTeamArenaModel(in_channels=in_channels).to(self.device)
+        self.model.load_state_dict(checkpoint["model_state_dict"])
+        self.model.eval()
+
+    def eval(self):
+        self.model.eval()
+        return self
+
+    def predict(self, image_np, power_vals, threshold=0.5):
+        crops = self._prepare_crops(image_np)
+        powers = self._prepare_powers(power_vals)
+        with self.torch.no_grad():
+            logits, _ = self.model(crops, powers)
+            prob = self.torch.sigmoid(logits).item()
+        return prob, int(prob >= threshold)
+
+    def _prepare_crops(self, image_np):
+        image = np.asarray(image_np, dtype=np.float32)
+        if image.ndim != 3:
+            raise ValueError(f"Expected tag-team enemy image [H, W, C], got {image.shape}")
+        if image.shape[-1] == 4:
+            image = image[..., :3]
+        if image.max(initial=0) > 1.5:
+            image = image / 255.0
+        image = np.clip(image, 0.0, 1.0)
+
+        pieces = np.array_split(image, 3, axis=1)
+        min_h = min(piece.shape[0] for piece in pieces)
+        min_w = min(piece.shape[1] for piece in pieces)
+        crops = np.stack([piece[:min_h, :min_w, :] for piece in pieces], axis=0)
+        crops = np.transpose(crops, (0, 3, 1, 2)).astype(np.float32)
+        crops = (crops - 0.5) / 0.5
+        tensor = self.torch.from_numpy(crops).unsqueeze(0).to(self.device)
+        return tensor
+
+    def _prepare_powers(self, power_vals):
+        powers = np.asarray(power_vals, dtype=np.float32).reshape(-1)
+        if powers.size == 4:
+            powers = powers[1:]
+        elif powers.size != 3:
+            raise ValueError(f"Expected 3 team powers or total+3 powers, got shape {powers.shape}")
+
+        if self.normalization_stats.get("power_transform") == "log1p_then_standardize":
+            mean = float(self.normalization_stats["log1p_mean"])
+            std = float(self.normalization_stats["log1p_std"])
+            if abs(std) < 1e-6:
+                std = 1.0
+            powers = (np.log1p(powers) - mean) / std
+
+        return self.torch.tensor([powers], dtype=self.torch.float32, device=self.device)
 
 
 def _start_run_deadline(bot, max_run_duration_seconds=None):
@@ -691,8 +757,15 @@ class RSL_Bot_TagTeamArena:
             )
 
         # AI evaluation network
-        weights_path = r"data\models\neural_networks\enemy_eval_tagteam_arena\_epoch350.pt"
-        self.evaluation_ai = TagTeamEvaluationNetworkCNN(weights_path=weights_path)
+        tagteam_checkpoint = Path("training/tagteam_arena_model/outputs/last_tagteam_model.pt")
+        try:
+            self.evaluation_ai = TagTeamArenaModelPredictor(tagteam_checkpoint)
+            print(f"Loaded Tag Team Arena model: {tagteam_checkpoint}")
+        except Exception as exc:
+            print(f"Could not load Tag Team Arena model '{tagteam_checkpoint}': {exc}")
+            print("Falling back to legacy Tag Team Arena evaluation model.")
+            weights_path = r"data\models\neural_networks\enemy_eval_tagteam_arena\_epoch350.pt"
+            self.evaluation_ai = TagTeamEvaluationNetworkCNN(weights_path=weights_path)
         self.evaluation_ai.eval()
 
         # Window coordinates
@@ -1010,11 +1083,14 @@ class RSL_Bot_TagTeamArena:
 
                 powers = np.array([enemy_power, enemy_power_team1, enemy_power_team2, enemy_power_team3])/350000
                 prob, label = self.evaluation_ai.predict(image_np, powers)
-                print(prob)
+                print(f"Tag Team model win probability: {prob:.3f} label={label}")
                 enemy_power_collection = [enemy_power, enemy_power_team1, enemy_power_team2, enemy_power_team3]
                 #print(f"Team1: {enemy_power_team1} Team2:{enemy_power_team2} Team3: {enemy_power_team3}  Total:{enemy_power}")
-                #if label == 1 and enemy_power_collection not in self.tagteam_arena_enemies_lost:
-                if enemy_power_collection not in self.tagteam_arena_enemies_lost and enemy_power<self.tagteam_arena_power_threshold:
+                if (
+                    label == 1
+                    and enemy_power_collection not in self.tagteam_arena_enemies_lost
+                    and enemy_power < self.tagteam_arena_power_threshold
+                ):
                     self.execute_tagteam_battle(enemy_power_collection, start_button=start_button)
                     self.battles_done += 1
                     self.battle_occured = True
