@@ -1203,9 +1203,6 @@ class RSL_Bot_GrimForest:
                     return "Victoria"
                 if self.resembles(text, "DERROTA", threshold=0.68):
                     return "Derrota"
-        for obj in self._read_text_objects("pov"):
-            if self.resembles((getattr(obj, "text", "") or "").strip(), "Pausa", threshold=0.68):
-                return "Pausa"
         return None
 
     def _is_auto_battle_visible(self) -> bool:
@@ -1222,14 +1219,13 @@ class RSL_Bot_GrimForest:
         while self.main_loop_running and (time.time() - started_at) < timeout:
             _ensure_within_run_deadline(self, "waiting for Grim Forest battle result")
             result = self._battle_result_text()
-            if result == "Pausa":
-                window_tools.sendkey("esc", delay=0.2, window=self.window)
-                time.sleep(max(0.6, interval))
-                continue
             if result:
                 time.sleep(confirmation_delay)
                 if self._battle_result_text() == result:
+                    self._pausa_esc_sent = False
                     return result
+            else:
+                auto_battle_tools.handle_stable_pausa(self)
             auto_seen = auto_seen or self._is_auto_battle_visible()
             menu_text = self._read_menu_name()
             if auto_seen and menu_text and self.resembles(menu_text, MENU_TITLE, threshold=0.55):

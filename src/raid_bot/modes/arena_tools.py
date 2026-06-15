@@ -349,17 +349,6 @@ class RSL_Bot_ClassicArena:
         except Exception:
             pass
 
-        try:
-            pov_results = image_tools.get_text_in_relative_area(
-                self.reader, self.window, search_area=self.search_areas["pov"]
-            )
-            for pov_result in pov_results:
-                text = (getattr(pov_result, "text", "") or "").strip()
-                if text and self.resembles(text, "Pausa"):
-                    return "PAUSA"
-        except Exception:
-            pass
-
         return None
 
     def update_battle_outcome(self, enemy_record):
@@ -368,6 +357,7 @@ class RSL_Bot_ClassicArena:
         """
         first_result = self._read_battle_result_once()
         if first_result is None:
+            auto_battle_tools.handle_stable_pausa(self)
             return False
 
         time.sleep(10)
@@ -378,12 +368,6 @@ class RSL_Bot_ClassicArena:
                     "Classic Arena battle result mismatch between checks. "
                     f"First='{first_result}', second='{second_result}'."
                 )
-            return False
-
-        if first_result == "PAUSA":
-            if not self._pausa_esc_sent:
-                window_tools.sendkey("esc", delay=0.2, window=self.window)
-                self._pausa_esc_sent = True
             return False
 
         self._pausa_esc_sent = False
@@ -1009,22 +993,12 @@ class RSL_Bot_TagTeamArena:
         except Exception:
             pass
 
-        try:
-            pov_results = image_tools.get_text_in_relative_area(
-                self.reader, self.window, self.search_areas["pov"]
-            )
-            for pov_result in pov_results:
-                text = (getattr(pov_result, "text", "") or "").strip()
-                if text and self.resembles(text, "Pausa"):
-                    return "PAUSA"
-        except Exception:
-            pass
-
         return None
 
     def update_battle_outcome(self, enemy_record):
         first_result = self._read_battle_result_once()
         if first_result is None:
+            auto_battle_tools.handle_stable_pausa(self)
             return False
 
         time.sleep(10)
@@ -1035,12 +1009,6 @@ class RSL_Bot_TagTeamArena:
                     "Tag Team battle result mismatch between checks. "
                     f"First='{first_result}', second='{second_result}'."
                 )
-            return False
-
-        if first_result == "PAUSA":
-            if not self._pausa_esc_sent:
-                window_tools.sendkey("esc", delay=0.2, window=self.window)
-                self._pausa_esc_sent = True
             return False
 
         self._pausa_esc_sent = False
@@ -1553,22 +1521,12 @@ class RSL_Bot_LiveArena:
                 if self.resembles(text, "DERROTA"):
                     return "DERROTA"
 
-        try:
-            pov_results = image_tools.get_text_in_relative_area(
-                self.reader, self.window, search_area=self.search_areas["pov"]
-            )
-            for pov_result in pov_results:
-                text = (getattr(pov_result, "text", "") or "").strip()
-                if text and self.resembles(text, "Pausa"):
-                    return "PAUSA"
-        except Exception:
-            pass
-
         return None
 
     def update_battle_outcome(self):
         first_result = self._read_battle_result_once()
         if first_result is None:
+            auto_battle_tools.handle_stable_pausa(self)
             return
 
         time.sleep(10)
@@ -1579,12 +1537,6 @@ class RSL_Bot_LiveArena:
                     "Live Arena battle result mismatch between checks. "
                     f"First='{first_result}', second='{second_result}'."
                 )
-            return
-
-        if first_result == "PAUSA":
-            if not self._pausa_esc_sent:
-                window_tools.sendkey("esc", delay=0.2, window=self.window)
-                self._pausa_esc_sent = True
             return
 
         self._pausa_esc_sent = False

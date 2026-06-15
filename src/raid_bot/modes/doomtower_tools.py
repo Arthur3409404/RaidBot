@@ -590,19 +590,6 @@ class RSL_Bot_DoomTower():
                 pass
 
         try:
-            pov_objects = image_tools.get_text_in_relative_area(
-                self.reader,
-                self.window,
-                search_area=self.search_areas["pov"],
-            )
-            for result in pov_objects:
-                text = (getattr(result, "text", "") or "").strip()
-                if text and self.resembles(text, "Pausa"):
-                    return "PAUSA"
-        except Exception:
-            pass
-
-        try:
             auto_button = image_tools.get_text_in_relative_area(
                 self.reader,
                 self.window,
@@ -635,6 +622,7 @@ class RSL_Bot_DoomTower():
     def update_battle_status(self):
         first_result = self._read_battle_status_once()
         if first_result is None:
+            auto_battle_tools.handle_stable_pausa(self)
             return
 
         time.sleep(10)
@@ -645,12 +633,6 @@ class RSL_Bot_DoomTower():
                     "Doom Tower battle result mismatch between checks. "
                     f"First='{first_result}', second='{second_result}'."
                 )
-            return
-
-        if first_result == "PAUSA":
-            if not self._pausa_esc_sent:
-                window_tools.sendkey("esc", delay=0.2, window=self.window)
-                self._pausa_esc_sent = True
             return
 
         self._pausa_esc_sent = False

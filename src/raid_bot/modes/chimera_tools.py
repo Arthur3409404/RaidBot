@@ -76,6 +76,7 @@ class RSL_Bot_Chimera():
         self.chimera_encounter_difficulty = None 
         self.max_run_duration_seconds = MAX_RUN_DURATION_SECONDS
         self._run_deadline = None
+        self._pausa_esc_sent = False
 
     # ------------------------- Keys -------------------------
 
@@ -135,6 +136,7 @@ class RSL_Bot_Chimera():
 
     # ------------------------- Battle Result -------------------------
     def update_battle_status(self):
+        result_confirmed = False
         try:
             result = image_tools.get_text_in_relative_area(
                 self.reader, self.window, search_area=self.search_areas['Chimera_Result']
@@ -145,8 +147,12 @@ class RSL_Bot_Chimera():
             )[0]
             if self.resembles(result.text, 'RESULTADO') and self.resembles(result2.text, 'RESULTADO'):
                 self.battle_status = 'Done'
+                self._pausa_esc_sent = False
+                result_confirmed = True
         except:
             pass
+        if not result_confirmed:
+            auto_battle_tools.handle_stable_pausa(self)
 
     # ------------------------- Encounter -------------------------
     def execute_chimera_encounter(self):

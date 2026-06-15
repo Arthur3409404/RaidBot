@@ -469,19 +469,6 @@ class RSL_Bot_FactionWars:
                 if self.resembles(result_text, "DERROTA"):
                     return "DERROTA"
 
-        try:
-            pov_objects = image_tools.get_text_in_relative_area(
-                self.reader,
-                self.window,
-                search_area=self.search_areas["pov"],
-            )
-            for text_object in pov_objects:
-                result_text = (getattr(text_object, "text", "") or "").strip()
-                if result_text and self.resembles(result_text, "Pausa"):
-                    return "PAUSA"
-        except Exception:
-            pass
-
         return None
 
     def resembles(self, text, target, threshold=0.8):
@@ -505,6 +492,7 @@ class RSL_Bot_FactionWars:
     def update_battle_outcome(self):
         first_result = self._read_battle_result_once()
         if first_result is None:
+            auto_battle_tools.handle_stable_pausa(self)
             return
 
         time.sleep(10)
@@ -515,12 +503,6 @@ class RSL_Bot_FactionWars:
                     "Faction Wars battle result mismatch between checks. "
                     f"First='{first_result}', second='{second_result}'."
                 )
-            return
-
-        if first_result == "PAUSA":
-            if not self._pausa_esc_sent:
-                window_tools.sendkey("esc", delay=0.2, window=self.window)
-                self._pausa_esc_sent = True
             return
 
         self._pausa_esc_sent = False

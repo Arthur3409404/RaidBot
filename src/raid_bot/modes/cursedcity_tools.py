@@ -683,10 +683,6 @@ class RSL_Bot_CursedCity:
                     return "Victoria"
                 if self.resembles(text, "DERROTA", threshold=0.68):
                     return "Derrota"
-        for text_object in self._read_text_objects("pov"):
-            text = (getattr(text_object, "text", "") or "").strip()
-            if text and self.resembles(text, "Pausa", threshold=0.68):
-                return "Pausa"
         return None
 
     def _is_auto_battle_visible(self) -> bool:
@@ -705,13 +701,12 @@ class RSL_Bot_CursedCity:
             _ensure_within_run_deadline(self, "waiting for Cursed City battle result")
             result = self._battle_result_text()
             if result:
-                if result == "Pausa":
-                    window_tools.sendkey("esc", delay=0.2, window=self.window)
-                    time.sleep(max(0.6, poll_interval_seconds))
-                    continue
                 time.sleep(confirm_delay)
                 if self._battle_result_text() == result:
+                    self._pausa_esc_sent = False
                     return result
+            else:
+                auto_battle_tools.handle_stable_pausa(self)
             if self._is_auto_battle_visible():
                 auto_seen = True
             menu_text = self._read_menu_name()

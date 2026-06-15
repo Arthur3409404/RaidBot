@@ -10,6 +10,7 @@ import time
 
 import pyautogui
 
+import raid_bot.utils.image_tools as image_tools
 import raid_bot.utils.window_tools as window_tools
 
 
@@ -18,6 +19,9 @@ AUTO_BATTLE_BUTTON_AREA = [0.026, 0.899, 0.058, 0.07]
 AUTO_BATTLE_SAMPLE_INTERVAL_SECONDS = 10.0
 AUTO_BATTLE_STAGNANT_SAMPLE_COUNT = 12
 AUTO_BATTLE_CLICK_COOLDOWN_SECONDS = 30.0
+PAUSA_SEARCH_AREA = [0.35, 0.10, 0.30, 0.30]
+PAUSA_CONFIRMATION_DELAY_SECONDS = 10.0
+PAUSA_CENTER_MATCH_MARGIN_PX = 10.0
 
 
 @dataclass
@@ -89,6 +93,79 @@ def ensure_auto_battle_running(
     return True
 
 
+def handle_stable_pausa(
+    bot,
+    *,
+    search_area: Sequence[float] | None = None,
+    confirmation_delay_seconds: float = PAUSA_CONFIRMATION_DELAY_SECONDS,
+    center_margin_px: float = PAUSA_CENTER_MATCH_MARGIN_PX,
+    threshold: float = 0.68,
+) -> bool:
+    """Press Esc only when the same Pausa text remains stable for two checks."""
+    first_object = find_pausa_object(bot, search_area=search_area, threshold=threshold)
+    if first_object is None:
+        return False
+
+    time.sleep(float(confirmation_delay_seconds))
+    second_object = find_pausa_object(bot, search_area=search_area, threshold=threshold)
+    if second_object is None:
+        return False
+
+    if not text_object_centers_match(first_object, second_object, margin_px=center_margin_px):
+        _log(
+            bot,
+            "Pausa text moved between checks; ignoring pause recovery. "
+            f"First={text_object_center(first_object)}, second={text_object_center(second_object)}.",
+        )
+        return False
+
+    if not getattr(bot, "_pausa_esc_sent", False):
+        window_tools.sendkey("esc", delay=0.2, window=getattr(bot, "window", None))
+        bot._pausa_esc_sent = True
+    return True
+
+
+def find_pausa_object(
+    bot,
+    *,
+    search_area: Sequence[float] | None = None,
+    threshold: float = 0.68,
+):
+    try:
+        text_objects = image_tools.get_text_in_relative_area(
+            bot.reader,
+            bot.window,
+            search_area=search_area or PAUSA_SEARCH_AREA,
+            power_detection=False,
+        )
+    except Exception:
+        return None
+
+    for text_object in text_objects:
+        text = (getattr(text_object, "text", "") or "").strip()
+        if text and _resembles(bot, text, "Pausa", threshold=threshold):
+            return text_object
+    return None
+
+
+def text_object_centers_match(first_object, second_object, margin_px: float = PAUSA_CENTER_MATCH_MARGIN_PX) -> bool:
+    first_center = text_object_center(first_object)
+    second_center = text_object_center(second_object)
+    if first_center is None or second_center is None:
+        return False
+    return (
+        abs(first_center[0] - second_center[0]) <= float(margin_px)
+        and abs(first_center[1] - second_center[1]) <= float(margin_px)
+    )
+
+
+def text_object_center(text_object) -> tuple[float, float] | None:
+    try:
+        return float(text_object.mean_pos_x), float(text_object.mean_pos_y)
+    except (AttributeError, TypeError, ValueError):
+        return None
+
+
 def sample_center_pixel(window, relative_area: Sequence[float]) -> tuple[int, int, int] | None:
     if not window or not relative_area or len(relative_area) < 4:
         return None
@@ -132,6 +209,16 @@ def _auto_battle_watchdog_enabled(bot) -> bool:
     if isinstance(setup, dict) and "auto_battle_watchdog_enabled" in setup:
         return bool(setup.get("auto_battle_watchdog_enabled"))
     return bool(getattr(bot, "auto_battle_watchdog_enabled", False))
+
+
+def _resembles(bot, text: str, target: str, threshold: float = 0.68) -> bool:
+    resembles = getattr(bot, "resembles", None)
+    if callable(resembles):
+        try:
+            return bool(resembles(text, target, threshold=threshold))
+        except TypeError:
+            return bool(resembles(text, target))
+    return text.strip().lower() == target.strip().lower()
 
 
 def _log(bot, message: str) -> None:
