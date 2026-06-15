@@ -2,6 +2,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from raid_bot.modes import cursedcity_tools, grimforest_tools
@@ -93,6 +94,64 @@ class GrimForestToolsTests(unittest.TestCase):
                     self.assertEqual(bot.set_difficulty("normal"), "normal")
             self.assertEqual(click_center.call_count, 2)
             self.assertEqual(click_center.call_args_list[1].args[1], bot.search_areas["mode_difficulty_switch_normal"])
+
+    def test_startup_check_clears_level_prompt_before_menu_validation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            bot = grimforest_tools.RSL_Bot_GrimForest(
+                window=object(),
+                setup=self._setup_paths(
+                    directory,
+                    startup_check_timeout_seconds=1,
+                    startup_check_poll_interval_seconds=0,
+                ),
+            )
+
+        def read_text_objects(area_key, power_detection=False):
+            if area_key == "post_battle_level_prompt":
+                return [SimpleNamespace(text="Subida de nivel")]
+            if area_key == "post_battle_stat_options":
+                return [SimpleNamespace(text="VEL", mean_pos_x=123, mean_pos_y=456)]
+            return []
+
+        with patch.object(bot, "_read_menu_name", side_effect=[None, "Bosque Lugubre"]):
+            with patch.object(bot, "_read_text_objects", side_effect=read_text_objects):
+                with patch.object(grimforest_tools.window_tools, "click_center") as click_center:
+                    with patch.object(grimforest_tools.window_tools, "click_at") as click_at:
+                        self.assertTrue(bot._perform_startup_check())
+
+        self.assertEqual(click_center.call_count, 2)
+        self.assertEqual(click_center.call_args_list[0].args[1], bot.search_areas["post_battle_level_prompt"])
+        self.assertEqual(click_center.call_args_list[1].args[1], bot.search_areas["post_battle_stat_confirm"])
+        click_at.assert_called_once_with(123, 456, delay=2.0, window=bot.window)
+
+    def test_startup_check_clears_trait_card_prompt_before_menu_validation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            bot = grimforest_tools.RSL_Bot_GrimForest(
+                window=object(),
+                setup=self._setup_paths(
+                    directory,
+                    startup_check_timeout_seconds=1,
+                    startup_check_poll_interval_seconds=0,
+                ),
+            )
+
+        def read_text_objects(area_key, power_detection=False):
+            if area_key == "post_battle_level_prompt":
+                return [SimpleNamespace(text="Cartas de Rasgo se otorgan a todos")]
+            if area_key == "post_battle_stat_options":
+                return [SimpleNamespace(text="VEL", mean_pos_x=629, mean_pos_y=667)]
+            if area_key == "post_battle_stat_confirm":
+                return [SimpleNamespace(text="ELEGIR")]
+            return []
+
+        with patch.object(bot, "_read_menu_name", side_effect=[None, "Bosque Lugubre"]):
+            with patch.object(bot, "_read_text_objects", side_effect=read_text_objects):
+                with patch.object(grimforest_tools.window_tools, "click_center") as click_center:
+                    with patch.object(grimforest_tools.window_tools, "click_at") as click_at:
+                        self.assertTrue(bot._perform_startup_check())
+
+        click_center.assert_called_once_with(bot.window, bot.search_areas["post_battle_stat_confirm"], delay=2.0)
+        click_at.assert_called_once_with(629, 667, delay=2.0, window=bot.window)
 
     def test_configured_difficulty_is_used_when_alternation_is_disabled(self):
         with tempfile.TemporaryDirectory() as directory:

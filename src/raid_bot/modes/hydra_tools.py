@@ -17,7 +17,7 @@ import raid_bot.utils.window_tools as window_tools
 MAX_RUN_DURATION_SECONDS = int(3.5 * 60 * 60)
 
 HYDRA_SEARCH_AREAS = {
-    "menu_name": [0.008, 0.034, 0.23, 0.06],
+    "menu_name": [0.0, 0.02, 0.36, 0.07],
     "go_to_higher_menu": [0.928, 0.031, 0.046, 0.039],
     "main_menu_labels": [0.007, 0.27, 0.984, 0.044],
     "clanboss_Hydra": [0.445, 0.307, 0.11, 0.196],

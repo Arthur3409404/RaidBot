@@ -135,7 +135,7 @@ class RSL_Bot_CursedCity:
         self.title_substring = title_substring
 
         self.search_areas = {
-            "menu_name": [0.008, 0.034, 0.23, 0.037],
+            "menu_name": [0.0, 0.02, 0.36, 0.07],
             "mode_keys_row": [0.18, 0.02, 0.80, 0.07],
             "mode_difficulty_current": [0.032, 0.903, 0.166, 0.051],
             "mode_difficulty_switch_normal": [0.046, 0.841, 0.139, 0.056],

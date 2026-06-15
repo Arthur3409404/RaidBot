@@ -587,7 +587,7 @@ class RSL_Bot_GrimForest:
         self.verbose = verbose
         self.log = logging.getLogger(self.__class__.__name__)
         self.search_areas = {
-            "menu_name": [0.008, 0.034, 0.23, 0.037],
+            "menu_name": [0.0, 0.02, 0.36, 0.07],
             "mode_keys_row": [0.18, 0.02, 0.80, 0.07],
             "mode_difficulty_current": [0.03, 0.917, 0.079, 0.043],
             "mode_difficulty_switch_normal": [0.092, 0.798, 0.08, 0.036],
@@ -612,6 +612,8 @@ class RSL_Bot_GrimForest:
             "difficulty_dropdown_open_delay_seconds": 0.8,
             "difficulty_switch_confirm_delay_seconds": 2.5,
             "post_entry_wait_seconds": 5.0,
+            "startup_check_timeout_seconds": 45.0,
+            "startup_check_poll_interval_seconds": 1.0,
             "initial_candidate_zoom_out_steps": 3,
             "initial_candidate_zoom_out_amount_per_step": -600,
             "initial_candidate_zoom_out_delay_seconds": 0.75,
@@ -874,11 +876,27 @@ class RSL_Bot_GrimForest:
         wait_seconds = float(self.setup.get("post_entry_wait_seconds", 5.0) or 0.0)
         if wait_seconds > 0:
             time.sleep(wait_seconds)
-        menu_text = self._read_menu_name()
-        ok = bool(menu_text and self.resembles(menu_text, MENU_TITLE, threshold=0.55))
-        if not ok:
-            self.log.warning("[Grim Forest] Startup check failed. Expected '%s', got '%s'.", MENU_TITLE, menu_text)
-        return ok
+
+        timeout_seconds = max(0.0, float(self.setup.get("startup_check_timeout_seconds", 45.0) or 0.0))
+        poll_interval = max(0.0, float(self.setup.get("startup_check_poll_interval_seconds", 1.0) or 0.0))
+        deadline = time.time() + timeout_seconds
+        last_menu_text = None
+
+        while self.main_loop_running:
+            last_menu_text = self._read_menu_name()
+            if last_menu_text and self.resembles(last_menu_text, MENU_TITLE, threshold=0.55):
+                return True
+
+            selected_text = self.select_post_battle_stat_reward()
+            if selected_text is not None:
+                self.log.info("[Grim Forest] Cleared startup level prompt: %s.", selected_text)
+
+            if time.time() >= deadline:
+                break
+            time.sleep(poll_interval)
+
+        self.log.warning("[Grim Forest] Startup check failed. Expected '%s', got '%s'.", MENU_TITLE, last_menu_text)
+        return False
 
     def update_available_keys(self) -> int:
         counter = image_tools.read_fraction_counter_in_relative_area(
@@ -1244,10 +1262,20 @@ class RSL_Bot_GrimForest:
 
     def select_post_battle_stat_reward(self) -> str | None:
         prompts = self._read_text_objects("post_battle_level_prompt")
-        if not any("nivel" in (getattr(obj, "text", "") or "").lower() for obj in prompts):
-            return None
-        window_tools.click_center(self.window, self.search_areas["post_battle_level_prompt"], delay=2.0)
+        prompt_text = " ".join((getattr(obj, "text", "") or "").lower() for obj in prompts)
+        has_level_prompt = "nivel" in prompt_text
         choices = self._read_text_objects("post_battle_stat_options")
+        choice_text = " ".join((getattr(obj, "text", "") or "").upper() for obj in choices)
+        confirm_texts = self._read_text_objects("post_battle_stat_confirm")
+        confirm_text = " ".join((getattr(obj, "text", "") or "").upper() for obj in confirm_texts)
+        has_trait_card_prompt = "ELEGIR" in confirm_text and any(
+            preferred_text in choice_text for preferred_text in ("RES", "VEL", "DEF", "HP", "ATK", "PUNT")
+        )
+        if not has_level_prompt and not has_trait_card_prompt:
+            return None
+        if has_level_prompt:
+            window_tools.click_center(self.window, self.search_areas["post_battle_level_prompt"], delay=2.0)
+            choices = self._read_text_objects("post_battle_stat_options")
         selected_text = None
         for preferred_text in ("RES", "VEL", "DEF", "HP"):
             match = next(
