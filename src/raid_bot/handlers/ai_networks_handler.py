@@ -8,13 +8,112 @@ Created on Tue Dec 23 15:36:23 2025
 
 import os
 import re
+import csv
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+from functools import lru_cache
 from torch.utils.data import DataLoader, Dataset, random_split
-from PIL import Image
+from pathlib import Path
+
+from raid_bot.utils.tagteam_portraits import crop_tagteam_portraits
+from raid_bot.utils.classic_arena_portraits import crop_classic_arena_portraits
+
+
+REPO_ROOT = Path(__file__).resolve().parents[3]
+DEFAULT_CHAMPION_LABELS_CSV = (
+    REPO_ROOT / "data" / "processed" / "labels.csv"
+)
+
+
+def _as_object_vector(values) -> np.ndarray:
+    sequence = list(values)
+    array = np.empty(len(sequence), dtype=object)
+    for index, value in enumerate(sequence):
+        array[index] = value
+    return array
+
+
+def _normalize_name_lookup(value: object) -> str:
+    text = "" if value is None else str(value).strip().lower()
+    text = text.replace("_", " ")
+    text = re.sub(r"\s+", " ", text)
+    return text
+
+
+class ChampionRowEncoder:
+    """
+    Encode champion names to stable integer ids based on their row position in labels.csv.
+
+    Id 0 is reserved for unknown / padding.
+    The first data row in labels.csv maps to id 1, the second to id 2, and so on.
+    """
+
+    def __init__(self, labels_csv_path: str | os.PathLike | None = None):
+        self.labels_csv_path = Path(labels_csv_path or DEFAULT_CHAMPION_LABELS_CSV)
+        self.name_to_id: dict[str, int] = {}
+        self.id_to_name: dict[int, str] = {0: "<UNK>"}
+        self._load_labels_csv()
+
+    def _load_labels_csv(self) -> None:
+        if not self.labels_csv_path.exists():
+            raise FileNotFoundError(f"Champion labels CSV not found: {self.labels_csv_path}")
+
+        with self.labels_csv_path.open("r", encoding="utf-8-sig", newline="") as handle:
+            reader = csv.DictReader(handle)
+            for row_index, row in enumerate(reader, start=1):
+                champion_name = str(row.get("champion_name", "")).strip()
+                champion_label = str(row.get("label", "")).strip()
+                if not champion_name and not champion_label:
+                    continue
+
+                self.id_to_name[row_index] = champion_name or champion_label or f"Champion{row_index}"
+                candidate_keys = {
+                    _normalize_name_lookup(champion_name),
+                    _normalize_name_lookup(champion_label),
+                }
+                for candidate in candidate_keys:
+                    if candidate:
+                        self.name_to_id.setdefault(candidate, row_index)
+
+    @property
+    def vocab_size(self) -> int:
+        return max(self.id_to_name) + 1
+
+    def encode_name(self, champion_name: object) -> int:
+        return self.name_to_id.get(_normalize_name_lookup(champion_name), 0)
+
+    def encode_teamcomposition(
+        self,
+        teamcomposition,
+        *,
+        team_size: int | None = None,
+    ) -> np.ndarray:
+        if teamcomposition is None:
+            names = []
+        elif isinstance(teamcomposition, np.ndarray):
+            names = teamcomposition.tolist()
+        else:
+            names = list(teamcomposition)
+
+        encoded = [self.encode_name(name) for name in names]
+        if team_size is not None:
+            if len(encoded) < team_size:
+                encoded.extend([0] * (team_size - len(encoded)))
+            else:
+                encoded = encoded[:team_size]
+        return np.asarray(encoded, dtype=np.int64)
+
+    def decode_id(self, champion_id: int) -> str:
+        return self.id_to_name.get(int(champion_id), "<UNK>")
+
+
+@lru_cache(maxsize=4)
+def load_champion_row_encoder(labels_csv_path: str | None = None) -> ChampionRowEncoder:
+    resolved = str(Path(labels_csv_path or DEFAULT_CHAMPION_LABELS_CSV).resolve())
+    return ChampionRowEncoder(resolved)
 
 
 # -----------------------------
@@ -22,10 +121,9 @@ from PIL import Image
 # -----------------------------
 class EnemyDataset(Dataset):
     """
-    Dataset storing images, power (normalized), and labels (0/1) in .npz files.
+    Dataset storing enemy team compositions, power values, and labels in .npz files.
     Creates the dataset if it does not exist and appends new entries.
     Optionally supports sharded saving with max_entries_per_file.
-    Images are normalized to [0,1], power is normalized by max_power.
     Power can be a single value or a numpy array.
     """
 
@@ -35,7 +133,10 @@ class EnemyDataset(Dataset):
         use_power=True,
         transform=None,
         max_power=350000.0,
-        max_entries_per_file=None
+        max_entries_per_file=None,
+        labels_csv_path=None,
+        use_name_encoding=False,
+        team_size=None,
     ):
         self.base_dataset_path = dataset_path
         self.dataset_path = dataset_path
@@ -43,6 +144,11 @@ class EnemyDataset(Dataset):
         self.max_power = max_power
         self.use_power = use_power
         self.max_entries_per_file = max_entries_per_file
+        self.use_name_encoding = bool(use_name_encoding)
+        self.team_size = team_size
+        self.name_encoder = None
+        if self.use_name_encoding:
+            self.name_encoder = load_champion_row_encoder(labels_csv_path)
 
         if self.max_entries_per_file is not None and self.max_entries_per_file <= 0:
             raise ValueError("max_entries_per_file must be > 0 when provided")
@@ -61,6 +167,7 @@ class EnemyDataset(Dataset):
 
         self._ensure_dataset_file(self.dataset_path)
         self._load_dataset(self.dataset_path)
+        self.team_size = self._resolve_team_size(self.team_size)
 
     def _split_dataset_path(self, dataset_path):
         dataset_dir = os.path.dirname(dataset_path) or "."
@@ -105,9 +212,10 @@ class EnemyDataset(Dataset):
     def _create_empty_dataset_file(self, path):
         np.savez_compressed(
             path,
-            images=np.zeros((0, 130, 440, 3), dtype=np.float32),
+            teamcomposition=np.empty((0,), dtype=object),
             powers=np.zeros((0,), dtype=np.float32),
             labels=np.zeros((0,), dtype=np.float32),
+            schema=np.array("teamcomposition_v1"),
         )
 
     def _ensure_dataset_file(self, path):
@@ -143,19 +251,42 @@ class EnemyDataset(Dataset):
     def _load_dataset(self, path):
         with np.load(path, allow_pickle=True) as data:
             # Copy arrays so file handles can be released immediately.
-            self.images = np.array(data["images"], copy=True)
-            self.labels = np.array(data["labels"], copy=True)
+            if "teamcomposition" in data:
+                teamcomposition = data["teamcomposition"]
+            elif "teamcompositions" in data:
+                teamcomposition = data["teamcompositions"]
+            elif "images" in data:
+                # Legacy fallback: preserve the sample count even when the old
+                # screenshot-based schema is encountered.
+                teamcomposition = [[] for _ in range(len(data["labels"]))]
+            else:
+                raise KeyError(f"Unsupported dataset schema in {path}: {list(data.keys())}")
 
-            if self.use_power:
-                self.powers = np.array(data["powers"], copy=True)
+            self.teamcomposition = _as_object_vector(teamcomposition)
+            self.labels = np.array(data["labels"], copy=True)
+            self.powers = np.array(data["powers"], copy=True) if "powers" in data else np.zeros((0,), dtype=np.float32)
 
     def _save_dataset(self):
         np.savez_compressed(
             self.dataset_path,
-            images=self.images,
+            teamcomposition=self.teamcomposition,
             powers=self.powers if self.use_power else np.zeros((len(self.labels),), dtype=np.float32),
             labels=self.labels,
+            schema=np.array("teamcomposition_v1"),
         )
+
+    def _resolve_team_size(self, configured_team_size):
+        if configured_team_size is not None:
+            return int(configured_team_size)
+
+        observed_team_size = 0
+        for entry in self.teamcomposition:
+            if isinstance(entry, np.ndarray):
+                entry = entry.tolist()
+            if isinstance(entry, (list, tuple)):
+                observed_team_size = max(observed_team_size, len(entry))
+
+        return observed_team_size or 12
 
     def _rotate_to_next_dataset_file(self):
         current_index = self._dataset_index_from_path(self.dataset_path)
@@ -182,7 +313,8 @@ class EnemyDataset(Dataset):
 
             next_index += 1
 
-    def _append_to_current_dataset(self, images_to_add, power_to_add, labels_to_add):
+    def _append_to_current_dataset(self, teamcomposition_to_add, power_to_add, labels_to_add):
+        next_teamcomposition = np.concatenate([self.teamcomposition, teamcomposition_to_add], axis=0)
         next_powers = None
         if self.use_power:
             power_to_add = np.asarray(power_to_add, dtype=np.float32)
@@ -198,11 +330,9 @@ class EnemyDataset(Dataset):
                 )
 
                 if not same_rank or not same_feature_shape:
-                    # Compatibility fallback for legacy shards:
-                    # rotate to a fresh shard so new schema can be stored safely.
                     if self.max_entries_per_file is not None:
                         self._rotate_to_next_dataset_file()
-                        self._append_to_current_dataset(images_to_add, power_to_add, labels_to_add)
+                        self._append_to_current_dataset(teamcomposition_to_add, power_to_add, labels_to_add)
                         return
 
                     raise ValueError(
@@ -212,7 +342,7 @@ class EnemyDataset(Dataset):
 
                 next_powers = np.concatenate([self.powers, power_to_add], axis=0)
 
-        self.images = np.concatenate([self.images, images_to_add], axis=0)
+        self.teamcomposition = next_teamcomposition
         if self.use_power:
             self.powers = next_powers
         self.labels = np.concatenate([self.labels, labels_to_add], axis=0)
@@ -222,41 +352,34 @@ class EnemyDataset(Dataset):
         return len(self.labels)
 
     def __getitem__(self, idx):
-        # Get image, power, label
-        image = self.images[idx]  # already normalized [H,W,C]
-        label = self.labels[idx]  # 0 or 1
+        teamcomposition = self.teamcomposition[idx]
+        label = torch.tensor([self.labels[idx]], dtype=torch.float32)
 
-        # Convert image to tensor [C,H,W]
-        image = torch.tensor(image, dtype=torch.float32).permute(2, 0, 1)
+        if self.use_name_encoding and self.name_encoder is not None:
+            encoded_teamcomposition = self.name_encoder.encode_teamcomposition(
+                teamcomposition,
+                team_size=self.team_size,
+            )
+            teamcomposition = torch.tensor(encoded_teamcomposition, dtype=torch.long)
 
         if self.use_power:
-            power = self.powers[idx]
-            power = torch.tensor(power, dtype=torch.float32)
+            power = torch.tensor(self.powers[idx], dtype=torch.float32) / float(self.max_power)
             if power.ndim == 0:
                 power = power.unsqueeze(0)
+            return teamcomposition, power, label
 
-        label = torch.tensor([label], dtype=torch.float32)
-
-        if self.transform:
-            image = self.transform(image)
-
-        if self.use_power:
-            return image, power, label
-        else:
-            return image, label
+        return teamcomposition, label
 
     # -----------------------------
     # Append new entry / entries
     # -----------------------------
-    def append_entry(self, image_np, power_val, battle_result):
+    def append_entry(self, enemy_record, battle_result):
         """
         Append one or multiple entries and save dataset.
 
-        image_np: np.ndarray (H,W,C) uint8
-        power_val:
-          - scalar -> one entry with one power value
-          - 1D array -> one entry with a power vector (e.g. Tag Team [total, t1, t2, t3])
-          - 2D array -> multiple entries, one row per entry
+        enemy_record: dict with keys:
+          - teamcomposition: list[str]
+          - powervalue: scalar or power vector
         battle_result: int, 0=Loss, 1=Win
         """
 
@@ -264,62 +387,260 @@ class EnemyDataset(Dataset):
         if battle_result not in [0, 1]:
             raise ValueError("battle_result must be 0 (Loss) or 1 (Win)")
 
-        # Resize image if needed
-        if image_np.shape[:2] != (130, 440):
-            image_np = np.array(Image.fromarray(image_np).resize((440, 130)))
-
-        # Normalize image to [0,1]
-        image_np = image_np.astype(np.float32) / 255.0
-
-        power_val = np.asarray(power_val, dtype=np.float32) / self.max_power
-
-        if power_val.ndim == 0:
-            powers_to_add = power_val.reshape(1)
-            num_entries = 1
-        elif power_val.ndim == 1:
-            # Treat a 1D vector as a single battle record (not N separate records).
-            powers_to_add = power_val.reshape(1, -1) if power_val.size > 1 else power_val.reshape(1)
-            num_entries = 1
-        elif power_val.ndim == 2:
-            powers_to_add = power_val
-            num_entries = power_val.shape[0]
+        if isinstance(enemy_record, dict):
+            teamcomposition = enemy_record.get("teamcomposition", [])
+            power_val = enemy_record.get("powervalue", 0.0)
         else:
-            raise ValueError("power_val must be a scalar, 1D array, or 2D array.")
+            teamcomposition = enemy_record
+            power_val = 0.0
 
-        images_to_add = np.repeat(image_np[np.newaxis, ...], num_entries, axis=0)
-        labels_to_add = np.full((num_entries,), battle_result, dtype=np.float32)
+        teamcomposition_to_add = _as_object_vector([teamcomposition])
+        power_val = np.asarray(power_val, dtype=np.float32)
+        powers_to_add = power_val.reshape(1, -1) if power_val.ndim > 0 else power_val.reshape(1)
+        labels_to_add = np.array([battle_result], dtype=np.float32)
 
         if self.max_entries_per_file is None:
-            self._append_to_current_dataset(images_to_add, powers_to_add, labels_to_add)
-            print(f"Appended {num_entries} new entries. Dataset now has {len(self.labels)} samples.")
+            self._append_to_current_dataset(teamcomposition_to_add, powers_to_add, labels_to_add)
+            print(f"Appended 1 new entry. Dataset now has {len(self.labels)} samples.")
             return
 
-        added_entries = 0
-        total_entries = num_entries
+        current_len = len(self.labels)
+        if current_len >= self.max_entries_per_file:
+            self._rotate_to_next_dataset_file()
 
-        while added_entries < total_entries:
-            current_len = len(self.labels)
-            remaining_capacity = self.max_entries_per_file - current_len
-
-            if remaining_capacity <= 0:
-                self._rotate_to_next_dataset_file()
-                continue
-
-            chunk_size = min(remaining_capacity, total_entries - added_entries)
-            chunk_start = added_entries
-            chunk_end = added_entries + chunk_size
-
-            self._append_to_current_dataset(
-                images_to_add[chunk_start:chunk_end],
-                powers_to_add[chunk_start:chunk_end],
-                labels_to_add[chunk_start:chunk_end],
-            )
-            added_entries += chunk_size
+        self._append_to_current_dataset(teamcomposition_to_add, powers_to_add, labels_to_add)
 
         print(
-            f"Appended {num_entries} new entries. Active shard '{self.dataset_path}' now has "
+            f"Appended 1 new entry. Active shard '{self.dataset_path}' now has "
             f"{len(self.labels)} samples."
         )
+
+
+class CompositionEvaluationNetwork(nn.Module):
+    """
+    Win/loss predictor for champion-name team compositions plus power values.
+
+    Public APIs may still pass champion names. The model converts those names to
+    integer ids using the row order of data/processed/labels.csv
+    before the data reaches the embedding layers.
+    """
+
+    def __init__(
+        self,
+        team_size: int,
+        power_dim: int,
+        *,
+        labels_csv_path: str | os.PathLike | None = None,
+        embedding_dim: int = 32,
+        slot_embedding_dim: int = 8,
+        hidden_dim: int = 128,
+        max_power: float = 350000.0,
+        weights_path: str | None = None,
+    ):
+        super().__init__()
+        self.team_size = int(team_size)
+        self.power_dim = int(power_dim)
+        self.max_power = float(max_power)
+        self.labels_csv_path = Path(labels_csv_path or DEFAULT_CHAMPION_LABELS_CSV)
+        self.name_encoder = load_champion_row_encoder(str(self.labels_csv_path))
+
+        self.champion_embedding = nn.Embedding(
+            self.name_encoder.vocab_size,
+            embedding_dim,
+            padding_idx=0,
+        )
+        self.slot_embedding = nn.Embedding(self.team_size, slot_embedding_dim)
+        self.team_encoder = nn.Sequential(
+            nn.Linear(self.team_size * (embedding_dim + slot_embedding_dim), hidden_dim),
+            nn.ReLU(),
+            nn.Dropout(0.10),
+            nn.Linear(hidden_dim, hidden_dim // 2),
+            nn.ReLU(),
+        )
+        self.power_encoder = nn.Sequential(
+            nn.Linear(self.power_dim, 32),
+            nn.ReLU(),
+            nn.Linear(32, 16),
+            nn.ReLU(),
+        )
+        self.head = nn.Sequential(
+            nn.Linear((hidden_dim // 2) + 16, 64),
+            nn.ReLU(),
+            nn.Dropout(0.05),
+            nn.Linear(64, 1),
+        )
+
+        if weights_path is not None:
+            self.load_state_dict(torch.load(weights_path, map_location="cpu"))
+
+    def _encode_batch_from_names(self, teamcomposition_batch) -> torch.Tensor:
+        if isinstance(teamcomposition_batch, np.ndarray) and np.issubdtype(teamcomposition_batch.dtype, np.integer):
+            encoded = np.asarray(teamcomposition_batch, dtype=np.int64)
+            if encoded.ndim == 1:
+                encoded = encoded.reshape(1, -1)
+            return torch.tensor(encoded, dtype=torch.long)
+
+        if isinstance(teamcomposition_batch, torch.Tensor):
+            tensor = teamcomposition_batch.long()
+            if tensor.ndim == 1:
+                tensor = tensor.unsqueeze(0)
+            return tensor
+
+        if isinstance(teamcomposition_batch, np.ndarray):
+            teamcomposition_batch = teamcomposition_batch.tolist()
+
+        if not isinstance(teamcomposition_batch, (list, tuple)):
+            teamcomposition_batch = [teamcomposition_batch]
+
+        if teamcomposition_batch and not isinstance(teamcomposition_batch[0], (list, tuple, np.ndarray, torch.Tensor)):
+            teamcomposition_batch = [teamcomposition_batch]
+
+        encoded_rows = [
+            self.name_encoder.encode_teamcomposition(row, team_size=self.team_size)
+            for row in teamcomposition_batch
+        ]
+        return torch.tensor(np.asarray(encoded_rows, dtype=np.int64), dtype=torch.long)
+
+    def _coerce_power_tensor(self, power) -> torch.Tensor:
+        if isinstance(power, torch.Tensor):
+            tensor = power.float()
+        else:
+            tensor = torch.tensor(power, dtype=torch.float32)
+
+        if tensor.ndim == 0:
+            tensor = tensor.unsqueeze(0).unsqueeze(0)
+        elif tensor.ndim == 1:
+            if tensor.numel() == self.power_dim:
+                tensor = tensor.unsqueeze(0)
+            else:
+                tensor = tensor.reshape(-1, self.power_dim)
+        return tensor / self.max_power
+
+    def forward(self, teamcomposition, power):
+        team_ids = self._encode_batch_from_names(teamcomposition)
+        power_tensor = self._coerce_power_tensor(power)
+
+        device = next(self.parameters()).device
+        team_ids = team_ids.to(device)
+        power_tensor = power_tensor.to(device)
+
+        if team_ids.shape[1] != self.team_size:
+            raise ValueError(
+                f"Expected teamcomposition width {self.team_size}, got {team_ids.shape[1]}"
+            )
+        if power_tensor.shape[1] != self.power_dim:
+            raise ValueError(
+                f"Expected power width {self.power_dim}, got {power_tensor.shape[1]}"
+            )
+
+        batch_size = team_ids.shape[0]
+        slot_ids = torch.arange(self.team_size, device=device).unsqueeze(0).expand(batch_size, -1)
+        champion_features = self.champion_embedding(team_ids)
+        slot_features = self.slot_embedding(slot_ids)
+        team_features = torch.cat([champion_features, slot_features], dim=2).reshape(batch_size, -1)
+        team_features = self.team_encoder(team_features)
+        power_features = self.power_encoder(power_tensor)
+        return self.head(torch.cat([team_features, power_features], dim=1))
+
+    def predict(self, teamcomposition, power_val, threshold=0.5):
+        self.eval()
+        with torch.no_grad():
+            logits = self(teamcomposition, power_val)
+            prob = torch.sigmoid(logits).item()
+            label = int(prob >= threshold)
+        return prob, label
+
+    def train_network(
+        self,
+        dataset_path: str,
+        epochs: int = 50,
+        batch_size: int = 32,
+        lr: float = 1e-3,
+        checkpoint_interval: int = 10,
+        checkpoint_path: str = "checkpoint.pt",
+        val_split: float = 0.2,
+        device: str = "cuda" if torch.cuda.is_available() else "cpu",
+    ):
+        dataset = EnemyDataset(
+            dataset_path,
+            max_power=self.max_power,
+            labels_csv_path=self.labels_csv_path,
+            use_name_encoding=True,
+            team_size=self.team_size,
+        )
+
+        val_size = int(val_split * len(dataset))
+        train_size = len(dataset) - val_size
+        train_set, val_set = random_split(dataset, [train_size, val_size])
+
+        train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
+        val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=False)
+
+        self.to(device)
+        criterion = nn.BCEWithLogitsLoss()
+        optimizer = optim.Adam(self.parameters(), lr=lr)
+
+        for epoch in range(1, epochs + 1):
+            self.train()
+            epoch_loss = 0.0
+            correct = 0
+            total = 0
+
+            for teamcomposition, powers, labels in train_loader:
+                teamcomposition = teamcomposition.to(device)
+                powers = powers.to(device)
+                labels = labels.to(device)
+
+                optimizer.zero_grad()
+                logits = self(teamcomposition, powers)
+                loss = criterion(logits, labels)
+                loss.backward()
+                optimizer.step()
+
+                epoch_loss += loss.item() * teamcomposition.size(0)
+                preds = (torch.sigmoid(logits) >= 0.5).float()
+                correct += (preds == labels).sum().item()
+                total += labels.size(0)
+
+            epoch_loss /= total
+            epoch_acc = correct / total
+
+            self.eval()
+            val_loss, val_correct, val_total = 0.0, 0, 0
+            with torch.no_grad():
+                for teamcomposition, powers, labels in val_loader:
+                    teamcomposition = teamcomposition.to(device)
+                    powers = powers.to(device)
+                    labels = labels.to(device)
+
+                    logits = self(teamcomposition, powers)
+                    loss = criterion(logits, labels)
+                    val_loss += loss.item() * teamcomposition.size(0)
+
+                    preds = (torch.sigmoid(logits) >= 0.5).float()
+                    val_correct += (preds == labels).sum().item()
+                    val_total += labels.size(0)
+
+            val_loss /= val_total
+            val_acc = val_correct / val_total
+
+            if epoch % checkpoint_interval == 0:
+                torch.save(self.state_dict(), f"{checkpoint_path}_epoch{epoch}.pt")
+                print(f"Checkpoint saved at epoch {epoch}")
+                print(
+                    f"Epoch [{epoch}/{epochs}] | Train Loss: {epoch_loss:.4f} | "
+                    f"Train Acc: {epoch_acc:.4f} | Val Loss: {val_loss:.4f} | Val Acc: {val_acc:.4f}"
+                )
+
+
+class ClassicCompositionEvaluationNetwork(CompositionEvaluationNetwork):
+    def __init__(self, *args, **kwargs):
+        super().__init__(team_size=4, power_dim=1, *args, **kwargs)
+
+
+class TagTeamCompositionEvaluationNetwork(CompositionEvaluationNetwork):
+    def __init__(self, *args, **kwargs):
+        super().__init__(team_size=12, power_dim=4, *args, **kwargs)
 
 
 # -----------------------------
@@ -1016,6 +1337,14 @@ class TagTeamEvaluationNetworkCNN(nn.Module):
             label = int(prob >= threshold)
 
         return prob, label
+
+    def crop_classic_arena_portraits(self, image_np):
+        """Return the 4 classic arena portrait crops in left-to-right order."""
+        return crop_classic_arena_portraits(image_np)
+
+    def crop_tagteam_portraits(self, image_np):
+        """Return the 12 portrait crops in slot order: slot 1, slot 2, slot 3."""
+        return crop_tagteam_portraits(image_np)
 
     # --------------------------------------------------
     # Training

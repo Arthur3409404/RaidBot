@@ -1,0 +1,126 @@
+{
+  "window_capture": "c:\\Users\\Arthur\\Documents\\MyPython\\Raid\\RaidBot\\temp\\classic_arena_live_window_tests\\raid_window_20260615_204106.png",
+  "window_annotated_capture": "c:\\Users\\Arthur\\Documents\\MyPython\\Raid\\RaidBot\\temp\\classic_arena_live_window_tests\\raid_window_20260615_204106_luchar_detected.png",
+  "card_raw_capture": "c:\\Users\\Arthur\\Documents\\MyPython\\Raid\\RaidBot\\temp\\classic_arena_live_window_tests\\raid_window_20260615_204106_classic_card_raw.png",
+  "card_annotated_capture": "c:\\Users\\Arthur\\Documents\\MyPython\\Raid\\RaidBot\\temp\\classic_arena_live_window_tests\\raid_window_20260615_204106_classic_card_predictions.png",
+  "window_bounds": {
+    "left": 10,
+    "top": 10,
+    "width": 1281,
+    "height": 1063
+  },
+  "luchar_center_abs": {
+    "x": 1102.0,
+    "y": 302.0
+  },
+  "card_bounds_within_window": {
+    "left": 592,
+    "top": 227,
+    "right": 1032,
+    "bottom": 357
+  },
+  "boxes": [
+    [
+      124,
+      12,
+      192,
+      101
+    ],
+    [
+      192,
+      12,
+      262,
+      103
+    ],
+    [
+      263,
+      14,
+      332,
+      104
+    ],
+    [
+      333,
+      11,
+      402,
+      103
+    ]
+  ],
+  "predictions": [
+    "Tyrant Ixlimor",
+    "Tyrant Ixlimor",
+    "Gnishak Verminlord",
+    "Liburga"
+  ],
+  "ocr_texts": [
+    {
+      "text": "+6",
+      "mean_pos_x": 693.0,
+      "mean_pos_y": 302.0
+    },
+    {
+      "text": "Luchar",
+      "mean_pos_x": 1102.0,
+      "mean_pos_y": 302.0
+    },
+    {
+      "text": "+8",
+      "mean_pos_x": 693.0,
+      "mean_pos_y": 424.0
+    },
+    {
+      "text": "Luchar",
+      "mean_pos_x": 1102.0,
+      "mean_pos_y": 426.0
+    },
+    {
+      "text": "+8",
+      "mean_pos_x": 693.0,
+      "mean_pos_y": 548.0
+    },
+    {
+      "text": "Luchar",
+      "mean_pos_x": 1103.0,
+      "mean_pos_y": 549.0
+    },
+    {
+      "text": "+8",
+      "mean_pos_x": 693.0,
+      "mean_pos_y": 672.0
+    },
+    {
+      "text": "Luchar",
+      "mean_pos_x": 1103.0,
+      "mean_pos_y": 673.0
+    },
+    {
+      "text": "+8",
+      "mean_pos_x": 693.0,
+      "mean_pos_y": 796.0
+    },
+    {
+      "text": "Luchar",
+      "mean_pos_x": 1103.0,
+      "mean_pos_y": 797.0
+    },
+    {
+      "text": "+9",
+      "mean_pos_x": 693.0,
+      "mean_pos_y": 920.0
+    },
+    {
+      "text": "Luchar",
+      "mean_pos_x": 1103.0,
+      "mean_pos_y": 921.0
+    },
+    {
+      "text": "+11",
+      "mean_pos_x": 686.0,
+      "mean_pos_y": 1044.0
+    },
+    {
+      "text": "Luchar",
+      "mean_pos_x": 1102.0,
+      "mean_pos_y": 1044.0
+    }
+  ]
+}

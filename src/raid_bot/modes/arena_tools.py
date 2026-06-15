@@ -16,76 +16,135 @@ import os
 from pathlib import Path
 import raid_bot.utils.auto_battle_tools as auto_battle_tools
 import raid_bot.utils.image_tools as image_tools
+import raid_bot.utils.file_tools as file_tools
+from raid_bot.utils.classic_arena_portraits import crop_classic_arena_portraits
+from raid_bot.utils.tagteam_portraits import crop_tagteam_portraits
+from raid_bot.utils.champion_identifier import load_default_champion_identifier
 import raid_bot.utils.window_tools as window_tools
-from raid_bot.handlers.ai_networks_handler import EnemyDataset, TagTeamEvaluationNetworkCNN, EvaluationNetworkCNN_ImageOnly
+from raid_bot.handlers.ai_networks_handler import (
+    ClassicCompositionEvaluationNetwork,
+    EnemyDataset,
+    TagTeamCompositionEvaluationNetwork,
+)
 import difflib
 
 MAX_RUN_DURATION_SECONDS = int(3.5 * 60 * 60)
+_AUTO_LOAD_CHAMPION_IDENTIFIER = object()
+_ARENA_POWER_MATCH_ABS_TOLERANCE = 1000.0
+DEFAULT_CLASSIC_EVALUATION_MODEL = Path("data/models/neural_networks/enemy_eval_classic_arena/composition_model.pt")
+DEFAULT_TAGTEAM_EVALUATION_MODEL = Path("data/models/neural_networks/enemy_eval_tagteam_arena/composition_model.pt")
 
 
-class TagTeamArenaModelPredictor:
-    """Runtime adapter for the standalone Tag Team Arena PyTorch model."""
+def _normalize_champion_name(name, slot_index):
+    text = "" if name is None else str(name).strip()
+    return text if text else f"UnknownChampion{slot_index}"
 
-    def __init__(self, checkpoint_path, device=None):
-        import torch
 
-        from training.tagteam_arena_model.models.tagteam_model import TagTeamArenaModel
+def _normalize_teamcomposition(teamcomposition):
+    composition = []
+    for index, name in enumerate(list(teamcomposition), start=1):
+        composition.append(_normalize_champion_name(name, index))
+    return composition
 
-        self.torch = torch
-        self.device = torch.device(device or ("cuda" if torch.cuda.is_available() else "cpu"))
-        checkpoint = torch.load(checkpoint_path, map_location=self.device)
-        in_channels = int(checkpoint.get("in_channels", 3))
-        self.normalization_stats = checkpoint.get("normalization_stats", {})
-        self.model = TagTeamArenaModel(in_channels=in_channels).to(self.device)
-        self.model.load_state_dict(checkpoint["model_state_dict"])
-        self.model.eval()
 
-    def eval(self):
-        self.model.eval()
-        return self
+def _coerce_powervalue(powervalue):
+    if isinstance(powervalue, np.ndarray):
+        powervalue = powervalue.tolist()
+    if isinstance(powervalue, (list, tuple)):
+        return [float(value) for value in powervalue]
+    return float(powervalue)
 
-    def predict(self, image_np, power_vals, threshold=0.5):
-        crops = self._prepare_crops(image_np)
-        powers = self._prepare_powers(power_vals)
-        with self.torch.no_grad():
-            logits, _ = self.model(crops, powers)
-            prob = self.torch.sigmoid(logits).item()
-        return prob, int(prob >= threshold)
 
-    def _prepare_crops(self, image_np):
-        image = np.asarray(image_np, dtype=np.float32)
-        if image.ndim != 3:
-            raise ValueError(f"Expected tag-team enemy image [H, W, C], got {image.shape}")
-        if image.shape[-1] == 4:
-            image = image[..., :3]
-        if image.max(initial=0) > 1.5:
-            image = image / 255.0
-        image = np.clip(image, 0.0, 1.0)
+def _power_values_match(left, right, abs_tolerance=_ARENA_POWER_MATCH_ABS_TOLERANCE):
+    if isinstance(left, np.ndarray):
+        left = left.tolist()
+    if isinstance(right, np.ndarray):
+        right = right.tolist()
 
-        pieces = np.array_split(image, 3, axis=1)
-        min_h = min(piece.shape[0] for piece in pieces)
-        min_w = min(piece.shape[1] for piece in pieces)
-        crops = np.stack([piece[:min_h, :min_w, :] for piece in pieces], axis=0)
-        crops = np.transpose(crops, (0, 3, 1, 2)).astype(np.float32)
-        crops = (crops - 0.5) / 0.5
-        tensor = self.torch.from_numpy(crops).unsqueeze(0).to(self.device)
-        return tensor
+    if isinstance(left, (list, tuple)) or isinstance(right, (list, tuple)):
+        if not isinstance(left, (list, tuple)) or not isinstance(right, (list, tuple)):
+            return False
+        if len(left) != len(right):
+            return False
+        return all(_power_values_match(a, b, abs_tolerance=abs_tolerance) for a, b in zip(left, right))
 
-    def _prepare_powers(self, power_vals):
-        powers = np.asarray(power_vals, dtype=np.float32).reshape(-1)
-        if powers.size == 4:
-            powers = powers[1:]
-        elif powers.size != 3:
-            raise ValueError(f"Expected 3 team powers or total+3 powers, got shape {powers.shape}")
+    try:
+        return abs(float(left) - float(right)) <= abs_tolerance
+    except (TypeError, ValueError):
+        return False
 
-        if self.normalization_stats.get("power_transform") == "log1p_then_standardize":
-            mean = float(self.normalization_stats["log1p_mean"])
-            std = float(self.normalization_stats["log1p_std"])
-            if abs(std) < 1e-6:
-                std = 1.0
-            powers = (np.log1p(powers) - mean) / std
 
-        return self.torch.tensor([powers], dtype=self.torch.float32, device=self.device)
+def _normalize_saved_enemy_entry(entry):
+    if isinstance(entry, dict):
+        composition = entry.get("teamcomposition")
+        if composition is None:
+            composition = []
+        if not isinstance(composition, (list, tuple)):
+            composition = [composition]
+        normalized = {
+            "teamcomposition": _normalize_teamcomposition(composition),
+            "powervalue": _coerce_powervalue(entry.get("powervalue", [] if composition else 0.0)),
+            "label": str(entry.get("label", "loss")),
+        }
+        return normalized
+
+    if isinstance(entry, np.ndarray):
+        entry = entry.tolist()
+
+    if isinstance(entry, (list, tuple)):
+        try:
+            return {
+                "teamcomposition": [],
+                "powervalue": [float(value) for value in entry],
+                "label": "loss",
+            }
+        except (TypeError, ValueError):
+            return None
+
+    try:
+        return {
+            "teamcomposition": [],
+            "powervalue": float(entry),
+            "label": "loss",
+        }
+    except (TypeError, ValueError):
+        return None
+
+
+def _enemy_entries_match(existing_entry, candidate_entry):
+    existing = _normalize_saved_enemy_entry(existing_entry)
+    candidate = _normalize_saved_enemy_entry(candidate_entry)
+    if existing is None or candidate is None:
+        return False
+
+    existing_composition = existing["teamcomposition"]
+    candidate_composition = candidate["teamcomposition"]
+    if existing_composition and candidate_composition and existing_composition != candidate_composition:
+        return False
+
+    return _power_values_match(existing["powervalue"], candidate["powervalue"])
+
+
+def _load_composition_evaluation_ai(model_cls, model_path, *, verbose=True):
+    if model_path in {None, "", False}:
+        return None
+
+    path = Path(model_path)
+    if not path.exists():
+        if verbose:
+            print(f"[Arena AI] Name-based evaluation model not found: {path}")
+        return None
+
+    try:
+        model = model_cls(weights_path=str(path))
+        model.eval()
+        if verbose:
+            print(f"[Arena AI] Loaded name-based evaluation model: {path}")
+        return model
+    except Exception as exc:
+        if verbose:
+            print(f"[Arena AI] Could not load name-based evaluation model '{path}': {exc}")
+        return None
 
 
 def _start_run_deadline(bot, max_run_duration_seconds=None):
@@ -119,20 +178,25 @@ class RSL_Bot_ClassicArena:
         reader=None,
         window=None,
         param_file=None,
+        champion_identifier=_AUTO_LOAD_CHAMPION_IDENTIFIER,
         verbose=True,
         update_dataset=True,
         num_multi_refresh=0,
         multi_refresh=False,
         power_threshold=70000,
         use_gems=True,
-        enemies_lost=[0]
+        enemies_lost=[0],
+        evaluation_model_path=DEFAULT_CLASSIC_EVALUATION_MODEL,
     ):
         """
         Initialize the Classic Arena bot.
         """
         if reader is None:
             print("Error When Loading Reader")
-        self.reader = reader  
+        self.reader = reader
+        if champion_identifier is _AUTO_LOAD_CHAMPION_IDENTIFIER:
+            champion_identifier = load_default_champion_identifier()
+        self.champion_identifier = champion_identifier
 
         self.running = True
         self.update_dataset = bool(update_dataset)
@@ -168,9 +232,11 @@ class RSL_Bot_ClassicArena:
         else:
             self.coords = None
 
-        weights_path = r"data\models\neural_networks\enemy_eval_classic_arena\_epoch400.pt"
-        self.evaluation_ai = EvaluationNetworkCNN_ImageOnly(weights_path=weights_path)
-        self.evaluation_ai.eval()
+        self.evaluation_ai = _load_composition_evaluation_ai(
+            ClassicCompositionEvaluationNetwork,
+            evaluation_model_path,
+            verbose=self.verbose,
+        )
 
         # Search Areas
         self.search_areas = {
@@ -211,6 +277,62 @@ class RSL_Bot_ClassicArena:
             "Pos10": [[0.583, 0.946, 0.166, 0.02], [0.787, 0.874, 0.181, 0.078]],
         }
 
+    def identify_portrait(self, portrait):
+        if self.champion_identifier is None:
+            return None
+        return self.champion_identifier.predict_portrait(portrait)
+
+    def identify_portraits(self, portraits):
+        if self.champion_identifier is None:
+            return [None] * len(list(portraits))
+        return self.champion_identifier.predict_portraits(portraits)
+
+    def crop_classic_arena_portraits(self, image_np):
+        """Return the four classic arena portraits in left-to-right order."""
+        return crop_classic_arena_portraits(image_np)
+
+    def _build_enemy_composition_record(self, image_np, enemy_power, label="loss"):
+        portraits = self.crop_classic_arena_portraits(image_np)
+        champion_names = _normalize_teamcomposition(self.identify_portraits(portraits))
+        return {
+            "teamcomposition": champion_names,
+            "powervalue": float(enemy_power),
+            "label": str(label),
+        }
+
+    def _has_saved_enemy_match(self, enemy_record):
+        return any(
+            _enemy_entries_match(existing_entry, enemy_record)
+            for existing_entry in self.classic_arena_enemies_lost
+        )
+
+    def _save_enemy_record(self, enemy_record):
+        if self._has_saved_enemy_match(enemy_record):
+            return False
+        self.classic_arena_enemies_lost.append(enemy_record)
+        self.persist_enemy_avoid_list()
+        return True
+
+    def _should_attack_enemy(self, enemy_record, enemy_power):
+        if enemy_power < 500 or self._has_saved_enemy_match(enemy_record):
+            return False
+
+        if self.evaluation_ai is None:
+            return enemy_power < self.classic_arena_power_threshold
+
+        try:
+            probability, label = self.evaluation_ai.predict(
+                enemy_record["teamcomposition"],
+                enemy_record["powervalue"],
+            )
+            if self.verbose:
+                print(f"[Classic Arena AI] win_probability={probability:.3f} label={label}")
+            return bool(label)
+        except Exception as exc:
+            if self.verbose:
+                print(f"[Classic Arena AI] Evaluation failed, using power threshold fallback: {exc}")
+            return enemy_power < self.classic_arena_power_threshold
+
     def _read_battle_result_once(self):
         try:
             battle_results = image_tools.get_text_in_relative_area(
@@ -240,7 +362,7 @@ class RSL_Bot_ClassicArena:
 
         return None
 
-    def update_battle_outcome(self, power_level):
+    def update_battle_outcome(self, enemy_record):
         """
         Determine outcome of a battle and update enemy memory if lost.
         """
@@ -270,9 +392,8 @@ class RSL_Bot_ClassicArena:
             self.recent_battle_outcome = 1
             return True
 
-        self.classic_arena_enemies_lost.append(power_level)
-        self.persist_enemy_avoid_list()
-        print("Updated Enemy Avoid List")
+        if self._save_enemy_record(enemy_record):
+            print("Updated Enemy Avoid List")
         self.recent_battle_outcome = 0
         return True
 
@@ -280,18 +401,14 @@ class RSL_Bot_ClassicArena:
         """
         Persist lost enemies to the active params profile file.
         """
-        updated_line = f"classic_arena_enemies_lost = {self.classic_arena_enemies_lost}\n"
+        file_tools.update_param_file_value(
+            self.param_file,
+            "classic_arena_enemies_lost",
+            self.classic_arena_enemies_lost,
+            create_if_missing=True,
+        )
 
-        with open(self.param_file, "r", encoding="utf-8") as f:
-            lines = f.readlines()
-        with open(self.param_file, "w", encoding="utf-8") as f:
-            for line in lines:
-                if line.strip().startswith("classic_arena_enemies_lost ="):
-                    f.write(updated_line)
-                else:
-                    f.write(line)
-
-    def execute_arena_battle(self, power_level, start_button=None):
+    def execute_arena_battle(self, enemy_record, start_button=None):
         """
         Engage an enemy and handle the battle loop.
         """
@@ -324,7 +441,7 @@ class RSL_Bot_ClassicArena:
                 )[0]
                 if self.resembles(battle_finished.text ,"PULSA PARA CONTINUAR"):
                     time.sleep(3)
-                    if not self.update_battle_outcome(power_level):
+                    if not self.update_battle_outcome(enemy_record):
                         continue
                     battle_running = False
                     time.sleep(3)
@@ -465,22 +582,17 @@ class RSL_Bot_ClassicArena:
                 continue
 
             image_np = list_card_np
-            prob, _ = self.evaluation_ai.predict(image_np)
-
-            if (
-                enemy_power < self.classic_arena_power_threshold
-                and enemy_power >= 500
-                and enemy_power not in self.classic_arena_enemies_lost
-            ):
+            enemy_record = self._build_enemy_composition_record(image_np, enemy_power, label="loss")
+            if self._should_attack_enemy(enemy_record, enemy_power):
                 print("start execute")
-                self.execute_arena_battle(enemy_power, start_button=start_button)
+                self.execute_arena_battle(enemy_record, start_button=start_button)
                 self.battles_done += 1
                 self.battle_occured = True
                 if self.update_dataset and self.dataset is not None:
-                    self.dataset.append_entry(image_np, enemy_power, self.recent_battle_outcome)
+                    self.dataset.append_entry(enemy_record, self.recent_battle_outcome)
 
                 outcome = "Win" if self.recent_battle_outcome else "Loss"
-                print(f"Battle outcome: {outcome} (Win prob: {prob:.2f})")
+                print(f"Battle outcome: {outcome}")
                 return True
             else:
                 self._mark_luchar_slot_skipped(slot_key)
@@ -702,6 +814,7 @@ class RSL_Bot_TagTeamArena:
         reader=None,
         window=None,
         param_file=None,
+        champion_identifier=_AUTO_LOAD_CHAMPION_IDENTIFIER,
         verbose=True,
         update_dataset=True,
         num_multi_refresh=0,
@@ -710,12 +823,16 @@ class RSL_Bot_TagTeamArena:
         use_gems=True,
         use_gems_max_amount=0,
         enemies_lost=[0],
+        evaluation_model_path=DEFAULT_TAGTEAM_EVALUATION_MODEL,
     ):
         if reader is None:
             print("Error When Loading Reader")
 
         # Core state
         self.reader = reader
+        if champion_identifier is _AUTO_LOAD_CHAMPION_IDENTIFIER:
+            champion_identifier = load_default_champion_identifier()
+        self.champion_identifier = champion_identifier
         self.window = window
         self.param_file = param_file or os.path.join("data", "params_mainframe.txt")
         self.running = True
@@ -756,17 +873,11 @@ class RSL_Bot_TagTeamArena:
                 max_entries_per_file=100,
             )
 
-        # AI evaluation network
-        tagteam_checkpoint = Path("training/tagteam_arena_model/outputs/last_tagteam_model.pt")
-        try:
-            self.evaluation_ai = TagTeamArenaModelPredictor(tagteam_checkpoint)
-            print(f"Loaded Tag Team Arena model: {tagteam_checkpoint}")
-        except Exception as exc:
-            print(f"Could not load Tag Team Arena model '{tagteam_checkpoint}': {exc}")
-            print("Falling back to legacy Tag Team Arena evaluation model.")
-            weights_path = r"data\models\neural_networks\enemy_eval_tagteam_arena\_epoch350.pt"
-            self.evaluation_ai = TagTeamEvaluationNetworkCNN(weights_path=weights_path)
-        self.evaluation_ai.eval()
+        self.evaluation_ai = _load_composition_evaluation_ai(
+            TagTeamCompositionEvaluationNetwork,
+            evaluation_model_path,
+            verbose=self.verbose,
+        )
 
         # Window coordinates
         if self.window:
@@ -822,6 +933,62 @@ class RSL_Bot_TagTeamArena:
             "Pos10": [[0.533, 0.93, 0.142, 0.026], [0.788, 0.848, 0.181, 0.079]],
         }
 
+    def identify_portrait(self, portrait):
+        if self.champion_identifier is None:
+            return None
+        return self.champion_identifier.predict_portrait(portrait)
+
+    def identify_portraits(self, portraits):
+        if self.champion_identifier is None:
+            return [None] * len(list(portraits))
+        return self.champion_identifier.predict_portraits(portraits)
+
+    def crop_tagteam_portraits(self, image_np):
+        """Return the 12 tag-team portraits in slot order: slot 1, then 2, then 3."""
+        return crop_tagteam_portraits(image_np)
+
+    def _build_enemy_composition_record(self, image_np, enemy_power_collection, label="loss"):
+        portraits = self.crop_tagteam_portraits(image_np)
+        champion_names = _normalize_teamcomposition(self.identify_portraits(portraits))
+        return {
+            "teamcomposition": champion_names,
+            "powervalue": [float(value) for value in enemy_power_collection],
+            "label": str(label),
+        }
+
+    def _has_saved_enemy_match(self, enemy_record):
+        return any(
+            _enemy_entries_match(existing_entry, enemy_record)
+            for existing_entry in self.tagteam_arena_enemies_lost
+        )
+
+    def _save_enemy_record(self, enemy_record):
+        if self._has_saved_enemy_match(enemy_record):
+            return False
+        self.tagteam_arena_enemies_lost.append(enemy_record)
+        self.persist_enemy_avoid_list()
+        return True
+
+    def _should_attack_enemy(self, enemy_record, enemy_power):
+        if enemy_power < 500 or self._has_saved_enemy_match(enemy_record):
+            return False
+
+        if self.evaluation_ai is None:
+            return enemy_power < self.tagteam_arena_power_threshold
+
+        try:
+            probability, label = self.evaluation_ai.predict(
+                enemy_record["teamcomposition"],
+                enemy_record["powervalue"],
+            )
+            if self.verbose:
+                print(f"[Tag Team Arena AI] win_probability={probability:.3f} label={label}")
+            return bool(label)
+        except Exception as exc:
+            if self.verbose:
+                print(f"[Tag Team Arena AI] Evaluation failed, using power threshold fallback: {exc}")
+            return enemy_power < self.tagteam_arena_power_threshold
+
     # ------------------------------------------------------------------
     # Battle outcome & memory
     # ------------------------------------------------------------------
@@ -855,7 +1022,7 @@ class RSL_Bot_TagTeamArena:
 
         return None
 
-    def update_battle_outcome(self, enemy_power):
+    def update_battle_outcome(self, enemy_record):
         first_result = self._read_battle_result_once()
         if first_result is None:
             return False
@@ -884,8 +1051,7 @@ class RSL_Bot_TagTeamArena:
 
         print("Defeat - updating enemy avoid list")
         self.recent_battle_outcome = 0
-        self.tagteam_arena_enemies_lost.append(enemy_power)
-        self.persist_enemy_avoid_list()
+        self._save_enemy_record(enemy_record)
         return True
 
     def resembles(self, text, target, threshold=0.8):
@@ -894,25 +1060,18 @@ class RSL_Bot_TagTeamArena:
     
 
     def persist_enemy_avoid_list(self):
-        updated_line = (
-            f"tagteam_arena_enemies_lost = {self.tagteam_arena_enemies_lost}\n"
+        file_tools.update_param_file_value(
+            self.param_file,
+            "tagteam_arena_enemies_lost",
+            self.tagteam_arena_enemies_lost,
+            create_if_missing=True,
         )
-
-        with open(self.param_file, "r", encoding="utf-8") as f:
-            lines = f.readlines()
-
-        with open(self.param_file, "w", encoding="utf-8") as f:
-            for line in lines:
-                if line.strip().startswith("tagteam_arena_enemies_lost ="):
-                    f.write(updated_line)
-                else:
-                    f.write(line)
 
     # ------------------------------------------------------------------
     # Battle execution
     # ------------------------------------------------------------------
 
-    def execute_tagteam_battle(self, enemy_power, start_button=None):
+    def execute_tagteam_battle(self, enemy_record, start_button=None):
         if start_button is not None:
             window_tools.click_at(start_button.mean_pos_x, start_button.mean_pos_y)
             start_btn = start_button
@@ -939,7 +1098,7 @@ class RSL_Bot_TagTeamArena:
 
                 if self.resembles(finished.text, "PULSA PARA CONTINUAR") and self.resembles(finished_2.text, "PULSA PARA CONTINUAR"):
                     time.sleep(3)
-                    if not self.update_battle_outcome(enemy_power):
+                    if not self.update_battle_outcome(enemy_record):
                         continue
 
                     for _ in range(2):
@@ -1081,27 +1240,22 @@ class RSL_Bot_TagTeamArena:
                     enemy_power_team2 = 10
                     enemy_power_team3 = 10
 
-                powers = np.array([enemy_power, enemy_power_team1, enemy_power_team2, enemy_power_team3])/350000
-                prob, label = self.evaluation_ai.predict(image_np, powers)
-                print(f"Tag Team model win probability: {prob:.3f} label={label}")
                 enemy_power_collection = [enemy_power, enemy_power_team1, enemy_power_team2, enemy_power_team3]
+                enemy_record = self._build_enemy_composition_record(
+                    image_np,
+                    enemy_power_collection,
+                    label="loss",
+                )
                 #print(f"Team1: {enemy_power_team1} Team2:{enemy_power_team2} Team3: {enemy_power_team3}  Total:{enemy_power}")
-                if (
-                    label == 1
-                    and enemy_power_collection not in self.tagteam_arena_enemies_lost
-                    and enemy_power < self.tagteam_arena_power_threshold
-                ):
-                    self.execute_tagteam_battle(enemy_power_collection, start_button=start_button)
+                if self._should_attack_enemy(enemy_record, enemy_power):
+                    self.execute_tagteam_battle(enemy_record, start_button=start_button)
                     self.battles_done += 1
                     self.battle_occured = True
                     if self.update_dataset and self.dataset is not None:
-                        enemy_power_collection = np.array([enemy_power,enemy_power_team1,enemy_power_team2,enemy_power_team3])
-                        self.dataset.append_entry(
-                            image_np, enemy_power_collection, self.recent_battle_outcome
-                        )
+                        self.dataset.append_entry(enemy_record, self.recent_battle_outcome)
 
                     outcome = "Win" if self.recent_battle_outcome else "Loss"
-                    print(f"Battle outcome: {outcome} (Win prob: {prob:.2f})")
+                    print(f"Battle outcome: {outcome}")
 
                     return True
                 else:

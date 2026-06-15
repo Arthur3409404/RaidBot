@@ -399,6 +399,10 @@ from raid_bot.modes import (
     hydra_tools,
 )
 from raid_bot.utils import file_tools, image_tools, window_tools
+from raid_bot.utils.champion_identifier import (
+    UnavailableChampionIdentifier,
+    load_default_champion_identifier,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -686,10 +690,21 @@ class RSL_Bot_Mainframe:
             return NullDiscordRemoteOverride()
 
     def _init_mode_bots(self):
+        try:
+            self.champion_identifier = load_default_champion_identifier()
+            self.log.info(
+                "Loaded champion identifier from %s",
+                self.champion_identifier.checkpoint_path,
+            )
+        except Exception as exc:
+            self.log.warning("Champion identifier unavailable at startup: %s", exc)
+            self.champion_identifier = UnavailableChampionIdentifier(str(exc))
+
         self.classic_arena_bot = arena_tools.RSL_Bot_ClassicArena(
             reader=self.reader,
             window=self.window,
             param_file=self.param_file,
+            champion_identifier=self.champion_identifier,
             **_constructor_config(
                 arena_tools.RSL_Bot_ClassicArena,
                 self.params.get("classic_arena", {}),
@@ -699,6 +714,7 @@ class RSL_Bot_Mainframe:
             reader=self.reader,
             window=self.window,
             param_file=self.param_file,
+            champion_identifier=self.champion_identifier,
             **_constructor_config(
                 arena_tools.RSL_Bot_TagTeamArena,
                 self.params.get("tagteam_arena", {}),

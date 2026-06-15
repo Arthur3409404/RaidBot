@@ -1,0 +1,36 @@
+{
+  "image": "c:\\Users\\Arthur\\Documents\\MyPython\\Raid\\RaidBot\\temp\\classic_arena_card_samples\\classic_arena_card_20260615_194041.png",
+  "output": "c:\\Users\\Arthur\\Documents\\MyPython\\Raid\\RaidBot\\temp\\classic_arena_card_samples\\annotated\\classic_arena_card_20260615_194041_champion_predictions_after_crop_update.png",
+  "boxes": [
+    [
+      124,
+      12,
+      192,
+      101
+    ],
+    [
+      192,
+      12,
+      262,
+      103
+    ],
+    [
+      263,
+      14,
+      332,
+      104
+    ],
+    [
+      333,
+      11,
+      402,
+      103
+    ]
+  ],
+  "predictions": [
+    "Conellia",
+    "Tyrant Ixlimor",
+    "King Garog",
+    "King Garog"
+  ]
+}

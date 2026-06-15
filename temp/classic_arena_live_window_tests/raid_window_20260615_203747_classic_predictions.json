@@ -1,0 +1,48 @@
+{
+  "window_capture": "c:\\Users\\Arthur\\Documents\\MyPython\\Raid\\RaidBot\\temp\\classic_arena_live_window_tests\\raid_window_20260615_203747.png",
+  "annotated_capture": "c:\\Users\\Arthur\\Documents\\MyPython\\Raid\\RaidBot\\temp\\classic_arena_live_window_tests\\raid_window_20260615_203747_classic_predictions.png",
+  "window_bounds": {
+    "left": 10,
+    "top": 10,
+    "width": 1281,
+    "height": 1063
+  },
+  "card_bounds_within_window": {
+    "left": 247,
+    "top": 265,
+    "right": 687,
+    "bottom": 395
+  },
+  "boxes": [
+    [
+      124,
+      12,
+      192,
+      101
+    ],
+    [
+      192,
+      12,
+      262,
+      103
+    ],
+    [
+      263,
+      14,
+      332,
+      104
+    ],
+    [
+      333,
+      11,
+      402,
+      103
+    ]
+  ],
+  "predictions": [
+    "Tribune Herakletes",
+    "Soulbond Bowyer",
+    "Cupidus",
+    "Tribune Herakletes"
+  ]
+}

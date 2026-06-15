@@ -32,6 +32,17 @@ data/map_data/**/*.png
 data/detector_ai/detector_ai_yolo/**/*.cache
 data/assets/images/_template_opt_scratch/
 data/assets/images/*_optimisation_legacy/
+data/processed/icons/
+data/processed/icons_noised/
+data/processed/champion_icons/
+data/processed/debug/
+data/processed/augmentation_metadata.csv
+data/raw/pages/
+data/raw/images/
+data/missing/
+data/models/champion_recognition/logs/
+data/models/champion_recognition/plots/
+data/models/champion_recognition/review_samples/
 
 # Training/export artifacts
 *.npz

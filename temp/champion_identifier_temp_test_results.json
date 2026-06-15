@@ -1,0 +1,116 @@
+{
+  "classic": [
+    {
+      "image": "classic_arena_card_20260615_194041.png",
+      "output": "c:\\Users\\Arthur\\Documents\\MyPython\\Raid\\RaidBot\\temp\\classic_arena_card_samples\\annotated\\classic_arena_card_20260615_194041_champion_predictions.png",
+      "predictions": [
+        "Tracker",
+        "Tyrant Ixlimor",
+        "King Garog",
+        "King Garog"
+      ]
+    },
+    {
+      "image": "live_classic_card_20260615_194417.png",
+      "output": "c:\\Users\\Arthur\\Documents\\MyPython\\Raid\\RaidBot\\temp\\classic_arena_card_samples\\annotated\\live_classic_card_20260615_194417_champion_predictions.png",
+      "predictions": [
+        "Tyrant Ixlimor",
+        "Tyrant Ixlimor",
+        "Gnishak Verminlord",
+        "Tyrant Ixlimor"
+      ]
+    }
+  ],
+  "tagteam": [
+    {
+      "image": "sample_00_combined.png",
+      "output": "c:\\Users\\Arthur\\Documents\\MyPython\\Raid\\RaidBot\\temp\\tagteam_cropped_samples\\annotated\\sample_00_combined_champion_predictions.png",
+      "predictions": [
+        "Niamhe Spear of Nyresa",
+        "Donatello",
+        "Leonardo",
+        "Raphael",
+        "Abbess",
+        "Lady Kimi",
+        "Sanguine Maria",
+        "Lord Entertainer Fabian",
+        "Sun Wukong",
+        "Liburga",
+        "Embrys the Anomaly",
+        "Lord Entertainer Fabian"
+      ]
+    },
+    {
+      "image": "sample_01_combined.png",
+      "output": "c:\\Users\\Arthur\\Documents\\MyPython\\Raid\\RaidBot\\temp\\tagteam_cropped_samples\\annotated\\sample_01_combined_champion_predictions.png",
+      "predictions": [
+        "Cheshire Cat",
+        "Tracker",
+        "Solanar the Gleaming",
+        "Ursuga Warcaller",
+        "Graazur Irongut",
+        "Cecilia the Red Hope",
+        "Androc the Glorious",
+        "Glorious Pallas",
+        "Tracker",
+        "Nais the Shadowthief",
+        "Predator",
+        "Starsage Galathir"
+      ]
+    },
+    {
+      "image": "sample_02_combined.png",
+      "output": "c:\\Users\\Arthur\\Documents\\MyPython\\Raid\\RaidBot\\temp\\tagteam_cropped_samples\\annotated\\sample_02_combined_champion_predictions.png",
+      "predictions": [
+        "Lady Noelle",
+        "Donatello",
+        "Sir Nicholas",
+        "Michelangelo",
+        "Ursuga Warcaller",
+        "Elva Autumnborn",
+        "Tracker",
+        "Sun Wukong",
+        "Abbess",
+        "Embrys the Anomaly",
+        "Madame Serris",
+        "Hilvi the Rime Called"
+      ]
+    },
+    {
+      "image": "sample_03_combined.png",
+      "output": "c:\\Users\\Arthur\\Documents\\MyPython\\Raid\\RaidBot\\temp\\tagteam_cropped_samples\\annotated\\sample_03_combined_champion_predictions.png",
+      "predictions": [
+        "Hilda Arnorndottr",
+        "Donatello",
+        "Leonardo",
+        "Lord Entertainer Fabian",
+        "Embrys the Anomaly",
+        "Supreme Galek",
+        "Predator",
+        "Misericord",
+        "Duchess Lilitu",
+        "Packmaster Shyek",
+        "Krokhad the Throatripper",
+        "Pontiff Augustin"
+      ]
+    },
+    {
+      "image": "sample_04_combined.png",
+      "output": "c:\\Users\\Arthur\\Documents\\MyPython\\Raid\\RaidBot\\temp\\tagteam_cropped_samples\\annotated\\sample_04_combined_champion_predictions.png",
+      "predictions": [
+        "Sun Wukong",
+        "Lord Entertainer Fabian",
+        "Embrys the Anomaly",
+        "Grand Oak Padraig",
+        "He-Man",
+        "Skimfos the Consumed",
+        "Abbess",
+        "Komidus Darksmile",
+        "Coldheart",
+        "Leorius the Proud",
+        "Predator",
+        "Misericord"
+      ]
+    }
+  ]
+}
