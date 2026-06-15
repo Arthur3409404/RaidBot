@@ -1,0 +1,13 @@
+Output folder: C:\Users\Arthur\Documents\MyPython\RaidBot\temp\grimforest_mimeto_ocr_20260614_130535
+Window: {'left': 10, 'top': 10, 'width': 1298, 'height': 1069}
+Forbidden rule: hard mode only; normalized OCR text must contain 'mimeto'
+Bot exact _read_menu_name(): None
+Bot exact forbidden on hard: False
+exact_menu_name raw OCR: ['Mimeto Dificil (0.422)']
+exact_menu_name bot-filtered OCR: []
+menu_name_wide raw OCR: ['Mimeto Dificil (0.993)']
+menu_name_wide bot-filtered OCR: ['Mimeto Dificil']
+top_left_quarter raw OCR: ['Raid: Shadow Legends (0.999)', 'Mimeto Dificil (0.898)', 'Habilidad de Aura: Aumenta HP de Aliados en (0.695)', 'todas las Batallas en 35 % (0.502)']
+top_left_quarter bot-filtered OCR: ['Raid: Shadow Legends', 'Mimeto Dificil', 'Habilidad de Aura: Aumenta HP de Aliados en', 'todas las Batallas en 35 %']
+stage_lower_half_text_scan raw OCR: ['Ncpeliciui (0.066)', '60 (1.000)', '60 (1.000)', 'Campeones (1.000)', 'Forma un grupo con estos 16 (0.781)', 'Guia del Jefe (0.913)', 'Filtrar (1.000)', 'Campeones: (0.997)', 'Grupo 1: 8 Campeon(es) (0.769)', 'Grupo 2: 8 Campeon(es) (0.766)', 'Ordenar (1.000)', 'Poder del Grupo: 463,76K (0.626)', 'Condiciones (1.000)', 'Mejor (1.000)', 'Empezar en Auto (0.996)', 'Empezar (0.952)', 'Grupo (1.000)']
+stage_lower_half_text_scan bot-filtered OCR: ['60', '60', 'Campeones', 'Forma un grupo con estos 16', 'Guia del Jefe', 'Filtrar', 'Campeones:', 'Grupo 1: 8 Campeon(es)', 'Grupo 2: 8 Campeon(es)', 'Ordenar', 'Poder del Grupo: 463,76K', 'Condiciones', 'Mejor', 'Empezar en Auto', 'Empezar', 'Grupo']

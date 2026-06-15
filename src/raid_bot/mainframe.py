@@ -542,7 +542,7 @@ class RSL_Bot_Mainframe:
     }
 
     SEARCH_AREAS = {
-        "menu_name": [0.008, 0.034, 0.23, 0.06],
+        "menu_name": [0.0, 0.02, 0.36, 0.07],
         "go_to_higher_menu": [0.928, 0.031, 0.046, 0.039],
         "go_to_bastion": [0.903, 0.9, 0.064, 0.059],
         "bastion_to_main_menu": [0.808, 0.904, 0.168, 0.074],

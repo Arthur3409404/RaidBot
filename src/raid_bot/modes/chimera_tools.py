@@ -49,7 +49,7 @@ class RSL_Bot_Chimera():
         self.window = window
             
         self.search_areas = {
-            "menu_name": [0.008, 0.034, 0.23, 0.037],   # [left, top, width, height]
+            "menu_name": [0.0, 0.02, 0.36, 0.07],   # [left, top, width, height]
             "go_to_higher_menu":   [0.928, 0.031, 0.046, 0.039],
             "clanboss_Chimera":   [0.007, 0.307, 0.072, 0.196],
             "clanboss_Chimera_Keys":   [0.554, 0.036, 0.039, 0.027],

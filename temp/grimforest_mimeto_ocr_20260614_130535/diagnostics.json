@@ -1,0 +1,4525 @@
+{
+  "created_at": "2026-06-14T13:05:35",
+  "output_dir": "C:\\Users\\Arthur\\Documents\\MyPython\\RaidBot\\temp\\grimforest_mimeto_ocr_20260614_130535",
+  "windows": [
+    {
+      "title": "Raid: Shadow Legends",
+      "left": 10,
+      "top": 10,
+      "width": 1298,
+      "height": 1069,
+      "isMinimized": false
+    }
+  ],
+  "selected_window": {
+    "left": 10,
+    "top": 10,
+    "width": 1298,
+    "height": 1069
+  },
+  "areas": {
+    "exact_menu_name": {
+      "relative_area": [
+        0.008,
+        0.034,
+        0.23,
+        0.037
+      ],
+      "absolute_coords": [
+        20,
+        46,
+        298,
+        39
+      ],
+      "variants": {
+        "raw": [
+          {
+            "text": "Mimeto Dificil",
+            "confidence": 0.4221766580946893,
+            "bbox_crop": [
+              [
+                22.0,
+                12.0
+              ],
+              [
+                198.0,
+                12.0
+              ],
+              [
+                198.0,
+                39.0
+              ],
+              [
+                22.0,
+                39.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                42.0,
+                58.0
+              ],
+              [
+                218.0,
+                58.0
+              ],
+              [
+                218.0,
+                85.0
+              ],
+              [
+                42.0,
+                85.0
+              ]
+            ],
+            "mean_abs_x": 130.0,
+            "mean_abs_y": 71.5,
+            "forbidden_hard_mimeto_match": true
+          }
+        ],
+        "gray_scaled_2x": [
+          {
+            "text": "Mimeto Dificil",
+            "confidence": 0.9983841047051643,
+            "bbox_crop": [
+              [
+                38.0,
+                18.0
+              ],
+              [
+                398.0,
+                18.0
+              ],
+              [
+                398.0,
+                78.0
+              ],
+              [
+                38.0,
+                78.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                58.0,
+                64.0
+              ],
+              [
+                418.0,
+                64.0
+              ],
+              [
+                418.0,
+                124.0
+              ],
+              [
+                58.0,
+                124.0
+              ]
+            ],
+            "mean_abs_x": 238.0,
+            "mean_abs_y": 94.0,
+            "forbidden_hard_mimeto_match": true
+          }
+        ],
+        "otsu": [
+          {
+            "text": "Mimeto Dificil",
+            "confidence": 0.9992653742850712,
+            "bbox_crop": [
+              [
+                19.0,
+                9.0
+              ],
+              [
+                199.0,
+                9.0
+              ],
+              [
+                199.0,
+                39.0
+              ],
+              [
+                19.0,
+                39.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                39.0,
+                55.0
+              ],
+              [
+                219.0,
+                55.0
+              ],
+              [
+                219.0,
+                85.0
+              ],
+              [
+                39.0,
+                85.0
+              ]
+            ],
+            "mean_abs_x": 129.0,
+            "mean_abs_y": 70.0,
+            "forbidden_hard_mimeto_match": true
+          }
+        ]
+      },
+      "bot_filtered_objects_raw_area": []
+    },
+    "menu_name_wide": {
+      "relative_area": [
+        0.0,
+        0.02,
+        0.36,
+        0.07
+      ],
+      "absolute_coords": [
+        10,
+        31,
+        467,
+        74
+      ],
+      "variants": {
+        "raw": [
+          {
+            "text": "Mimeto Dificil",
+            "confidence": 0.9928448275844002,
+            "bbox_crop": [
+              [
+                29.0,
+                25.0
+              ],
+              [
+                209.0,
+                25.0
+              ],
+              [
+                209.0,
+                61.0
+              ],
+              [
+                29.0,
+                61.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                39.0,
+                56.0
+              ],
+              [
+                219.0,
+                56.0
+              ],
+              [
+                219.0,
+                92.0
+              ],
+              [
+                39.0,
+                92.0
+              ]
+            ],
+            "mean_abs_x": 129.0,
+            "mean_abs_y": 74.0,
+            "forbidden_hard_mimeto_match": true
+          }
+        ],
+        "gray_scaled_2x": [
+          {
+            "text": "Ucic",
+            "confidence": 0.000735605601221323,
+            "bbox_crop": [
+              [
+                87.0,
+                0.0
+              ],
+              [
+                147.0,
+                0.0
+              ],
+              [
+                147.0,
+                11.0
+              ],
+              [
+                87.0,
+                11.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                97.0,
+                31.0
+              ],
+              [
+                157.0,
+                31.0
+              ],
+              [
+                157.0,
+                42.0
+              ],
+              [
+                97.0,
+                42.0
+              ]
+            ],
+            "mean_abs_x": 127.0,
+            "mean_abs_y": 36.5,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "Dcco",
+            "confidence": 0.0266162920743227,
+            "bbox_crop": [
+              [
+                161.0,
+                0.0
+              ],
+              [
+                247.0,
+                0.0
+              ],
+              [
+                247.0,
+                11.0
+              ],
+              [
+                161.0,
+                11.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                171.0,
+                31.0
+              ],
+              [
+                257.0,
+                31.0
+              ],
+              [
+                257.0,
+                42.0
+              ],
+              [
+                171.0,
+                42.0
+              ]
+            ],
+            "mean_abs_x": 214.0,
+            "mean_abs_y": 36.5,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "LeSons",
+            "confidence": 0.015762225738291967,
+            "bbox_crop": [
+              [
+                275.0,
+                0.0
+              ],
+              [
+                385.0,
+                0.0
+              ],
+              [
+                385.0,
+                17.0
+              ],
+              [
+                275.0,
+                17.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                285.0,
+                31.0
+              ],
+              [
+                395.0,
+                31.0
+              ],
+              [
+                395.0,
+                48.0
+              ],
+              [
+                285.0,
+                48.0
+              ]
+            ],
+            "mean_abs_x": 340.0,
+            "mean_abs_y": 39.5,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "R",
+            "confidence": 0.9999399194205125,
+            "bbox_crop": [
+              [
+                0.0,
+                85.0
+              ],
+              [
+                17.0,
+                85.0
+              ],
+              [
+                17.0,
+                113.0
+              ],
+              [
+                0.0,
+                113.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                10.0,
+                116.0
+              ],
+              [
+                27.0,
+                116.0
+              ],
+              [
+                27.0,
+                144.0
+              ],
+              [
+                10.0,
+                144.0
+              ]
+            ],
+            "mean_abs_x": 18.5,
+            "mean_abs_y": 130.0,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "Mimeto Dificil",
+            "confidence": 0.998531013001946,
+            "bbox_crop": [
+              [
+                61.0,
+                51.0
+              ],
+              [
+                417.0,
+                51.0
+              ],
+              [
+                417.0,
+                117.0
+              ],
+              [
+                61.0,
+                117.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                71.0,
+                82.0
+              ],
+              [
+                427.0,
+                82.0
+              ],
+              [
+                427.0,
+                148.0
+              ],
+              [
+                71.0,
+                148.0
+              ]
+            ],
+            "mean_abs_x": 249.0,
+            "mean_abs_y": 115.0,
+            "forbidden_hard_mimeto_match": true
+          }
+        ],
+        "otsu": [
+          {
+            "text": "Mimeto Dificil",
+            "confidence": 0.9978102115920626,
+            "bbox_crop": [
+              [
+                28.0,
+                23.0
+              ],
+              [
+                209.0,
+                23.0
+              ],
+              [
+                209.0,
+                63.0
+              ],
+              [
+                28.0,
+                63.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                38.0,
+                54.0
+              ],
+              [
+                219.0,
+                54.0
+              ],
+              [
+                219.0,
+                94.0
+              ],
+              [
+                38.0,
+                94.0
+              ]
+            ],
+            "mean_abs_x": 128.5,
+            "mean_abs_y": 74.0,
+            "forbidden_hard_mimeto_match": true
+          }
+        ]
+      },
+      "bot_filtered_objects_raw_area": [
+        {
+          "text": "Mimeto Dificil",
+          "mean_pos_x": 129.0,
+          "mean_pos_y": 74.0
+        }
+      ]
+    },
+    "top_left_quarter": {
+      "relative_area": [
+        0.0,
+        0.0,
+        0.5,
+        0.22
+      ],
+      "absolute_coords": [
+        10,
+        10,
+        649,
+        235
+      ],
+      "variants": {
+        "raw": [
+          {
+            "text": "Raid: Shadow Legends",
+            "confidence": 0.9985475847233981,
+            "bbox_crop": [
+              [
+                43.0,
+                13.0
+              ],
+              [
+                195.0,
+                13.0
+              ],
+              [
+                195.0,
+                31.0
+              ],
+              [
+                43.0,
+                31.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                53.0,
+                23.0
+              ],
+              [
+                205.0,
+                23.0
+              ],
+              [
+                205.0,
+                41.0
+              ],
+              [
+                53.0,
+                41.0
+              ]
+            ],
+            "mean_abs_x": 129.0,
+            "mean_abs_y": 32.0,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "Mimeto Dificil",
+            "confidence": 0.8976423642617541,
+            "bbox_crop": [
+              [
+                29.0,
+                47.0
+              ],
+              [
+                209.0,
+                47.0
+              ],
+              [
+                209.0,
+                83.0
+              ],
+              [
+                29.0,
+                83.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                39.0,
+                57.0
+              ],
+              [
+                219.0,
+                57.0
+              ],
+              [
+                219.0,
+                93.0
+              ],
+              [
+                39.0,
+                93.0
+              ]
+            ],
+            "mean_abs_x": 129.0,
+            "mean_abs_y": 75.0,
+            "forbidden_hard_mimeto_match": true
+          },
+          {
+            "text": "Habilidad de Aura: Aumenta HP de Aliados en",
+            "confidence": 0.6946611359043209,
+            "bbox_crop": [
+              [
+                25.0,
+                95.0
+              ],
+              [
+                377.0,
+                95.0
+              ],
+              [
+                377.0,
+                115.0
+              ],
+              [
+                25.0,
+                115.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                35.0,
+                105.0
+              ],
+              [
+                387.0,
+                105.0
+              ],
+              [
+                387.0,
+                125.0
+              ],
+              [
+                35.0,
+                125.0
+              ]
+            ],
+            "mean_abs_x": 211.0,
+            "mean_abs_y": 115.0,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "todas las Batallas en 35 %",
+            "confidence": 0.5019013038906837,
+            "bbox_crop": [
+              [
+                25.0,
+                115.0
+              ],
+              [
+                229.0,
+                115.0
+              ],
+              [
+                229.0,
+                135.0
+              ],
+              [
+                25.0,
+                135.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                35.0,
+                125.0
+              ],
+              [
+                239.0,
+                125.0
+              ],
+              [
+                239.0,
+                145.0
+              ],
+              [
+                35.0,
+                145.0
+              ]
+            ],
+            "mean_abs_x": 137.0,
+            "mean_abs_y": 135.0,
+            "forbidden_hard_mimeto_match": false
+          }
+        ],
+        "gray_scaled_2x": [
+          {
+            "text": "Raid: Shadow Legends",
+            "confidence": 0.8675826044558006,
+            "bbox_crop": [
+              [
+                85.0,
+                21.0
+              ],
+              [
+                391.0,
+                21.0
+              ],
+              [
+                391.0,
+                63.0
+              ],
+              [
+                85.0,
+                63.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                95.0,
+                31.0
+              ],
+              [
+                401.0,
+                31.0
+              ],
+              [
+                401.0,
+                73.0
+              ],
+              [
+                95.0,
+                73.0
+              ]
+            ],
+            "mean_abs_x": 248.0,
+            "mean_abs_y": 52.0,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "R",
+            "confidence": 0.9999721052207775,
+            "bbox_crop": [
+              [
+                0.0,
+                127.0
+              ],
+              [
+                17.0,
+                127.0
+              ],
+              [
+                17.0,
+                153.0
+              ],
+              [
+                0.0,
+                153.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                10.0,
+                137.0
+              ],
+              [
+                27.0,
+                137.0
+              ],
+              [
+                27.0,
+                163.0
+              ],
+              [
+                10.0,
+                163.0
+              ]
+            ],
+            "mean_abs_x": 18.5,
+            "mean_abs_y": 150.0,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "Mimeto Dificil",
+            "confidence": 0.9989739271972778,
+            "bbox_crop": [
+              [
+                61.0,
+                95.0
+              ],
+              [
+                417.0,
+                95.0
+              ],
+              [
+                417.0,
+                159.0
+              ],
+              [
+                61.0,
+                159.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                71.0,
+                105.0
+              ],
+              [
+                427.0,
+                105.0
+              ],
+              [
+                427.0,
+                169.0
+              ],
+              [
+                71.0,
+                169.0
+              ]
+            ],
+            "mean_abs_x": 249.0,
+            "mean_abs_y": 137.0,
+            "forbidden_hard_mimeto_match": true
+          },
+          {
+            "text": "Habilidad de Aura: Aumenta HP de Aliados en",
+            "confidence": 0.9629413479340442,
+            "bbox_crop": [
+              [
+                55.0,
+                191.0
+              ],
+              [
+                753.0,
+                191.0
+              ],
+              [
+                753.0,
+                232.0
+              ],
+              [
+                55.0,
+                232.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                65.0,
+                201.0
+              ],
+              [
+                763.0,
+                201.0
+              ],
+              [
+                763.0,
+                242.0
+              ],
+              [
+                65.0,
+                242.0
+              ]
+            ],
+            "mean_abs_x": 414.0,
+            "mean_abs_y": 221.5,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "todas las Batallas en 35 %.",
+            "confidence": 0.8831334964045258,
+            "bbox_crop": [
+              [
+                52.0,
+                231.0
+              ],
+              [
+                465.0,
+                231.0
+              ],
+              [
+                465.0,
+                271.0
+              ],
+              [
+                52.0,
+                271.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                62.0,
+                241.0
+              ],
+              [
+                475.0,
+                241.0
+              ],
+              [
+                475.0,
+                281.0
+              ],
+              [
+                62.0,
+                281.0
+              ]
+            ],
+            "mean_abs_x": 268.5,
+            "mean_abs_y": 261.0,
+            "forbidden_hard_mimeto_match": false
+          }
+        ],
+        "otsu": [
+          {
+            "text": "Raid: Shadow Legends",
+            "confidence": 0.5626514411578576,
+            "bbox_crop": [
+              [
+                43.0,
+                11.0
+              ],
+              [
+                195.0,
+                11.0
+              ],
+              [
+                195.0,
+                31.0
+              ],
+              [
+                43.0,
+                31.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                53.0,
+                21.0
+              ],
+              [
+                205.0,
+                21.0
+              ],
+              [
+                205.0,
+                41.0
+              ],
+              [
+                53.0,
+                41.0
+              ]
+            ],
+            "mean_abs_x": 129.0,
+            "mean_abs_y": 31.0,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "Mimeto Dificil",
+            "confidence": 0.981382210444218,
+            "bbox_crop": [
+              [
+                30.0,
+                48.0
+              ],
+              [
+                208.0,
+                48.0
+              ],
+              [
+                208.0,
+                80.0
+              ],
+              [
+                30.0,
+                80.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                40.0,
+                58.0
+              ],
+              [
+                218.0,
+                58.0
+              ],
+              [
+                218.0,
+                90.0
+              ],
+              [
+                40.0,
+                90.0
+              ]
+            ],
+            "mean_abs_x": 129.0,
+            "mean_abs_y": 74.0,
+            "forbidden_hard_mimeto_match": true
+          },
+          {
+            "text": "Habilidad de Aura: Aumenta HP de Aliados en",
+            "confidence": 0.9096239187538817,
+            "bbox_crop": [
+              [
+                27.0,
+                95.0
+              ],
+              [
+                375.0,
+                95.0
+              ],
+              [
+                375.0,
+                115.0
+              ],
+              [
+                27.0,
+                115.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                37.0,
+                105.0
+              ],
+              [
+                385.0,
+                105.0
+              ],
+              [
+                385.0,
+                125.0
+              ],
+              [
+                37.0,
+                125.0
+              ]
+            ],
+            "mean_abs_x": 211.0,
+            "mean_abs_y": 115.0,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "todas las Batallas en 35 %",
+            "confidence": 0.8388930456501656,
+            "bbox_crop": [
+              [
+                25.0,
+                115.0
+              ],
+              [
+                229.0,
+                115.0
+              ],
+              [
+                229.0,
+                135.0
+              ],
+              [
+                25.0,
+                135.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                35.0,
+                125.0
+              ],
+              [
+                239.0,
+                125.0
+              ],
+              [
+                239.0,
+                145.0
+              ],
+              [
+                35.0,
+                145.0
+              ]
+            ],
+            "mean_abs_x": 137.0,
+            "mean_abs_y": 135.0,
+            "forbidden_hard_mimeto_match": false
+          }
+        ]
+      },
+      "bot_filtered_objects_raw_area": [
+        {
+          "text": "Raid: Shadow Legends",
+          "mean_pos_x": 129.0,
+          "mean_pos_y": 32.0
+        },
+        {
+          "text": "Mimeto Dificil",
+          "mean_pos_x": 129.0,
+          "mean_pos_y": 75.0
+        },
+        {
+          "text": "Habilidad de Aura: Aumenta HP de Aliados en",
+          "mean_pos_x": 211.0,
+          "mean_pos_y": 115.0
+        },
+        {
+          "text": "todas las Batallas en 35 %",
+          "mean_pos_x": 137.0,
+          "mean_pos_y": 135.0
+        }
+      ]
+    },
+    "stage_lower_half_text_scan": {
+      "relative_area": [
+        0.0,
+        0.5,
+        1.0,
+        0.5
+      ],
+      "absolute_coords": [
+        10,
+        544,
+        1298,
+        534
+      ],
+      "variants": {
+        "raw": [
+          {
+            "text": "Ncpeliciui",
+            "confidence": 0.06556714258053195,
+            "bbox_crop": [
+              [
+                35.0,
+                0.0
+              ],
+              [
+                121.0,
+                0.0
+              ],
+              [
+                121.0,
+                11.0
+              ],
+              [
+                35.0,
+                11.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                45.0,
+                544.0
+              ],
+              [
+                131.0,
+                544.0
+              ],
+              [
+                131.0,
+                555.0
+              ],
+              [
+                45.0,
+                555.0
+              ]
+            ],
+            "mean_abs_x": 88.0,
+            "mean_abs_y": 549.5,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "60",
+            "confidence": 0.999996375372952,
+            "bbox_crop": [
+              [
+                211.0,
+                25.0
+              ],
+              [
+                237.0,
+                25.0
+              ],
+              [
+                237.0,
+                45.0
+              ],
+              [
+                211.0,
+                45.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                221.0,
+                569.0
+              ],
+              [
+                247.0,
+                569.0
+              ],
+              [
+                247.0,
+                589.0
+              ],
+              [
+                221.0,
+                589.0
+              ]
+            ],
+            "mean_abs_x": 234.0,
+            "mean_abs_y": 579.0,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "60",
+            "confidence": 0.9999935936850367,
+            "bbox_crop": [
+              [
+                329.0,
+                25.0
+              ],
+              [
+                355.0,
+                25.0
+              ],
+              [
+                355.0,
+                45.0
+              ],
+              [
+                329.0,
+                45.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                339.0,
+                569.0
+              ],
+              [
+                365.0,
+                569.0
+              ],
+              [
+                365.0,
+                589.0
+              ],
+              [
+                339.0,
+                589.0
+              ]
+            ],
+            "mean_abs_x": 352.0,
+            "mean_abs_y": 579.0,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "Campeones",
+            "confidence": 0.9999678132328229,
+            "bbox_crop": [
+              [
+                29.0,
+                67.0
+              ],
+              [
+                126.0,
+                67.0
+              ],
+              [
+                126.0,
+                91.0
+              ],
+              [
+                29.0,
+                91.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                39.0,
+                611.0
+              ],
+              [
+                136.0,
+                611.0
+              ],
+              [
+                136.0,
+                635.0
+              ],
+              [
+                39.0,
+                635.0
+              ]
+            ],
+            "mean_abs_x": 87.5,
+            "mean_abs_y": 623.0,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "Forma un grupo con estos 16",
+            "confidence": 0.781041751139361,
+            "bbox_crop": [
+              [
+                528.0,
+                130.0
+              ],
+              [
+                768.0,
+                130.0
+              ],
+              [
+                768.0,
+                156.0
+              ],
+              [
+                528.0,
+                156.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                538.0,
+                674.0
+              ],
+              [
+                778.0,
+                674.0
+              ],
+              [
+                778.0,
+                700.0
+              ],
+              [
+                538.0,
+                700.0
+              ]
+            ],
+            "mean_abs_x": 658.0,
+            "mean_abs_y": 687.0,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "Guia del Jefe",
+            "confidence": 0.9128916814273178,
+            "bbox_crop": [
+              [
+                1165.0,
+                137.0
+              ],
+              [
+                1275.0,
+                137.0
+              ],
+              [
+                1275.0,
+                157.0
+              ],
+              [
+                1165.0,
+                157.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                1175.0,
+                681.0
+              ],
+              [
+                1285.0,
+                681.0
+              ],
+              [
+                1285.0,
+                701.0
+              ],
+              [
+                1175.0,
+                701.0
+              ]
+            ],
+            "mean_abs_x": 1230.0,
+            "mean_abs_y": 691.0,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "Filtrar",
+            "confidence": 0.9999793188247279,
+            "bbox_crop": [
+              [
+                52.0,
+                151.0
+              ],
+              [
+                101.0,
+                151.0
+              ],
+              [
+                101.0,
+                171.0
+              ],
+              [
+                52.0,
+                171.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                62.0,
+                695.0
+              ],
+              [
+                111.0,
+                695.0
+              ],
+              [
+                111.0,
+                715.0
+              ],
+              [
+                62.0,
+                715.0
+              ]
+            ],
+            "mean_abs_x": 86.5,
+            "mean_abs_y": 705.0,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "Campeones:",
+            "confidence": 0.9973550096182568,
+            "bbox_crop": [
+              [
+                593.0,
+                151.0
+              ],
+              [
+                704.0,
+                151.0
+              ],
+              [
+                704.0,
+                177.0
+              ],
+              [
+                593.0,
+                177.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                603.0,
+                695.0
+              ],
+              [
+                714.0,
+                695.0
+              ],
+              [
+                714.0,
+                721.0
+              ],
+              [
+                603.0,
+                721.0
+              ]
+            ],
+            "mean_abs_x": 658.5,
+            "mean_abs_y": 708.0,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "Grupo 1: 8 Campeon(es)",
+            "confidence": 0.7690370201137537,
+            "bbox_crop": [
+              [
+                547.0,
+                178.0
+              ],
+              [
+                748.0,
+                178.0
+              ],
+              [
+                748.0,
+                205.0
+              ],
+              [
+                547.0,
+                205.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                557.0,
+                722.0
+              ],
+              [
+                758.0,
+                722.0
+              ],
+              [
+                758.0,
+                749.0
+              ],
+              [
+                557.0,
+                749.0
+              ]
+            ],
+            "mean_abs_x": 657.5,
+            "mean_abs_y": 735.5,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "Grupo 2: 8 Campeon(es)",
+            "confidence": 0.766211090754805,
+            "bbox_crop": [
+              [
+                547.0,
+                204.0
+              ],
+              [
+                748.0,
+                204.0
+              ],
+              [
+                748.0,
+                233.0
+              ],
+              [
+                547.0,
+                233.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                557.0,
+                748.0
+              ],
+              [
+                758.0,
+                748.0
+              ],
+              [
+                758.0,
+                777.0
+              ],
+              [
+                557.0,
+                777.0
+              ]
+            ],
+            "mean_abs_x": 657.5,
+            "mean_abs_y": 762.5,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "Ordenar",
+            "confidence": 0.9999556637163755,
+            "bbox_crop": [
+              [
+                45.0,
+                237.0
+              ],
+              [
+                109.0,
+                237.0
+              ],
+              [
+                109.0,
+                255.0
+              ],
+              [
+                45.0,
+                255.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                55.0,
+                781.0
+              ],
+              [
+                119.0,
+                781.0
+              ],
+              [
+                119.0,
+                799.0
+              ],
+              [
+                55.0,
+                799.0
+              ]
+            ],
+            "mean_abs_x": 87.0,
+            "mean_abs_y": 790.0,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "Poder del Grupo: 463,76K",
+            "confidence": 0.62640556077567,
+            "bbox_crop": [
+              [
+                170.0,
+                233.0
+              ],
+              [
+                404.0,
+                233.0
+              ],
+              [
+                404.0,
+                261.0
+              ],
+              [
+                170.0,
+                261.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                180.0,
+                777.0
+              ],
+              [
+                414.0,
+                777.0
+              ],
+              [
+                414.0,
+                805.0
+              ],
+              [
+                180.0,
+                805.0
+              ]
+            ],
+            "mean_abs_x": 297.0,
+            "mean_abs_y": 791.0,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "Condiciones",
+            "confidence": 0.9999854789775098,
+            "bbox_crop": [
+              [
+                580.0,
+                240.0
+              ],
+              [
+                686.0,
+                240.0
+              ],
+              [
+                686.0,
+                264.0
+              ],
+              [
+                580.0,
+                264.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                590.0,
+                784.0
+              ],
+              [
+                696.0,
+                784.0
+              ],
+              [
+                696.0,
+                808.0
+              ],
+              [
+                590.0,
+                808.0
+              ]
+            ],
+            "mean_abs_x": 643.0,
+            "mean_abs_y": 796.0,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "Mejor",
+            "confidence": 0.9999836331955868,
+            "bbox_crop": [
+              [
+                1160.0,
+                222.0
+              ],
+              [
+                1223.0,
+                222.0
+              ],
+              [
+                1223.0,
+                252.0
+              ],
+              [
+                1160.0,
+                252.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                1170.0,
+                766.0
+              ],
+              [
+                1233.0,
+                766.0
+              ],
+              [
+                1233.0,
+                796.0
+              ],
+              [
+                1170.0,
+                796.0
+              ]
+            ],
+            "mean_abs_x": 1201.5,
+            "mean_abs_y": 781.0,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "Empezar en Auto",
+            "confidence": 0.9961352171400835,
+            "bbox_crop": [
+              [
+                1038.0,
+                333.0
+              ],
+              [
+                1228.0,
+                333.0
+              ],
+              [
+                1228.0,
+                366.0
+              ],
+              [
+                1038.0,
+                366.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                1048.0,
+                877.0
+              ],
+              [
+                1238.0,
+                877.0
+              ],
+              [
+                1238.0,
+                910.0
+              ],
+              [
+                1048.0,
+                910.0
+              ]
+            ],
+            "mean_abs_x": 1143.0,
+            "mean_abs_y": 893.5,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "Empezar",
+            "confidence": 0.9517888025259896,
+            "bbox_crop": [
+              [
+                1072.0,
+                442.0
+              ],
+              [
+                1185.0,
+                442.0
+              ],
+              [
+                1185.0,
+                478.0
+              ],
+              [
+                1072.0,
+                478.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                1082.0,
+                986.0
+              ],
+              [
+                1195.0,
+                986.0
+              ],
+              [
+                1195.0,
+                1022.0
+              ],
+              [
+                1082.0,
+                1022.0
+              ]
+            ],
+            "mean_abs_x": 1138.5,
+            "mean_abs_y": 1004.0,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "Grupo",
+            "confidence": 0.9999390108353152,
+            "bbox_crop": [
+              [
+                1218.9580569325292,
+                221.18675371782888
+              ],
+              [
+                1281.9132150793114,
+                229.2836356362349
+              ],
+              [
+                1278.0419430674708,
+                253.81324628217112
+              ],
+              [
+                1215.0867849206886,
+                245.7163643637651
+              ]
+            ],
+            "bbox_abs": [
+              [
+                1228.9580569325292,
+                765.1867537178289
+              ],
+              [
+                1291.9132150793114,
+                773.2836356362349
+              ],
+              [
+                1288.0419430674708,
+                797.8132462821711
+              ],
+              [
+                1225.0867849206886,
+                789.7163643637651
+              ]
+            ],
+            "mean_abs_x": 1258.5,
+            "mean_abs_y": 781.5,
+            "forbidden_hard_mimeto_match": false
+          }
+        ],
+        "gray_scaled_2x": [
+          {
+            "text": "Tepeliciui",
+            "confidence": 0.26760388833889126,
+            "bbox_crop": [
+              [
+                68.0,
+                0.0
+              ],
+              [
+                239.0,
+                0.0
+              ],
+              [
+                239.0,
+                24.0
+              ],
+              [
+                68.0,
+                24.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                78.0,
+                544.0
+              ],
+              [
+                249.0,
+                544.0
+              ],
+              [
+                249.0,
+                568.0
+              ],
+              [
+                78.0,
+                568.0
+              ]
+            ],
+            "mean_abs_x": 163.5,
+            "mean_abs_y": 556.0,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "I",
+            "confidence": 0.8373619358737869,
+            "bbox_crop": [
+              [
+                2578.0,
+                15.0
+              ],
+              [
+                2594.0,
+                15.0
+              ],
+              [
+                2594.0,
+                47.0
+              ],
+              [
+                2578.0,
+                47.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                2588.0,
+                559.0
+              ],
+              [
+                2604.0,
+                559.0
+              ],
+              [
+                2604.0,
+                591.0
+              ],
+              [
+                2588.0,
+                591.0
+              ]
+            ],
+            "mean_abs_x": 2596.0,
+            "mean_abs_y": 575.0,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "60",
+            "confidence": 0.9999984827137908,
+            "bbox_crop": [
+              [
+                424.0,
+                53.0
+              ],
+              [
+                475.0,
+                53.0
+              ],
+              [
+                475.0,
+                90.0
+              ],
+              [
+                424.0,
+                90.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                434.0,
+                597.0
+              ],
+              [
+                485.0,
+                597.0
+              ],
+              [
+                485.0,
+                634.0
+              ],
+              [
+                434.0,
+                634.0
+              ]
+            ],
+            "mean_abs_x": 459.5,
+            "mean_abs_y": 615.5,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "6",
+            "confidence": 0.9895809713050454,
+            "bbox_crop": [
+              [
+                522.0,
+                53.0
+              ],
+              [
+                564.0,
+                53.0
+              ],
+              [
+                564.0,
+                96.0
+              ],
+              [
+                522.0,
+                96.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                532.0,
+                597.0
+              ],
+              [
+                574.0,
+                597.0
+              ],
+              [
+                574.0,
+                640.0
+              ],
+              [
+                532.0,
+                640.0
+              ]
+            ],
+            "mean_abs_x": 553.0,
+            "mean_abs_y": 618.5,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "60",
+            "confidence": 0.9110083552452483,
+            "bbox_crop": [
+              [
+                660.0,
+                53.0
+              ],
+              [
+                708.0,
+                53.0
+              ],
+              [
+                708.0,
+                92.0
+              ],
+              [
+                660.0,
+                92.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                670.0,
+                597.0
+              ],
+              [
+                718.0,
+                597.0
+              ],
+              [
+                718.0,
+                636.0
+              ],
+              [
+                670.0,
+                636.0
+              ]
+            ],
+            "mean_abs_x": 694.0,
+            "mean_abs_y": 616.5,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "Ji",
+            "confidence": 0.16657246908950882,
+            "bbox_crop": [
+              [
+                2571.0,
+                117.0
+              ],
+              [
+                2595.0,
+                117.0
+              ],
+              [
+                2595.0,
+                143.0
+              ],
+              [
+                2571.0,
+                143.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                2581.0,
+                661.0
+              ],
+              [
+                2605.0,
+                661.0
+              ],
+              [
+                2605.0,
+                687.0
+              ],
+              [
+                2581.0,
+                687.0
+              ]
+            ],
+            "mean_abs_x": 2593.0,
+            "mean_abs_y": 674.0,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "Campeones",
+            "confidence": 0.8759773074547971,
+            "bbox_crop": [
+              [
+                55.0,
+                133.0
+              ],
+              [
+                252.0,
+                133.0
+              ],
+              [
+                252.0,
+                184.0
+              ],
+              [
+                55.0,
+                184.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                65.0,
+                677.0
+              ],
+              [
+                262.0,
+                677.0
+              ],
+              [
+                262.0,
+                728.0
+              ],
+              [
+                65.0,
+                728.0
+              ]
+            ],
+            "mean_abs_x": 163.5,
+            "mean_abs_y": 702.5,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "11",
+            "confidence": 0.43358034114821553,
+            "bbox_crop": [
+              [
+                2571.0,
+                156.0
+              ],
+              [
+                2595.0,
+                156.0
+              ],
+              [
+                2595.0,
+                186.0
+              ],
+              [
+                2571.0,
+                186.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                2581.0,
+                700.0
+              ],
+              [
+                2605.0,
+                700.0
+              ],
+              [
+                2605.0,
+                730.0
+              ],
+              [
+                2581.0,
+                730.0
+              ]
+            ],
+            "mean_abs_x": 2593.0,
+            "mean_abs_y": 715.0,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "2",
+            "confidence": 1.0,
+            "bbox_crop": [
+              [
+                189.0,
+                207.0
+              ],
+              [
+                209.0,
+                207.0
+              ],
+              [
+                209.0,
+                236.0
+              ],
+              [
+                189.0,
+                236.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                199.0,
+                751.0
+              ],
+              [
+                219.0,
+                751.0
+              ],
+              [
+                219.0,
+                780.0
+              ],
+              [
+                199.0,
+                780.0
+              ]
+            ],
+            "mean_abs_x": 209.0,
+            "mean_abs_y": 765.5,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "11",
+            "confidence": 0.30232660009276563,
+            "bbox_crop": [
+              [
+                2574.0,
+                203.0
+              ],
+              [
+                2594.0,
+                203.0
+              ],
+              [
+                2594.0,
+                230.0
+              ],
+              [
+                2574.0,
+                230.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                2584.0,
+                747.0
+              ],
+              [
+                2604.0,
+                747.0
+              ],
+              [
+                2604.0,
+                774.0
+              ],
+              [
+                2584.0,
+                774.0
+              ]
+            ],
+            "mean_abs_x": 2594.0,
+            "mean_abs_y": 760.5,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "Forma un grupo con estos 16",
+            "confidence": 0.6875934894265311,
+            "bbox_crop": [
+              [
+                1060.0,
+                264.0
+              ],
+              [
+                1535.0,
+                264.0
+              ],
+              [
+                1535.0,
+                312.0
+              ],
+              [
+                1060.0,
+                312.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                1070.0,
+                808.0
+              ],
+              [
+                1545.0,
+                808.0
+              ],
+              [
+                1545.0,
+                856.0
+              ],
+              [
+                1070.0,
+                856.0
+              ]
+            ],
+            "mean_abs_x": 1307.5,
+            "mean_abs_y": 832.0,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "Guia del Jefe",
+            "confidence": 0.7233416675640626,
+            "bbox_crop": [
+              [
+                2329.0,
+                274.0
+              ],
+              [
+                2550.0,
+                274.0
+              ],
+              [
+                2550.0,
+                315.0
+              ],
+              [
+                2329.0,
+                315.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                2339.0,
+                818.0
+              ],
+              [
+                2560.0,
+                818.0
+              ],
+              [
+                2560.0,
+                859.0
+              ],
+              [
+                2339.0,
+                859.0
+              ]
+            ],
+            "mean_abs_x": 2449.5,
+            "mean_abs_y": 838.5,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "Filtrar",
+            "confidence": 0.9999910787256433,
+            "bbox_crop": [
+              [
+                106.0,
+                303.0
+              ],
+              [
+                203.0,
+                303.0
+              ],
+              [
+                203.0,
+                339.0
+              ],
+              [
+                106.0,
+                339.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                116.0,
+                847.0
+              ],
+              [
+                213.0,
+                847.0
+              ],
+              [
+                213.0,
+                883.0
+              ],
+              [
+                116.0,
+                883.0
+              ]
+            ],
+            "mean_abs_x": 164.5,
+            "mean_abs_y": 865.0,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "Campeones:",
+            "confidence": 0.9378936520249576,
+            "bbox_crop": [
+              [
+                1189.0,
+                305.0
+              ],
+              [
+                1406.0,
+                305.0
+              ],
+              [
+                1406.0,
+                356.0
+              ],
+              [
+                1189.0,
+                356.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                1199.0,
+                849.0
+              ],
+              [
+                1416.0,
+                849.0
+              ],
+              [
+                1416.0,
+                900.0
+              ],
+              [
+                1199.0,
+                900.0
+              ]
+            ],
+            "mean_abs_x": 1307.5,
+            "mean_abs_y": 874.5,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "Grupo 1: 8 Campeon(es)",
+            "confidence": 0.9434496244194447,
+            "bbox_crop": [
+              [
+                1097.0,
+                359.0
+              ],
+              [
+                1497.0,
+                359.0
+              ],
+              [
+                1497.0,
+                412.0
+              ],
+              [
+                1097.0,
+                412.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                1107.0,
+                903.0
+              ],
+              [
+                1507.0,
+                903.0
+              ],
+              [
+                1507.0,
+                956.0
+              ],
+              [
+                1107.0,
+                956.0
+              ]
+            ],
+            "mean_abs_x": 1307.0,
+            "mean_abs_y": 929.5,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "2",
+            "confidence": 0.9878200322535946,
+            "bbox_crop": [
+              [
+                2420.0,
+                368.0
+              ],
+              [
+                2465.0,
+                368.0
+              ],
+              [
+                2465.0,
+                424.0
+              ],
+              [
+                2420.0,
+                424.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                2430.0,
+                912.0
+              ],
+              [
+                2475.0,
+                912.0
+              ],
+              [
+                2475.0,
+                968.0
+              ],
+              [
+                2430.0,
+                968.0
+              ]
+            ],
+            "mean_abs_x": 2452.5,
+            "mean_abs_y": 940.0,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "2: 8 Campeon(es)",
+            "confidence": 0.6509815352333587,
+            "bbox_crop": [
+              [
+                1202.0,
+                414.0
+              ],
+              [
+                1497.0,
+                414.0
+              ],
+              [
+                1497.0,
+                468.0
+              ],
+              [
+                1202.0,
+                468.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                1212.0,
+                958.0
+              ],
+              [
+                1507.0,
+                958.0
+              ],
+              [
+                1507.0,
+                1012.0
+              ],
+              [
+                1212.0,
+                1012.0
+              ]
+            ],
+            "mean_abs_x": 1359.5,
+            "mean_abs_y": 985.0,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "Ordenar",
+            "confidence": 0.9999865730217571,
+            "bbox_crop": [
+              [
+                88.0,
+                469.0
+              ],
+              [
+                220.0,
+                469.0
+              ],
+              [
+                220.0,
+                508.0
+              ],
+              [
+                88.0,
+                508.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                98.0,
+                1013.0
+              ],
+              [
+                230.0,
+                1013.0
+              ],
+              [
+                230.0,
+                1052.0
+              ],
+              [
+                98.0,
+                1052.0
+              ]
+            ],
+            "mean_abs_x": 164.0,
+            "mean_abs_y": 1032.5,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "Poder del Grupo: 463,76K",
+            "confidence": 0.5337226875785465,
+            "bbox_crop": [
+              [
+                341.0,
+                463.0
+              ],
+              [
+                808.0,
+                463.0
+              ],
+              [
+                808.0,
+                524.0
+              ],
+              [
+                341.0,
+                524.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                351.0,
+                1007.0
+              ],
+              [
+                818.0,
+                1007.0
+              ],
+              [
+                818.0,
+                1068.0
+              ],
+              [
+                351.0,
+                1068.0
+              ]
+            ],
+            "mean_abs_x": 584.5,
+            "mean_abs_y": 1037.5,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "Condiciones",
+            "confidence": 0.9999867729356425,
+            "bbox_crop": [
+              [
+                1162.0,
+                484.0
+              ],
+              [
+                1370.0,
+                484.0
+              ],
+              [
+                1370.0,
+                526.0
+              ],
+              [
+                1162.0,
+                526.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                1172.0,
+                1028.0
+              ],
+              [
+                1380.0,
+                1028.0
+              ],
+              [
+                1380.0,
+                1070.0
+              ],
+              [
+                1172.0,
+                1070.0
+              ]
+            ],
+            "mean_abs_x": 1276.0,
+            "mean_abs_y": 1049.0,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "1",
+            "confidence": 0.9979923321664188,
+            "bbox_crop": [
+              [
+                1392.0,
+                489.0
+              ],
+              [
+                1410.0,
+                489.0
+              ],
+              [
+                1410.0,
+                522.0
+              ],
+              [
+                1392.0,
+                522.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                1402.0,
+                1033.0
+              ],
+              [
+                1420.0,
+                1033.0
+              ],
+              [
+                1420.0,
+                1066.0
+              ],
+              [
+                1402.0,
+                1066.0
+              ]
+            ],
+            "mean_abs_x": 1411.0,
+            "mean_abs_y": 1049.5,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "Mejor Grupo",
+            "confidence": 0.9999743724582028,
+            "bbox_crop": [
+              [
+                2324.0,
+                448.0
+              ],
+              [
+                2559.0,
+                448.0
+              ],
+              [
+                2559.0,
+                505.0
+              ],
+              [
+                2324.0,
+                505.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                2334.0,
+                992.0
+              ],
+              [
+                2569.0,
+                992.0
+              ],
+              [
+                2569.0,
+                1049.0
+              ],
+              [
+                2334.0,
+                1049.0
+              ]
+            ],
+            "mean_abs_x": 2451.5,
+            "mean_abs_y": 1020.5,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "14",
+            "confidence": 0.18226778136152855,
+            "bbox_crop": [
+              [
+                673.0,
+                632.0
+              ],
+              [
+                705.0,
+                632.0
+              ],
+              [
+                705.0,
+                657.0
+              ],
+              [
+                673.0,
+                657.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                683.0,
+                1176.0
+              ],
+              [
+                715.0,
+                1176.0
+              ],
+              [
+                715.0,
+                1201.0
+              ],
+              [
+                683.0,
+                1201.0
+              ]
+            ],
+            "mean_abs_x": 699.0,
+            "mean_abs_y": 1188.5,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "60",
+            "confidence": 0.9998268651364817,
+            "bbox_crop": [
+              [
+                148.0,
+                673.0
+              ],
+              [
+                182.0,
+                673.0
+              ],
+              [
+                182.0,
+                699.0
+              ],
+              [
+                148.0,
+                699.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                158.0,
+                1217.0
+              ],
+              [
+                192.0,
+                1217.0
+              ],
+              [
+                192.0,
+                1243.0
+              ],
+              [
+                158.0,
+                1243.0
+              ]
+            ],
+            "mean_abs_x": 175.0,
+            "mean_abs_y": 1230.0,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "60",
+            "confidence": 0.9998507191263147,
+            "bbox_crop": [
+              [
+                279.0,
+                673.0
+              ],
+              [
+                316.0,
+                673.0
+              ],
+              [
+                316.0,
+                701.0
+              ],
+              [
+                279.0,
+                701.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                289.0,
+                1217.0
+              ],
+              [
+                326.0,
+                1217.0
+              ],
+              [
+                326.0,
+                1245.0
+              ],
+              [
+                289.0,
+                1245.0
+              ]
+            ],
+            "mean_abs_x": 307.5,
+            "mean_abs_y": 1231.0,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "60",
+            "confidence": 0.9990629513174124,
+            "bbox_crop": [
+              [
+                675.0,
+                673.0
+              ],
+              [
+                709.0,
+                673.0
+              ],
+              [
+                709.0,
+                699.0
+              ],
+              [
+                675.0,
+                699.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                685.0,
+                1217.0
+              ],
+              [
+                719.0,
+                1217.0
+              ],
+              [
+                719.0,
+                1243.0
+              ],
+              [
+                685.0,
+                1243.0
+              ]
+            ],
+            "mean_abs_x": 702.0,
+            "mean_abs_y": 1230.0,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "60l",
+            "confidence": 0.2258108724422109,
+            "bbox_crop": [
+              [
+                807.0,
+                671.0
+              ],
+              [
+                845.0,
+                671.0
+              ],
+              [
+                845.0,
+                703.0
+              ],
+              [
+                807.0,
+                703.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                817.0,
+                1215.0
+              ],
+              [
+                855.0,
+                1215.0
+              ],
+              [
+                855.0,
+                1247.0
+              ],
+              [
+                817.0,
+                1247.0
+              ]
+            ],
+            "mean_abs_x": 836.0,
+            "mean_abs_y": 1231.0,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "60",
+            "confidence": 0.24577865604163912,
+            "bbox_crop": [
+              [
+                1603.0,
+                676.0
+              ],
+              [
+                1631.0,
+                676.0
+              ],
+              [
+                1631.0,
+                696.0
+              ],
+              [
+                1603.0,
+                696.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                1613.0,
+                1220.0
+              ],
+              [
+                1641.0,
+                1220.0
+              ],
+              [
+                1641.0,
+                1240.0
+              ],
+              [
+                1613.0,
+                1240.0
+              ]
+            ],
+            "mean_abs_x": 1627.0,
+            "mean_abs_y": 1230.0,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "60",
+            "confidence": 0.9998336925865094,
+            "bbox_crop": [
+              [
+                1732.0,
+                673.0
+              ],
+              [
+                1768.0,
+                673.0
+              ],
+              [
+                1768.0,
+                701.0
+              ],
+              [
+                1732.0,
+                701.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                1742.0,
+                1217.0
+              ],
+              [
+                1778.0,
+                1217.0
+              ],
+              [
+                1778.0,
+                1245.0
+              ],
+              [
+                1742.0,
+                1245.0
+              ]
+            ],
+            "mean_abs_x": 1760.0,
+            "mean_abs_y": 1231.0,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "Empezar en Auto",
+            "confidence": 0.8980462670867025,
+            "bbox_crop": [
+              [
+                2080.0,
+                669.0
+              ],
+              [
+                2459.0,
+                669.0
+              ],
+              [
+                2459.0,
+                733.0
+              ],
+              [
+                2080.0,
+                733.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                2090.0,
+                1213.0
+              ],
+              [
+                2469.0,
+                1213.0
+              ],
+              [
+                2469.0,
+                1277.0
+              ],
+              [
+                2090.0,
+                1277.0
+              ]
+            ],
+            "mean_abs_x": 2279.5,
+            "mean_abs_y": 1245.0,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "0",
+            "confidence": 0.523199852087405,
+            "bbox_crop": [
+              [
+                379.0,
+                774.0
+              ],
+              [
+                409.0,
+                774.0
+              ],
+              [
+                409.0,
+                815.0
+              ],
+              [
+                379.0,
+                815.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                389.0,
+                1318.0
+              ],
+              [
+                419.0,
+                1318.0
+              ],
+              [
+                419.0,
+                1359.0
+              ],
+              [
+                389.0,
+                1359.0
+              ]
+            ],
+            "mean_abs_x": 404.0,
+            "mean_abs_y": 1338.5,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "0",
+            "confidence": 0.38128159930016636,
+            "bbox_crop": [
+              [
+                511.0,
+                774.0
+              ],
+              [
+                541.0,
+                774.0
+              ],
+              [
+                541.0,
+                815.0
+              ],
+              [
+                511.0,
+                815.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                521.0,
+                1318.0
+              ],
+              [
+                551.0,
+                1318.0
+              ],
+              [
+                551.0,
+                1359.0
+              ],
+              [
+                521.0,
+                1359.0
+              ]
+            ],
+            "mean_abs_x": 536.0,
+            "mean_abs_y": 1338.5,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "160",
+            "confidence": 0.507804544442757,
+            "bbox_crop": [
+              [
+                279.0,
+                837.0
+              ],
+              [
+                316.0,
+                837.0
+              ],
+              [
+                316.0,
+                865.0
+              ],
+              [
+                279.0,
+                865.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                289.0,
+                1381.0
+              ],
+              [
+                326.0,
+                1381.0
+              ],
+              [
+                326.0,
+                1409.0
+              ],
+              [
+                289.0,
+                1409.0
+              ]
+            ],
+            "mean_abs_x": 307.5,
+            "mean_abs_y": 1395.0,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "[60",
+            "confidence": 0.5879856762396118,
+            "bbox_crop": [
+              [
+                675.0,
+                835.0
+              ],
+              [
+                711.0,
+                835.0
+              ],
+              [
+                711.0,
+                865.0
+              ],
+              [
+                675.0,
+                865.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                685.0,
+                1379.0
+              ],
+              [
+                721.0,
+                1379.0
+              ],
+              [
+                721.0,
+                1409.0
+              ],
+              [
+                685.0,
+                1409.0
+              ]
+            ],
+            "mean_abs_x": 703.0,
+            "mean_abs_y": 1394.0,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "60",
+            "confidence": 0.9921285712223818,
+            "bbox_crop": [
+              [
+                1600.0,
+                837.0
+              ],
+              [
+                1632.0,
+                837.0
+              ],
+              [
+                1632.0,
+                863.0
+              ],
+              [
+                1600.0,
+                863.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                1610.0,
+                1381.0
+              ],
+              [
+                1642.0,
+                1381.0
+              ],
+              [
+                1642.0,
+                1407.0
+              ],
+              [
+                1610.0,
+                1407.0
+              ]
+            ],
+            "mean_abs_x": 1626.0,
+            "mean_abs_y": 1394.0,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "J60",
+            "confidence": 0.20947066680035598,
+            "bbox_crop": [
+              [
+                1732.0,
+                837.0
+              ],
+              [
+                1766.0,
+                837.0
+              ],
+              [
+                1766.0,
+                863.0
+              ],
+              [
+                1732.0,
+                863.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                1742.0,
+                1381.0
+              ],
+              [
+                1776.0,
+                1381.0
+              ],
+              [
+                1776.0,
+                1407.0
+              ],
+              [
+                1742.0,
+                1407.0
+              ]
+            ],
+            "mean_abs_x": 1759.0,
+            "mean_abs_y": 1394.0,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "Empezar",
+            "confidence": 0.6559735021392533,
+            "bbox_crop": [
+              [
+                2147.0,
+                888.0
+              ],
+              [
+                2372.0,
+                888.0
+              ],
+              [
+                2372.0,
+                954.0
+              ],
+              [
+                2147.0,
+                954.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                2157.0,
+                1432.0
+              ],
+              [
+                2382.0,
+                1432.0
+              ],
+              [
+                2382.0,
+                1498.0
+              ],
+              [
+                2157.0,
+                1498.0
+              ]
+            ],
+            "mean_abs_x": 2269.5,
+            "mean_abs_y": 1465.0,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "60",
+            "confidence": 0.9997029619345701,
+            "bbox_crop": [
+              [
+                281.0,
+                1001.0
+              ],
+              [
+                314.0,
+                1001.0
+              ],
+              [
+                314.0,
+                1026.0
+              ],
+              [
+                281.0,
+                1026.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                291.0,
+                1545.0
+              ],
+              [
+                324.0,
+                1545.0
+              ],
+              [
+                324.0,
+                1570.0
+              ],
+              [
+                291.0,
+                1570.0
+              ]
+            ],
+            "mean_abs_x": 307.5,
+            "mean_abs_y": 1557.5,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "60",
+            "confidence": 0.9998190262292153,
+            "bbox_crop": [
+              [
+                543.0,
+                1001.0
+              ],
+              [
+                577.0,
+                1001.0
+              ],
+              [
+                577.0,
+                1028.0
+              ],
+              [
+                543.0,
+                1028.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                553.0,
+                1545.0
+              ],
+              [
+                587.0,
+                1545.0
+              ],
+              [
+                587.0,
+                1572.0
+              ],
+              [
+                553.0,
+                1572.0
+              ]
+            ],
+            "mean_abs_x": 570.0,
+            "mean_abs_y": 1558.5,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "60",
+            "confidence": 0.9997029619345701,
+            "bbox_crop": [
+              [
+                677.0,
+                1001.0
+              ],
+              [
+                709.0,
+                1001.0
+              ],
+              [
+                709.0,
+                1028.0
+              ],
+              [
+                677.0,
+                1028.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                687.0,
+                1545.0
+              ],
+              [
+                719.0,
+                1545.0
+              ],
+              [
+                719.0,
+                1572.0
+              ],
+              [
+                687.0,
+                1572.0
+              ]
+            ],
+            "mean_abs_x": 703.0,
+            "mean_abs_y": 1558.5,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "Grupo",
+            "confidence": 0.9969933101220905,
+            "bbox_crop": [
+              [
+                1102.9378517783448,
+                415.114118180386
+              ],
+              [
+                1208.8615118740213,
+                428.8313673379757
+              ],
+              [
+                1202.0621482216552,
+                470.885881819614
+              ],
+              [
+                1095.1384881259787,
+                456.1686326620243
+              ]
+            ],
+            "bbox_abs": [
+              [
+                1112.9378517783448,
+                959.114118180386
+              ],
+              [
+                1218.8615118740213,
+                972.8313673379757
+              ],
+              [
+                1212.0621482216552,
+                1014.885881819614
+              ],
+              [
+                1105.1384881259787,
+                1000.1686326620243
+              ]
+            ],
+            "mean_abs_x": 1162.25,
+            "mean_abs_y": 986.75,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "812",
+            "confidence": 0.4307317718888883,
+            "bbox_crop": [
+              [
+                647.037927696395,
+                768.0934312516142
+              ],
+              [
+                716.6650082918216,
+                783.2006396588688
+              ],
+              [
+                705.962072303605,
+                828.9065687483858
+              ],
+              [
+                637.3349917081784,
+                813.7993603411312
+              ]
+            ],
+            "bbox_abs": [
+              [
+                657.037927696395,
+                1312.0934312516142
+              ],
+              [
+                726.6650082918216,
+                1327.2006396588688
+              ],
+              [
+                715.962072303605,
+                1372.9065687483858
+              ],
+              [
+                647.3349917081784,
+                1357.7993603411312
+              ]
+            ],
+            "mean_abs_x": 686.75,
+            "mean_abs_y": 1342.5,
+            "forbidden_hard_mimeto_match": false
+          }
+        ],
+        "otsu": [
+          {
+            "text": "Fpelilioi",
+            "confidence": 0.21282630986326656,
+            "bbox_crop": [
+              [
+                47.0,
+                0.0
+              ],
+              [
+                121.0,
+                0.0
+              ],
+              [
+                121.0,
+                11.0
+              ],
+              [
+                47.0,
+                11.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                57.0,
+                544.0
+              ],
+              [
+                131.0,
+                544.0
+              ],
+              [
+                131.0,
+                555.0
+              ],
+              [
+                57.0,
+                555.0
+              ]
+            ],
+            "mean_abs_x": 94.0,
+            "mean_abs_y": 549.5,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "I",
+            "confidence": 0.9281007545077955,
+            "bbox_crop": [
+              [
+                1287.0,
+                5.0
+              ],
+              [
+                1298.0,
+                5.0
+              ],
+              [
+                1298.0,
+                27.0
+              ],
+              [
+                1287.0,
+                27.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                1297.0,
+                549.0
+              ],
+              [
+                1308.0,
+                549.0
+              ],
+              [
+                1308.0,
+                571.0
+              ],
+              [
+                1297.0,
+                571.0
+              ]
+            ],
+            "mean_abs_x": 1302.5,
+            "mean_abs_y": 560.0,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "6@",
+            "confidence": 0.7164075598718057,
+            "bbox_crop": [
+              [
+                212.0,
+                24.0
+              ],
+              [
+                238.0,
+                24.0
+              ],
+              [
+                238.0,
+                48.0
+              ],
+              [
+                212.0,
+                48.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                222.0,
+                568.0
+              ],
+              [
+                248.0,
+                568.0
+              ],
+              [
+                248.0,
+                592.0
+              ],
+              [
+                222.0,
+                592.0
+              ]
+            ],
+            "mean_abs_x": 235.0,
+            "mean_abs_y": 580.0,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "60",
+            "confidence": 0.9995806646134605,
+            "bbox_crop": [
+              [
+                329.0,
+                25.0
+              ],
+              [
+                353.0,
+                25.0
+              ],
+              [
+                353.0,
+                45.0
+              ],
+              [
+                329.0,
+                45.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                339.0,
+                569.0
+              ],
+              [
+                363.0,
+                569.0
+              ],
+              [
+                363.0,
+                589.0
+              ],
+              [
+                339.0,
+                589.0
+              ]
+            ],
+            "mean_abs_x": 351.0,
+            "mean_abs_y": 579.0,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "Campeones",
+            "confidence": 0.9996621323331658,
+            "bbox_crop": [
+              [
+                29.0,
+                67.0
+              ],
+              [
+                126.0,
+                67.0
+              ],
+              [
+                126.0,
+                91.0
+              ],
+              [
+                29.0,
+                91.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                39.0,
+                611.0
+              ],
+              [
+                136.0,
+                611.0
+              ],
+              [
+                136.0,
+                635.0
+              ],
+              [
+                39.0,
+                635.0
+              ]
+            ],
+            "mean_abs_x": 87.5,
+            "mean_abs_y": 623.0,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "11",
+            "confidence": 0.337948301549946,
+            "bbox_crop": [
+              [
+                1287.0,
+                75.0
+              ],
+              [
+                1298.0,
+                75.0
+              ],
+              [
+                1298.0,
+                97.0
+              ],
+              [
+                1287.0,
+                97.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                1297.0,
+                619.0
+              ],
+              [
+                1308.0,
+                619.0
+              ],
+              [
+                1308.0,
+                641.0
+              ],
+              [
+                1297.0,
+                641.0
+              ]
+            ],
+            "mean_abs_x": 1302.5,
+            "mean_abs_y": 630.0,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "Forma un grupo con estos 16",
+            "confidence": 0.9343923932468186,
+            "bbox_crop": [
+              [
+                528.0,
+                130.0
+              ],
+              [
+                768.0,
+                130.0
+              ],
+              [
+                768.0,
+                156.0
+              ],
+              [
+                528.0,
+                156.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                538.0,
+                674.0
+              ],
+              [
+                778.0,
+                674.0
+              ],
+              [
+                778.0,
+                700.0
+              ],
+              [
+                538.0,
+                700.0
+              ]
+            ],
+            "mean_abs_x": 658.0,
+            "mean_abs_y": 687.0,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "Guia del Jefe",
+            "confidence": 0.9957467300225518,
+            "bbox_crop": [
+              [
+                1165.0,
+                137.0
+              ],
+              [
+                1275.0,
+                137.0
+              ],
+              [
+                1275.0,
+                157.0
+              ],
+              [
+                1165.0,
+                157.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                1175.0,
+                681.0
+              ],
+              [
+                1285.0,
+                681.0
+              ],
+              [
+                1285.0,
+                701.0
+              ],
+              [
+                1175.0,
+                701.0
+              ]
+            ],
+            "mean_abs_x": 1230.0,
+            "mean_abs_y": 691.0,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "Filtrar",
+            "confidence": 0.9962119576983165,
+            "bbox_crop": [
+              [
+                53.0,
+                153.0
+              ],
+              [
+                103.0,
+                153.0
+              ],
+              [
+                103.0,
+                171.0
+              ],
+              [
+                53.0,
+                171.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                63.0,
+                697.0
+              ],
+              [
+                113.0,
+                697.0
+              ],
+              [
+                113.0,
+                715.0
+              ],
+              [
+                63.0,
+                715.0
+              ]
+            ],
+            "mean_abs_x": 88.0,
+            "mean_abs_y": 706.0,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "Campeones:",
+            "confidence": 0.7294783634753228,
+            "bbox_crop": [
+              [
+                593.0,
+                151.0
+              ],
+              [
+                702.0,
+                151.0
+              ],
+              [
+                702.0,
+                177.0
+              ],
+              [
+                593.0,
+                177.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                603.0,
+                695.0
+              ],
+              [
+                712.0,
+                695.0
+              ],
+              [
+                712.0,
+                721.0
+              ],
+              [
+                603.0,
+                721.0
+              ]
+            ],
+            "mean_abs_x": 657.5,
+            "mean_abs_y": 708.0,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "Grupo 1: 8 Campeon(es)",
+            "confidence": 0.9114273200437553,
+            "bbox_crop": [
+              [
+                547.0,
+                178.0
+              ],
+              [
+                748.0,
+                178.0
+              ],
+              [
+                748.0,
+                205.0
+              ],
+              [
+                547.0,
+                205.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                557.0,
+                722.0
+              ],
+              [
+                758.0,
+                722.0
+              ],
+              [
+                758.0,
+                749.0
+              ],
+              [
+                557.0,
+                749.0
+              ]
+            ],
+            "mean_abs_x": 657.5,
+            "mean_abs_y": 735.5,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "Grupo 2: 8 Campeon(es)",
+            "confidence": 0.7236449582542335,
+            "bbox_crop": [
+              [
+                547.0,
+                205.0
+              ],
+              [
+                748.0,
+                205.0
+              ],
+              [
+                748.0,
+                233.0
+              ],
+              [
+                547.0,
+                233.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                557.0,
+                749.0
+              ],
+              [
+                758.0,
+                749.0
+              ],
+              [
+                758.0,
+                777.0
+              ],
+              [
+                557.0,
+                777.0
+              ]
+            ],
+            "mean_abs_x": 657.5,
+            "mean_abs_y": 763.0,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "Ordenar",
+            "confidence": 0.980863718907877,
+            "bbox_crop": [
+              [
+                43.0,
+                235.0
+              ],
+              [
+                111.0,
+                235.0
+              ],
+              [
+                111.0,
+                255.0
+              ],
+              [
+                43.0,
+                255.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                53.0,
+                779.0
+              ],
+              [
+                121.0,
+                779.0
+              ],
+              [
+                121.0,
+                799.0
+              ],
+              [
+                53.0,
+                799.0
+              ]
+            ],
+            "mean_abs_x": 87.0,
+            "mean_abs_y": 789.0,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "Poder del Grupo: 463,76K",
+            "confidence": 0.5369052207952525,
+            "bbox_crop": [
+              [
+                170.0,
+                232.0
+              ],
+              [
+                404.0,
+                232.0
+              ],
+              [
+                404.0,
+                261.0
+              ],
+              [
+                170.0,
+                261.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                180.0,
+                776.0
+              ],
+              [
+                414.0,
+                776.0
+              ],
+              [
+                414.0,
+                805.0
+              ],
+              [
+                180.0,
+                805.0
+              ]
+            ],
+            "mean_abs_x": 297.0,
+            "mean_abs_y": 790.5,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "Condiciones",
+            "confidence": 0.993937637965134,
+            "bbox_crop": [
+              [
+                580.0,
+                240.0
+              ],
+              [
+                684.0,
+                240.0
+              ],
+              [
+                684.0,
+                264.0
+              ],
+              [
+                580.0,
+                264.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                590.0,
+                784.0
+              ],
+              [
+                694.0,
+                784.0
+              ],
+              [
+                694.0,
+                808.0
+              ],
+              [
+                590.0,
+                808.0
+              ]
+            ],
+            "mean_abs_x": 642.0,
+            "mean_abs_y": 796.0,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "Mejor Grupo",
+            "confidence": 0.9986896563150554,
+            "bbox_crop": [
+              [
+                1160.0,
+                225.0
+              ],
+              [
+                1280.0,
+                225.0
+              ],
+              [
+                1280.0,
+                251.0
+              ],
+              [
+                1160.0,
+                251.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                1170.0,
+                769.0
+              ],
+              [
+                1290.0,
+                769.0
+              ],
+              [
+                1290.0,
+                795.0
+              ],
+              [
+                1170.0,
+                795.0
+              ]
+            ],
+            "mean_abs_x": 1230.0,
+            "mean_abs_y": 782.0,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "Empezar en Auto",
+            "confidence": 0.8365338639018499,
+            "bbox_crop": [
+              [
+                1038.0,
+                333.0
+              ],
+              [
+                1228.0,
+                333.0
+              ],
+              [
+                1228.0,
+                366.0
+              ],
+              [
+                1038.0,
+                366.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                1048.0,
+                877.0
+              ],
+              [
+                1238.0,
+                877.0
+              ],
+              [
+                1238.0,
+                910.0
+              ],
+              [
+                1048.0,
+                910.0
+              ]
+            ],
+            "mean_abs_x": 1143.0,
+            "mean_abs_y": 893.5,
+            "forbidden_hard_mimeto_match": false
+          },
+          {
+            "text": "Empezar",
+            "confidence": 0.8120817226991044,
+            "bbox_crop": [
+              [
+                1073.0,
+                442.0
+              ],
+              [
+                1187.0,
+                442.0
+              ],
+              [
+                1187.0,
+                480.0
+              ],
+              [
+                1073.0,
+                480.0
+              ]
+            ],
+            "bbox_abs": [
+              [
+                1083.0,
+                986.0
+              ],
+              [
+                1197.0,
+                986.0
+              ],
+              [
+                1197.0,
+                1024.0
+              ],
+              [
+                1083.0,
+                1024.0
+              ]
+            ],
+            "mean_abs_x": 1140.0,
+            "mean_abs_y": 1005.0,
+            "forbidden_hard_mimeto_match": false
+          }
+        ]
+      },
+      "bot_filtered_objects_raw_area": [
+        {
+          "text": "60",
+          "mean_pos_x": 234.0,
+          "mean_pos_y": 579.0
+        },
+        {
+          "text": "60",
+          "mean_pos_x": 352.0,
+          "mean_pos_y": 579.0
+        },
+        {
+          "text": "Campeones",
+          "mean_pos_x": 87.5,
+          "mean_pos_y": 623.0
+        },
+        {
+          "text": "Forma un grupo con estos 16",
+          "mean_pos_x": 658.0,
+          "mean_pos_y": 687.0
+        },
+        {
+          "text": "Guia del Jefe",
+          "mean_pos_x": 1230.0,
+          "mean_pos_y": 691.0
+        },
+        {
+          "text": "Filtrar",
+          "mean_pos_x": 86.5,
+          "mean_pos_y": 705.0
+        },
+        {
+          "text": "Campeones:",
+          "mean_pos_x": 658.5,
+          "mean_pos_y": 708.0
+        },
+        {
+          "text": "Grupo 1: 8 Campeon(es)",
+          "mean_pos_x": 657.5,
+          "mean_pos_y": 735.5
+        },
+        {
+          "text": "Grupo 2: 8 Campeon(es)",
+          "mean_pos_x": 657.5,
+          "mean_pos_y": 762.5
+        },
+        {
+          "text": "Ordenar",
+          "mean_pos_x": 87.0,
+          "mean_pos_y": 790.0
+        },
+        {
+          "text": "Poder del Grupo: 463,76K",
+          "mean_pos_x": 297.0,
+          "mean_pos_y": 791.0
+        },
+        {
+          "text": "Condiciones",
+          "mean_pos_x": 643.0,
+          "mean_pos_y": 796.0
+        },
+        {
+          "text": "Mejor",
+          "mean_pos_x": 1201.5,
+          "mean_pos_y": 781.0
+        },
+        {
+          "text": "Empezar en Auto",
+          "mean_pos_x": 1143.0,
+          "mean_pos_y": 893.5
+        },
+        {
+          "text": "Empezar",
+          "mean_pos_x": 1138.5,
+          "mean_pos_y": 1004.0
+        },
+        {
+          "text": "Grupo",
+          "mean_pos_x": 1258.5,
+          "mean_pos_y": 781.5
+        }
+      ]
+    }
+  },
+  "bot_exact_read_menu_name": null,
+  "bot_exact_read_is_forbidden_on_hard": false,
+  "forbidden_rule": "hard mode only; normalized OCR text must contain 'mimeto'"
+}
