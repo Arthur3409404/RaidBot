@@ -12,6 +12,7 @@ import raid_bot.utils.window_tools as window_tools
 
 MAX_RUN_DURATION_SECONDS = int(3.5 * 60 * 60)
 ENCOUNTER_SWEEP_SPAN = 8
+DUNGEON_STAGE_BUTTON_Y_OFFSET = 0.02
 
 
 def _start_run_deadline(bot, max_run_duration_seconds=None):
@@ -96,7 +97,6 @@ class RSL_Bot_Dungeons:
         
         self.battle_status = 'menu'
         self.auto_button_clicked = False
-        self._pausa_esc_sent = False
         self.max_run_duration_seconds = MAX_RUN_DURATION_SECONDS
         self._run_deadline = None
         self.energy = 0
@@ -196,7 +196,6 @@ class RSL_Bot_Dungeons:
         
     def reset_battle_parameters(self):
         self.battle_status = 'menu'
-        self._pausa_esc_sent = False
 
     def _read_battle_result_once(self):
         for area_name in ("battle_result", "battle_result_2"):
@@ -296,6 +295,17 @@ class RSL_Bot_Dungeons:
         rel_top = max(0.0, min(1.0 - rel_height, rel_center_y - rel_height / 2))
         return [rel_left, rel_top, rel_width, rel_height]
 
+    def _build_stage_button_area_for_abs_row(self, abs_y):
+        rel_center_y = (abs_y - self.window.top) / self.window.height
+        rel_center_y = max(0.0, min(1.0, rel_center_y + DUNGEON_STAGE_BUTTON_Y_OFFSET))
+        template = min(
+            self.stages_buttons,
+            key=lambda area: abs((area[1] + area[3] / 2.0) - rel_center_y),
+        )
+        rel_left, _, rel_width, rel_height = template
+        rel_top = max(0.0, min(1.0 - rel_height, rel_center_y - rel_height / 2.0))
+        return [rel_left, rel_top, rel_width, rel_height]
+
     def _extract_stage_number(self, raw_text):
         if not raw_text:
             return None
@@ -325,10 +335,7 @@ class RSL_Bot_Dungeons:
 
             for stage_number, obj in stage_candidates:
                 if stage_number == int(target_stage):
-                    return self._build_relative_area_around_abs_point(
-                        obj.mean_pos_x,
-                        obj.mean_pos_y,
-                    )
+                    return self._build_stage_button_area_for_abs_row(obj.mean_pos_y)
 
             if not stage_candidates:
                 window_tools.move_down(self.window, strength=0.6)
@@ -360,7 +367,7 @@ class RSL_Bot_Dungeons:
             return None
 
         if dungeon_name == "event_dungeon":
-            return "Event Dungeon"
+            return None
 
         if self.build_name:
             return self.build_name
@@ -409,7 +416,6 @@ class RSL_Bot_Dungeons:
         )
 
     def select_build_if_needed(self, encounter_name):
-        normalized_encounter_name = self.normalize_encounter_name(encounter_name)
         build_name = self.get_required_build_name(encounter_name)
         if not build_name:
             return True
@@ -455,10 +461,6 @@ class RSL_Bot_Dungeons:
             if self.verbose:
                 print(f"Dungeon build selection failed for '{build_name}': {exc}")
         window_tools.click_center(self.window, self.search_areas["confirm_button_champion_selection"])
-        if normalized_encounter_name == "event_dungeon" and current_setup is None:
-            if self.verbose:
-                print("Event Dungeon team not found. Aborting run.")
-            return False
         return True
 
     def check_difficulty(self, encounter_name=None):
@@ -489,7 +491,6 @@ class RSL_Bot_Dungeons:
     def get_battle_outcome(self):
         first_result = self._read_battle_result_once()
         if first_result is None:
-            auto_battle_tools.handle_stable_pausa(self)
             return
 
         time.sleep(10)
@@ -502,7 +503,6 @@ class RSL_Bot_Dungeons:
                 )
             return
 
-        self._pausa_esc_sent = False
         self.battle_status = 'Done'
         self.battles_done += 1
         if first_result == "VICTORIA":
@@ -814,8 +814,6 @@ class RSL_Bot_Dungeons:
             # Try to select and run encounter
             if self.select_encounter(encounter):
                 if not self.run_encounter(encounter):
-                    if encounter == "event_dungeon" and self.verbose:
-                        print("Event Dungeon requires the 'Event Dungeon' team. Stopping dungeon run.")
                     self.running = False
                     break
                 self.remember_minimum_expected_energy(encounter)

@@ -74,7 +74,6 @@ class RSL_Bot_DemonLord():
         self.demonlord_encounter_difficulty = None 
         self.max_run_duration_seconds = MAX_RUN_DURATION_SECONDS
         self._run_deadline = None
-        self._pausa_esc_sent = False
 
     # ------------------------- Keys -------------------------
 
@@ -137,15 +136,12 @@ class RSL_Bot_DemonLord():
             )[0]
             if self.resembles(result.text, 'RESULTADO'):
                 self.battle_status = 'Done'
-                self._pausa_esc_sent = False
                 result_confirmed = True
                 self.demonlord_encounters_cleared.append(
                     self.demonlord_encounter_difficulty
                 )
         except:
             pass
-        if not result_confirmed:
-            auto_battle_tools.handle_stable_pausa(self)
 
     # ------------------------- Encounter -------------------------
     def execute_demonlord_encounter(self):

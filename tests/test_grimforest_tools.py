@@ -1,9 +1,34 @@
 import json
+import sys
 import tempfile
+import types
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
+
+
+def _install_stub_module(name: str, **attrs):
+    module = types.ModuleType(name)
+    for key, value in attrs.items():
+        setattr(module, key, value)
+    sys.modules.setdefault(name, module)
+    return sys.modules[name]
+
+
+_install_stub_module("pyautogui")
+_install_stub_module("pygetwindow")
+_install_stub_module(
+    "raid_bot.utils.window_tools",
+    click_at=lambda *args, **kwargs: None,
+    click_center=lambda *args, **kwargs: None,
+    move_up=lambda *args, **kwargs: None,
+    move_down=lambda *args, **kwargs: None,
+    move_right=lambda *args, **kwargs: None,
+    move_left=lambda *args, **kwargs: None,
+    sendkey=lambda *args, **kwargs: None,
+    zoom_out=lambda *args, **kwargs: None,
+)
 
 from raid_bot.modes import cursedcity_tools, grimforest_tools
 
@@ -210,6 +235,18 @@ class GrimForestToolsTests(unittest.TestCase):
             moves,
             ["right", "down", "left", "left", "up", "up"],
         )
+
+    def test_cursed_city_candidate_detection_does_not_zoom_out_initially(self):
+        bot = cursedcity_tools.RSL_Bot_CursedCity(
+            window=object(),
+            setup={"max_spiral_repositions_when_no_candidates": 0},
+        )
+
+        with patch.object(bot, "detect_cursed_city_candidates", return_value=[]):
+            with patch.object(cursedcity_tools.window_tools, "zoom_out") as zoom_out:
+                self.assertEqual(bot.detect_candidates_with_random_reposition("hard"), [])
+
+        zoom_out.assert_not_called()
 
     def test_grim_forest_uses_twenty_step_expanding_spiral_by_default(self):
         with tempfile.TemporaryDirectory() as directory:

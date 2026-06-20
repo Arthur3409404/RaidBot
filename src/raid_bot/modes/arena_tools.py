@@ -224,7 +224,7 @@ class RSL_Bot_ClassicArena:
         self._run_deadline = None
         self.recently_skipped_luchar_slots = {}
         self.skip_luchar_cooldown_seconds = 45.0
-        self._pausa_esc_sent = False
+        self._classic_arena_scrolled_down = False
 
         if self.window:
             self.coords = (self.window.left, self.window.top, self.window.width, self.window.height)
@@ -357,7 +357,6 @@ class RSL_Bot_ClassicArena:
         """
         first_result = self._read_battle_result_once()
         if first_result is None:
-            auto_battle_tools.handle_stable_pausa(self)
             return False
 
         time.sleep(10)
@@ -370,7 +369,6 @@ class RSL_Bot_ClassicArena:
                 )
             return False
 
-        self._pausa_esc_sent = False
         if first_result == "VICTORIA":
             print("Victory")
             self.recent_battle_outcome = 1
@@ -573,7 +571,11 @@ class RSL_Bot_ClassicArena:
                 self.battles_done += 1
                 self.battle_occured = True
                 if self.update_dataset and self.dataset is not None:
-                    self.dataset.append_entry(enemy_record, self.recent_battle_outcome)
+                    self.dataset.append_entry(
+                        enemy_record,
+                        self.recent_battle_outcome,
+                        enemy_screenshot=image_np,
+                    )
 
                 outcome = "Win" if self.recent_battle_outcome else "Loss"
                 print(f"Battle outcome: {outcome}")
@@ -593,6 +595,12 @@ class RSL_Bot_ClassicArena:
             return
         window_tools.click_center(self.window, self.search_areas["refresh_timer"])
         self.recently_skipped_luchar_slots.clear()
+        self._classic_arena_scrolled_down = False
+
+    def _restore_classic_arena_lower_window_after_battle(self):
+        time.sleep(0.5)
+        window_tools.move_down(self.window)
+        self._classic_arena_scrolled_down = True
 
     def ensure_arena_coins(self):
         """
@@ -692,17 +700,29 @@ class RSL_Bot_ClassicArena:
 
             self.ensure_arena_coins()
 
-            self.battle_occured = self.evaluate_arena_enemies()
-            if self.battle_occured:
-                continue
+            if self._classic_arena_scrolled_down:
+                self.battle_occured = self.evaluate_arena_enemies()
+                if self.battle_occured:
+                    self._restore_classic_arena_lower_window_after_battle()
+                    continue
 
-            window_tools.move_down(self.window)
+                window_tools.move_up(self.window)
+                self._classic_arena_scrolled_down = False
+            else:
+                self.battle_occured = self.evaluate_arena_enemies()
+                if self.battle_occured:
+                    continue
 
-            self.battle_occured = self.evaluate_arena_enemies()
-            if self.battle_occured:
-                continue
+                window_tools.move_down(self.window)
+                self._classic_arena_scrolled_down = True
 
-            window_tools.move_up(self.window)
+                self.battle_occured = self.evaluate_arena_enemies()
+                if self.battle_occured:
+                    self._restore_classic_arena_lower_window_after_battle()
+                    continue
+
+                window_tools.move_up(self.window)
+                self._classic_arena_scrolled_down = False
 
             if self.classic_arena_multi_refresh:
                 if counter_multi_refresh < self.classic_arena_num_multi_refresh:
@@ -757,17 +777,29 @@ class RSL_Bot_ClassicArena:
                 print("Waiting for coins")
                 continue
 
-            self.battle_occured = self.evaluate_arena_enemies()
-            if self.battle_occured:
-                continue
+            if self._classic_arena_scrolled_down:
+                self.battle_occured = self.evaluate_arena_enemies()
+                if self.battle_occured:
+                    self._restore_classic_arena_lower_window_after_battle()
+                    continue
 
-            window_tools.move_down(self.window)
+                window_tools.move_up(self.window)
+                self._classic_arena_scrolled_down = False
+            else:
+                self.battle_occured = self.evaluate_arena_enemies()
+                if self.battle_occured:
+                    continue
 
-            self.battle_occured = self.evaluate_arena_enemies()
-            if self.battle_occured:
-                continue
+                window_tools.move_down(self.window)
+                self._classic_arena_scrolled_down = True
 
-            window_tools.move_up(self.window)
+                self.battle_occured = self.evaluate_arena_enemies()
+                if self.battle_occured:
+                    self._restore_classic_arena_lower_window_after_battle()
+                    continue
+
+                window_tools.move_up(self.window)
+                self._classic_arena_scrolled_down = False
 
             if self.classic_arena_multi_refresh:
                 if counter_multi_refresh < self.classic_arena_num_multi_refresh:
@@ -847,7 +879,6 @@ class RSL_Bot_TagTeamArena:
         self._run_deadline = None
         self.recently_skipped_luchar_slots = {}
         self.skip_luchar_cooldown_seconds = 45.0
-        self._pausa_esc_sent = False
 
         # Dataset
         self.dataset = None
@@ -998,7 +1029,6 @@ class RSL_Bot_TagTeamArena:
     def update_battle_outcome(self, enemy_record):
         first_result = self._read_battle_result_once()
         if first_result is None:
-            auto_battle_tools.handle_stable_pausa(self)
             return False
 
         time.sleep(10)
@@ -1011,7 +1041,6 @@ class RSL_Bot_TagTeamArena:
                 )
             return False
 
-        self._pausa_esc_sent = False
         if first_result == "VICTORIA":
             print("Victory")
             self.recent_battle_outcome = 1
@@ -1220,7 +1249,11 @@ class RSL_Bot_TagTeamArena:
                     self.battles_done += 1
                     self.battle_occured = True
                     if self.update_dataset and self.dataset is not None:
-                        self.dataset.append_entry(enemy_record, self.recent_battle_outcome)
+                        self.dataset.append_entry(
+                            enemy_record,
+                            self.recent_battle_outcome,
+                            enemy_screenshot=image_np,
+                        )
 
                     outcome = "Win" if self.recent_battle_outcome else "Loss"
                     print(f"Battle outcome: {outcome}")
@@ -1424,7 +1457,6 @@ class RSL_Bot_LiveArena:
         
         self.battle_status = 'menu'
         self.auto_button_clicked = False
-        self._pausa_esc_sent = False
         self.max_run_duration_seconds = MAX_RUN_DURATION_SECONDS
         self._run_deadline = None
         
@@ -1499,7 +1531,6 @@ class RSL_Bot_LiveArena:
         self.battle_status = 'menu'
         self.auto_button_clicked = False
         self.no_coin_status = False
-        self._pausa_esc_sent = False
         auto_battle_tools.reset_auto_battle_watchdog(self)
 
     # ------------------------- Battle Outcome -------------------------
@@ -1526,7 +1557,6 @@ class RSL_Bot_LiveArena:
     def update_battle_outcome(self):
         first_result = self._read_battle_result_once()
         if first_result is None:
-            auto_battle_tools.handle_stable_pausa(self)
             return
 
         time.sleep(10)
@@ -1539,7 +1569,6 @@ class RSL_Bot_LiveArena:
                 )
             return
 
-        self._pausa_esc_sent = False
         self.battle_status = 'Done'
         self.battles_done += 1
         if first_result == "VICTORIA":

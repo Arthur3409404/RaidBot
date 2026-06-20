@@ -90,8 +90,8 @@ class EventDungeonTests(unittest.TestCase):
         )
         self.bot.main_loop_running = True
 
-    def test_event_dungeon_forces_event_team_name(self):
-        self.assertEqual(self.bot.get_required_build_name("event_dungeon"), "Event Dungeon")
+    def test_event_dungeon_skips_team_selection_even_with_configured_build(self):
+        self.assertIsNone(self.bot.get_required_build_name("event_dungeon"))
 
     def test_default_available_dungeons_include_minotaur_and_event_dungeon(self):
         self.assertIn("minotaur", self.bot.defaults_available)
@@ -157,30 +157,32 @@ class EventDungeonTests(unittest.TestCase):
         self.assertEqual(move_down.call_count, 0)
 
         click_area = click_center.call_args.args[1]
-        self.assertAlmostEqual(click_area[0], 0.065)
-        self.assertAlmostEqual(click_area[1], 0.16)
-        self.assertAlmostEqual(click_area[2], 0.17)
-        self.assertAlmostEqual(click_area[3], 0.08)
+        self.assertAlmostEqual(click_area[0], 0.785)
+        self.assertAlmostEqual(click_area[1], 0.181)
+        self.assertAlmostEqual(click_area[2], 0.176)
+        self.assertAlmostEqual(click_area[3], 0.078)
+        self.assertAlmostEqual(click_area[0] + click_area[2] / 2.0, 0.873)
+        self.assertAlmostEqual(click_area[1] + click_area[3] / 2.0, 0.22)
 
-    def test_event_dungeon_requires_event_team(self):
-        def fake_get_text_in_relative_area(*args, **kwargs):
-            search_area = kwargs.get("search_area")
-            if search_area == self.bot.search_areas["dungeon_setup_names"]:
-                return []
-            return []
-
-        with patch.object(dungeon_tools.image_tools, "get_text_in_relative_area", side_effect=fake_get_text_in_relative_area), patch.object(
-            dungeon_tools.image_tools, "get_similarities_in_relative_area", return_value=False
-        ), patch.object(dungeon_tools.window_tools, "click_center"), patch.object(
+    def test_event_dungeon_does_not_open_or_require_team_setup(self):
+        with patch.object(dungeon_tools.image_tools, "get_text_in_relative_area") as get_text, patch.object(
+            dungeon_tools.image_tools, "get_similarities_in_relative_area"
+        ) as get_similarities, patch.object(dungeon_tools.window_tools, "click_center") as click_center, patch.object(
             dungeon_tools.window_tools, "click_at"
-        ), patch.object(
+        ) as click_at, patch.object(
             dungeon_tools.window_tools, "move_up"
-        ), patch.object(
+        ) as move_up, patch.object(
             dungeon_tools.window_tools, "move_down"
-        ):
+        ) as move_down:
             result = self.bot.select_build_if_needed("event_dungeon")
 
-        self.assertFalse(result)
+        self.assertTrue(result)
+        get_text.assert_not_called()
+        get_similarities.assert_not_called()
+        click_center.assert_not_called()
+        click_at.assert_not_called()
+        move_up.assert_not_called()
+        move_down.assert_not_called()
 
     def test_dungeon_build_clicks_found_row_when_other_setup_is_selected(self):
         self.bot.build_name = "Dragon"

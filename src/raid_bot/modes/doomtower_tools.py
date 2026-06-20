@@ -188,7 +188,6 @@ class RSL_Bot_DoomTower():
         self.battles_done = 0
         self.battles_won = 0
         self.battle_status = 'Starting'
-        self._pausa_esc_sent = False
         self.doomtower_completed = False
         self.doomtower_climb_status_hard = False
         self.doomtower_climb_status_normal = False
@@ -205,7 +204,6 @@ class RSL_Bot_DoomTower():
     # ------------------------- Reset -------------------------
     def reset_run_state(self):
         self.battle_status = 'Starting'
-        self._pausa_esc_sent = False
 
     # ------------------------- Debug -------------------------
     def _window_region(self):
@@ -622,7 +620,6 @@ class RSL_Bot_DoomTower():
     def update_battle_status(self):
         first_result = self._read_battle_status_once()
         if first_result is None:
-            auto_battle_tools.handle_stable_pausa(self)
             return
 
         time.sleep(10)
@@ -635,7 +632,6 @@ class RSL_Bot_DoomTower():
                 )
             return
 
-        self._pausa_esc_sent = False
         if first_result == "AUTOCLIMB":
             self.battle_status = 'autoclimb'
             return

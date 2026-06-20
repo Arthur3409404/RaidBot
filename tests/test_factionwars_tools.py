@@ -26,17 +26,11 @@ modes_pkg.__path__ = [str(REPO_ROOT / "src" / "raid_bot" / "modes")]
 
 _install_stub_module("pyautogui")
 _install_stub_module("pygetwindow")
-_install_stub_module("cv2")
 _install_stub_module("keyboard")
 _install_stub_module("matplotlib")
 _install_stub_module("matplotlib.pyplot")
 _install_stub_module("easyocr")
 
-_install_stub_module(
-    "raid_bot.utils.auto_battle_tools",
-    reset_auto_battle_watchdog=lambda *args, **kwargs: None,
-    ensure_auto_battle_running=lambda *args, **kwargs: None,
-)
 _install_stub_module(
     "raid_bot.utils.image_tools",
     get_text_in_relative_area=lambda *args, **kwargs: [],
@@ -114,6 +108,40 @@ class FactionWarsStageSelectionTests(unittest.TestCase):
         move_up.assert_not_called()
         move_down.assert_called_once_with(self.bot.window, strength=0.2)
         self.assertAlmostEqual(area[1] + area[3] / 2.0, 0.860, places=3)
+
+
+class FactionWarsBattleOutcomeTests(unittest.TestCase):
+    def setUp(self):
+        self.bot = factionwars_tools.RSL_Bot_FactionWars(
+            reader=object(),
+            window=types.SimpleNamespace(left=0, top=0, width=1000, height=1000),
+            verbose=False,
+        )
+
+    def test_missing_confirmation_waits_for_second_result(self):
+        results = ["VICTORIA", None]
+
+        with patch.object(self.bot, "_read_battle_result_once", side_effect=lambda: results.pop(0)), patch.object(
+            factionwars_tools.time, "sleep"
+        ):
+            self.bot.update_battle_outcome()
+
+        self.assertNotEqual(self.bot.battle_status, "Done")
+        self.assertEqual(self.bot.battles_done, 0)
+        self.assertEqual(self.bot.battles_won, 0)
+        self.assertIsNone(self.bot.last_battle_result)
+
+    def test_conflicting_confirmation_keeps_battle_running(self):
+        results = ["VICTORIA", "DERROTA"]
+
+        with patch.object(self.bot, "_read_battle_result_once", side_effect=lambda: results.pop(0)), patch.object(
+            factionwars_tools.time, "sleep"
+        ):
+            self.bot.update_battle_outcome()
+
+        self.assertNotEqual(self.bot.battle_status, "Done")
+        self.assertEqual(self.bot.battles_done, 0)
+        self.assertIsNone(self.bot.last_battle_result)
 
 
 if __name__ == "__main__":

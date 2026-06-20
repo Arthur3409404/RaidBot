@@ -111,7 +111,6 @@ class RSL_Bot_Hydra:
         self.hydra_encounter_difficulty = None
         self.battle_status = None
         self.lost_encounter = False
-        self._pausa_esc_sent = False
 
         self.manual_play_enabled = bool(manual_play_enabled)
         self.manual_player = None
@@ -294,12 +293,9 @@ class RSL_Bot_Hydra:
             )[0]
             if self._is_result_text(result.text) and self._is_result_text(result2.text):
                 self.battle_status = "Done"
-                self._pausa_esc_sent = False
                 result_confirmed = True
         except Exception:
             pass
-        if not result_confirmed:
-            auto_battle_tools.handle_stable_pausa(self)
 
     def _is_setup_already_selected(self, setup_text, selected_markers, y_offset=70.0, tolerance=60.0) -> bool:
         if not setup_text or not selected_markers:

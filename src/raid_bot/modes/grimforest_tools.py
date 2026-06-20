@@ -1222,10 +1222,7 @@ class RSL_Bot_GrimForest:
             if result:
                 time.sleep(confirmation_delay)
                 if self._battle_result_text() == result:
-                    self._pausa_esc_sent = False
                     return result
-            else:
-                auto_battle_tools.handle_stable_pausa(self)
             auto_seen = auto_seen or self._is_auto_battle_visible()
             menu_text = self._read_menu_name()
             if auto_seen and menu_text and self.resembles(menu_text, MENU_TITLE, threshold=0.55):

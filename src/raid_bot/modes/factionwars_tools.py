@@ -83,7 +83,6 @@ class RSL_Bot_FactionWars:
         
         self.battle_status = 'menu'
         self.auto_button_clicked = False
-        self._pausa_esc_sent = False
         self.max_run_duration_seconds = MAX_RUN_DURATION_SECONDS
         self._run_deadline = None
         
@@ -446,7 +445,6 @@ class RSL_Bot_FactionWars:
     def reset_battle_state(self):
         self.battle_status = 'menu'
         self.last_battle_result = None
-        self._pausa_esc_sent = False
         auto_battle_tools.reset_auto_battle_watchdog(self)
 
     def _read_battle_result_once(self):
@@ -489,15 +487,31 @@ class RSL_Bot_FactionWars:
             print('Error changing Difficulties')
 
     # ------------------------- Battle Outcome -------------------------
+    def _complete_battle_result(self, result):
+        self.battle_status = 'Done'
+        self.battles_done += 1
+        if result == "VICTORIA":
+            self.battles_won += 1
+            self.last_battle_result = "victory"
+        else:
+            self.last_battle_result = "defeat"
+
     def update_battle_outcome(self):
         first_result = self._read_battle_result_once()
         if first_result is None:
-            auto_battle_tools.handle_stable_pausa(self)
             return
 
         time.sleep(10)
         second_result = self._read_battle_result_once()
-        if second_result is None or first_result != second_result:
+        if second_result is None:
+            if self.verbose:
+                print(
+                    "Faction Wars battle result confirmation missing. "
+                    f"Waiting for another result after first='{first_result}'."
+                )
+            return
+
+        if first_result != second_result:
             if self.verbose:
                 print(
                     "Faction Wars battle result mismatch between checks. "
@@ -505,14 +519,7 @@ class RSL_Bot_FactionWars:
                 )
             return
 
-        self._pausa_esc_sent = False
-        self.battle_status = 'Done'
-        self.battles_done += 1
-        if first_result == "VICTORIA":
-            self.battles_won += 1
-            self.last_battle_result = "victory"
-        else:
-            self.last_battle_result = "defeat"
+        self._complete_battle_result(first_result)
         return
 
     # ------------------------- Battle Status -------------------------

@@ -167,9 +167,6 @@ class RSL_Bot_CursedCity:
             "difficulty_dropdown_open_delay_seconds": 0.8,
             "difficulty_switch_confirm_delay_seconds": 2.5,
             "post_entry_wait_seconds": 5.0,
-            "initial_candidate_zoom_out_steps": 3,
-            "initial_candidate_zoom_out_amount_per_step": -600,
-            "initial_candidate_zoom_out_delay_seconds": 0.75,
             "candidate_detection_retries_per_view": 2,
             "max_random_repositions_when_no_candidates": 6,
             "max_spiral_repositions_when_no_candidates": 6,
@@ -230,7 +227,6 @@ class RSL_Bot_CursedCity:
             "no_candidate_failures_by_difficulty",
             {"hard": 0, "normal": 0},
         )
-        self.initial_candidate_zoom_out_done = False
         self.spiral_reposition_index = 0
         self.spiral_start_direction_index = random.randrange(4)
 
@@ -563,30 +559,9 @@ class RSL_Bot_CursedCity:
     def _move_random_direction_once(self):
         self._move_spiral_direction_once()
 
-    def _zoom_out_before_initial_candidate_detection(self):
-        if self.initial_candidate_zoom_out_done:
-            return
-        self.initial_candidate_zoom_out_done = True
-
-        steps = max(0, int(self.setup.get("initial_candidate_zoom_out_steps", 3)))
-        if steps <= 0:
-            return
-
-        self.log.info("[Cursed City] Zooming out before initial candidate detection (%s steps).", steps)
-        try:
-            window_tools.zoom_out(
-                self.window,
-                steps=steps,
-                amount_per_step=int(self.setup.get("initial_candidate_zoom_out_amount_per_step", -600)),
-                delay=float(self.setup.get("initial_candidate_zoom_out_delay_seconds", 0.75)),
-            )
-        except Exception:
-            self.log.debug("[Cursed City] Initial zoom-out failed; continuing with candidate detection.", exc_info=True)
-
     def detect_candidates_with_random_reposition(self, difficulty: str | None = None):
         max_moves = self._max_spiral_repositions_when_no_candidates()
         stride = self._spiral_stride_for_difficulty(difficulty)
-        self._zoom_out_before_initial_candidate_detection()
         moves_done = 0
         while True:
             _ensure_within_run_deadline(self, "detecting Cursed City candidates")
@@ -703,10 +678,7 @@ class RSL_Bot_CursedCity:
             if result:
                 time.sleep(confirm_delay)
                 if self._battle_result_text() == result:
-                    self._pausa_esc_sent = False
                     return result
-            else:
-                auto_battle_tools.handle_stable_pausa(self)
             if self._is_auto_battle_visible():
                 auto_seen = True
             menu_text = self._read_menu_name()

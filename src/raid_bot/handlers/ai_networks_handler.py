@@ -6,6 +6,8 @@ Created on Tue Dec 23 15:36:23 2025
 """
 
 
+from __future__ import annotations
+
 import os
 import re
 import csv
@@ -34,6 +36,45 @@ def _as_object_vector(values) -> np.ndarray:
     for index, value in enumerate(sequence):
         array[index] = value
     return array
+
+
+def _normalize_screenshot_array(screenshot) -> np.ndarray | None:
+    if screenshot is None:
+        return None
+
+    array = np.asarray(screenshot)
+    if array.size == 0:
+        return None
+
+    if array.ndim == 2:
+        array = array[:, :, None]
+    if array.ndim != 3:
+        raise ValueError(f"Enemy screenshot must be HxW or HxWxC, got shape {array.shape}")
+    if array.shape[-1] == 4:
+        array = array[:, :, :3]
+
+    if not np.issubdtype(array.dtype, np.number):
+        raise TypeError(f"Enemy screenshot must be numeric, got dtype {array.dtype}")
+
+    if np.issubdtype(array.dtype, np.floating) and array.max(initial=0) <= 1.5:
+        array = array * 255.0
+    return np.clip(np.rint(array), 0, 255).astype(np.uint8)
+
+
+def _empty_screenshot_vector(length: int) -> np.ndarray:
+    screenshots = np.empty(int(length), dtype=object)
+    screenshots[:] = None
+    return screenshots
+
+
+def _infer_screenshot_available(screenshots: np.ndarray, sample_count: int) -> np.ndarray:
+    if screenshots.ndim >= 4:
+        return np.ones((sample_count,), dtype=bool)
+
+    available = np.zeros((sample_count,), dtype=bool)
+    for index, value in enumerate(screenshots[:sample_count]):
+        available[index] = value is not None
+    return available
 
 
 def _normalize_name_lookup(value: object) -> str:
@@ -215,6 +256,8 @@ class EnemyDataset(Dataset):
             teamcomposition=np.empty((0,), dtype=object),
             powers=np.zeros((0,), dtype=np.float32),
             labels=np.zeros((0,), dtype=np.float32),
+            screenshots=_empty_screenshot_vector(0),
+            screenshot_available=np.zeros((0,), dtype=bool),
             schema=np.array("teamcomposition_v1"),
         )
 
@@ -265,6 +308,17 @@ class EnemyDataset(Dataset):
             self.teamcomposition = _as_object_vector(teamcomposition)
             self.labels = np.array(data["labels"], copy=True)
             self.powers = np.array(data["powers"], copy=True) if "powers" in data else np.zeros((0,), dtype=np.float32)
+            if "screenshots" in data:
+                self.screenshots = np.array(data["screenshots"], copy=True)
+            elif "images" in data:
+                self.screenshots = np.array(data["images"], copy=True)
+            else:
+                self.screenshots = _empty_screenshot_vector(len(self.labels))
+
+            if "screenshot_available" in data:
+                self.screenshot_available = np.array(data["screenshot_available"], dtype=bool, copy=True)
+            else:
+                self.screenshot_available = _infer_screenshot_available(self.screenshots, len(self.labels))
 
     def _save_dataset(self):
         np.savez_compressed(
@@ -272,6 +326,8 @@ class EnemyDataset(Dataset):
             teamcomposition=self.teamcomposition,
             powers=self.powers if self.use_power else np.zeros((len(self.labels),), dtype=np.float32),
             labels=self.labels,
+            screenshots=self.screenshots,
+            screenshot_available=self.screenshot_available,
             schema=np.array("teamcomposition_v1"),
         )
 
@@ -313,7 +369,42 @@ class EnemyDataset(Dataset):
 
             next_index += 1
 
-    def _append_to_current_dataset(self, teamcomposition_to_add, power_to_add, labels_to_add):
+    def _append_screenshot_to_current_dataset(self, screenshot_to_add):
+        screenshot_to_add = _normalize_screenshot_array(screenshot_to_add)
+        sample_count = len(self.labels)
+
+        if screenshot_to_add is None:
+            if self.screenshots.ndim >= 4:
+                empty = np.zeros((1, *self.screenshots.shape[1:]), dtype=self.screenshots.dtype)
+                self.screenshots = np.concatenate([self.screenshots, empty], axis=0)
+            else:
+                self.screenshots = np.concatenate([self.screenshots, _empty_screenshot_vector(1)], axis=0)
+            self.screenshot_available = np.concatenate(
+                [self.screenshot_available, np.array([False], dtype=bool)],
+                axis=0,
+            )
+            return
+
+        screenshot_to_add = screenshot_to_add.reshape((1, *screenshot_to_add.shape))
+        if self.screenshots.ndim >= 4 and self.screenshots.shape[1:] == screenshot_to_add.shape[1:]:
+            self.screenshots = np.concatenate([self.screenshots, screenshot_to_add], axis=0)
+        elif self.screenshots.ndim == 1 and not self.screenshot_available.any():
+            previous = np.zeros((sample_count, *screenshot_to_add.shape[1:]), dtype=screenshot_to_add.dtype)
+            self.screenshots = np.concatenate([previous, screenshot_to_add], axis=0)
+        else:
+            next_screenshots = _as_object_vector(self.screenshots.tolist())
+            next_screenshots = np.concatenate(
+                [next_screenshots, _as_object_vector([screenshot_to_add[0]])],
+                axis=0,
+            )
+            self.screenshots = next_screenshots
+
+        self.screenshot_available = np.concatenate(
+            [self.screenshot_available, np.array([True], dtype=bool)],
+            axis=0,
+        )
+
+    def _append_to_current_dataset(self, teamcomposition_to_add, power_to_add, labels_to_add, screenshot_to_add=None):
         next_teamcomposition = np.concatenate([self.teamcomposition, teamcomposition_to_add], axis=0)
         next_powers = None
         if self.use_power:
@@ -332,7 +423,12 @@ class EnemyDataset(Dataset):
                 if not same_rank or not same_feature_shape:
                     if self.max_entries_per_file is not None:
                         self._rotate_to_next_dataset_file()
-                        self._append_to_current_dataset(teamcomposition_to_add, power_to_add, labels_to_add)
+                        self._append_to_current_dataset(
+                            teamcomposition_to_add,
+                            power_to_add,
+                            labels_to_add,
+                            screenshot_to_add=screenshot_to_add,
+                        )
                         return
 
                     raise ValueError(
@@ -345,6 +441,7 @@ class EnemyDataset(Dataset):
         self.teamcomposition = next_teamcomposition
         if self.use_power:
             self.powers = next_powers
+        self._append_screenshot_to_current_dataset(screenshot_to_add)
         self.labels = np.concatenate([self.labels, labels_to_add], axis=0)
         self._save_dataset()
 
@@ -373,13 +470,16 @@ class EnemyDataset(Dataset):
     # -----------------------------
     # Append new entry / entries
     # -----------------------------
-    def append_entry(self, enemy_record, battle_result):
+    def append_entry(self, enemy_record, battle_result, enemy_screenshot=None):
         """
         Append one or multiple entries and save dataset.
 
         enemy_record: dict with keys:
           - teamcomposition: list[str]
           - powervalue: scalar or power vector
+          - screenshot: optional HxWxC enemy-team screenshot
+        enemy_screenshot: optional HxWxC enemy-team screenshot. This is kept
+          separate from enemy_record so avoid-list profile entries stay small.
         battle_result: int, 0=Loss, 1=Win
         """
 
@@ -390,6 +490,8 @@ class EnemyDataset(Dataset):
         if isinstance(enemy_record, dict):
             teamcomposition = enemy_record.get("teamcomposition", [])
             power_val = enemy_record.get("powervalue", 0.0)
+            if enemy_screenshot is None:
+                enemy_screenshot = enemy_record.get("screenshot", enemy_record.get("image"))
         else:
             teamcomposition = enemy_record
             power_val = 0.0
@@ -400,7 +502,12 @@ class EnemyDataset(Dataset):
         labels_to_add = np.array([battle_result], dtype=np.float32)
 
         if self.max_entries_per_file is None:
-            self._append_to_current_dataset(teamcomposition_to_add, powers_to_add, labels_to_add)
+            self._append_to_current_dataset(
+                teamcomposition_to_add,
+                powers_to_add,
+                labels_to_add,
+                screenshot_to_add=enemy_screenshot,
+            )
             print(f"Appended 1 new entry. Dataset now has {len(self.labels)} samples.")
             return
 
@@ -408,7 +515,12 @@ class EnemyDataset(Dataset):
         if current_len >= self.max_entries_per_file:
             self._rotate_to_next_dataset_file()
 
-        self._append_to_current_dataset(teamcomposition_to_add, powers_to_add, labels_to_add)
+        self._append_to_current_dataset(
+            teamcomposition_to_add,
+            powers_to_add,
+            labels_to_add,
+            screenshot_to_add=enemy_screenshot,
+        )
 
         print(
             f"Appended 1 new entry. Active shard '{self.dataset_path}' now has "
