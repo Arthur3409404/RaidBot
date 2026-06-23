@@ -44,13 +44,14 @@ def _list_debug_collections(root: Path) -> list[Path]:
 
 
 def _list_run_dirs(collection_dir: Path, image_name: str) -> list[Path]:
-    runs: list[Path] = []
-    for path in sorted(collection_dir.iterdir()):
-        if not path.is_dir() or not path.name.startswith("run_"):
-            continue
-        if (path / image_name).exists():
-            runs.append(path)
-    return runs
+    if not collection_dir.exists():
+        return []
+
+    # Capture sessions are nested one level deeper under a session folder, so
+    # search recursively for the actual leaf run directories that contain the
+    # requested image.
+    runs = {image_path.parent for image_path in collection_dir.rglob(image_name) if image_path.is_file()}
+    return sorted(runs)
 
 
 def _pick_collection(collections: list[Path]) -> Path:
@@ -67,6 +68,14 @@ def _pick_collection(collections: list[Path]) -> Path:
         if 0 <= idx < len(collections):
             return collections[idx]
         print("Choice out of range.")
+
+
+def _select_collection(collections: list[Path], requested: str) -> Path:
+    for collection in collections:
+        if collection.name == requested or collection.as_posix().endswith(requested):
+            return collection
+    available = ", ".join(collection.name for collection in collections)
+    raise ValueError(f"Collection {requested!r} not found. Available: {available}")
 
 
 def _load_image(path: Path):
@@ -293,12 +302,14 @@ def _annotate_run(run_dir: Path, image_name: str, annotation_root: Path) -> list
 def main() -> int:
     parser = argparse.ArgumentParser(description="Label debug pictures with drawn rectangles and export a YOLO dataset.")
     parser.add_argument("--debug-root", default=str(DEBUG_ROOT), help="Root debug directory.")
+    parser.add_argument("--collection", default=None, help="Optional exact debug collection folder to label.")
     parser.add_argument("--image-name", default=DEFAULT_IMAGE_NAME, help="Image file name inside each run directory.")
     parser.add_argument("--annotation-root", default=str(ANNOTATION_ROOT), help="Where per-image annotations are stored.")
     parser.add_argument("--output-root", default=str(YOLO_OUTPUT_ROOT), help="Where the exported YOLO dataset is written.")
     parser.add_argument("--dataset-name", default="detector_ai_yolo", help="Name of the exported YOLO dataset folder.")
     parser.add_argument("--val-ratio", type=float, default=0.2, help="Validation split ratio.")
     parser.add_argument("--seed", type=int, default=42, help="Shuffle seed for dataset export.")
+    parser.add_argument("--limit-runs", type=int, default=None, help="Only label the first N run folders in a collection.")
     args = parser.parse_args()
 
     debug_root = Path(args.debug_root)
@@ -310,11 +321,24 @@ def main() -> int:
         print(f"No debug collections found under: {debug_root.as_posix()}")
         return 1
 
-    selected_collection = _pick_collection(collections)
+    if args.collection:
+        try:
+            selected_collection = _select_collection(collections, args.collection)
+        except ValueError as exc:
+            print(str(exc))
+            return 1
+    else:
+        selected_collection = _pick_collection(collections)
     run_dirs = _list_run_dirs(selected_collection, args.image_name)
     if not run_dirs:
         print(f"No runs with {args.image_name} found in: {selected_collection.as_posix()}")
         return 1
+
+    if args.limit_runs is not None:
+        run_dirs = run_dirs[: max(0, int(args.limit_runs))]
+        if not run_dirs:
+            print("No runs remain after applying --limit-runs.")
+            return 1
 
     print(f"Loaded {len(run_dirs)} runs from: {selected_collection.as_posix()}")
     print("Press Enter after each picture to confirm and move on.")

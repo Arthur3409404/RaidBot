@@ -4,6 +4,32 @@ import argparse
 from pathlib import Path
 
 
+def resolve_training_device(requested_device: str | None) -> str | None:
+    """Normalize the requested device and gracefully handle CPU-only installs."""
+    if requested_device is None:
+        return None
+
+    normalized = str(requested_device).strip()
+    if not normalized:
+        return None
+    if normalized.lower() == "cpu":
+        return "cpu"
+
+    try:
+        import torch
+    except Exception:
+        return normalized
+
+    if torch.cuda.is_available():
+        return normalized
+
+    print(
+        f"CUDA device '{normalized}' was requested, but this Python environment has CPU-only PyTorch "
+        f"({torch.__version__}). Falling back to 'cpu'."
+    )
+    return "cpu"
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Train a YOLO detector on the detector_ai dataset.")
     parser.add_argument(
@@ -34,8 +60,9 @@ def main() -> int:
         "project": args.project,
         "name": args.name,
     }
-    if args.device is not None:
-        train_kwargs["device"] = args.device
+    resolved_device = resolve_training_device(args.device)
+    if resolved_device is not None:
+        train_kwargs["device"] = resolved_device
 
     model.train(**train_kwargs)
     return 0

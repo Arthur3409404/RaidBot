@@ -1,0 +1,25 @@
+{
+  "image_path": "C:/Users/Arthur/Documents/MyPython/RaidBot/data/output/debug/grimforest_zoomed_out_hard/run_20260616_171340/run_20260616_172110_048/pov_cyan_brighter_binary.png",
+  "image_name": "pov_cyan_brighter_binary.png",
+  "image_size": {
+    "width": 1298,
+    "height": 1071
+  },
+  "class_names": [
+    "label"
+  ],
+  "boxes": [
+    {
+      "x1": 302,
+      "y1": 164,
+      "x2": 366,
+      "y2": 228
+    },
+    {
+      "x1": 1046,
+      "y1": 759,
+      "x2": 1121,
+      "y2": 832
+    }
+  ]
+}

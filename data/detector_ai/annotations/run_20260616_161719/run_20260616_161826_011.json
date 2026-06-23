@@ -1,0 +1,37 @@
+{
+  "image_path": "C:/Users/Arthur/Documents/MyPython/RaidBot/data/output/debug/cursedcity_zoomed_out/run_20260616_161719/run_20260616_161826_011/pov_cyan_brighter_binary.png",
+  "image_name": "pov_cyan_brighter_binary.png",
+  "image_size": {
+    "width": 1298,
+    "height": 1069
+  },
+  "class_names": [
+    "label"
+  ],
+  "boxes": [
+    {
+      "x1": 228,
+      "y1": 506,
+      "x2": 288,
+      "y2": 578
+    },
+    {
+      "x1": 438,
+      "y1": 400,
+      "x2": 494,
+      "y2": 471
+    },
+    {
+      "x1": 594,
+      "y1": 74,
+      "x2": 654,
+      "y2": 152
+    },
+    {
+      "x1": 920,
+      "y1": 130,
+      "x2": 979,
+      "y2": 206
+    }
+  ]
+}
