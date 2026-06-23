@@ -6,6 +6,8 @@ import subprocess
 import sys
 import time
 
+import pygetwindow as gw
+
 PACKAGE_DIR = os.path.dirname(os.path.abspath(__file__))
 SRC_DIR = os.path.dirname(PACKAGE_DIR)
 PROJECT_ROOT = os.path.dirname(SRC_DIR)
@@ -17,10 +19,12 @@ if SRC_DIR not in sys.path:
 
 from raid_bot.mainframe import (
     BOT_PID_FILE,
+    RAID_WINDOW_TITLE,
     RESTART_HELPER_ARG,
     RSL_Bot_Mainframe,
     RESTART_NOTIFY_ENV,
     RESTART_REPLACE_PID_ENV,
+    _validate_raid_window_size,
     run_restart_helper,
 )
 from raid_bot.core.runtime_startup import close_discord_desktop_app
@@ -143,6 +147,14 @@ def main():
     close_discord_desktop_app()
     _write_pid_file()
     atexit.register(_remove_pid_file)
+
+    windows = gw.getWindowsWithTitle(RAID_WINDOW_TITLE)
+    if not windows:
+        print("Raid window not found at startup.", flush=True)
+        return 1
+
+    if not _validate_raid_window_size(windows[0], context="startup"):
+        return 1
 
     bot = RSL_Bot_Mainframe()
     bot.start_main_loop()

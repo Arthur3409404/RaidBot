@@ -735,6 +735,9 @@ class RSL_Bot_FactionWars:
 
         while self.main_loop_running and (self.battle_status != 'Done'):
             _ensure_within_run_deadline(self, "waiting for faction wars encounter result")
+            
+            auto_battle_tools.handle_pausa_popup(self)
+
             self.update_battle_outcome()
             auto_battle_tools.ensure_auto_battle_running(self)
             self.update_battle_activity_status()

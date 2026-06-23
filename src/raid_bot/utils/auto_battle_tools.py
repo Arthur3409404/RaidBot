@@ -10,6 +10,7 @@ import time
 
 import pyautogui
 
+import raid_bot.utils.image_tools as image_tools
 import raid_bot.utils.window_tools as window_tools
 
 
@@ -18,6 +19,8 @@ AUTO_BATTLE_BUTTON_AREA = [0.026, 0.899, 0.058, 0.07]
 AUTO_BATTLE_SAMPLE_INTERVAL_SECONDS = 10.0
 AUTO_BATTLE_STAGNANT_SAMPLE_COUNT = 12
 AUTO_BATTLE_CLICK_COOLDOWN_SECONDS = 30.0
+PAUSA_SEARCH_AREA = [0.35, 0.1, 0.35, 0.5]
+PAUSA_CONFIRM_DELAY_SECONDS = 5.0
 
 
 @dataclass
@@ -33,6 +36,48 @@ def reset_auto_battle_watchdog(bot) -> None:
     state = AutoBattleWatchdogState()
     state.last_sample_at = time.monotonic()
     setattr(bot, "_auto_battle_watchdog", state)
+
+
+def handle_pausa_popup(
+    bot,
+    search_area: Sequence[float] | None = None,
+    confirm_delay_seconds: float = PAUSA_CONFIRM_DELAY_SECONDS,
+    esc_delay_seconds: float | None = None,
+) -> bool:
+    """Detect a Pausa popup and dismiss it if it is still present after a short wait."""
+    window = getattr(bot, "window", None)
+    reader = getattr(bot, "reader", None)
+    if not window or not reader:
+        return False
+
+    search_area = search_area or PAUSA_SEARCH_AREA
+    try:
+        pausa_results = image_tools.get_text_in_relative_area(
+            reader,
+            window,
+            search_area=search_area,
+        )
+    except Exception:
+        return False
+
+    esc_delay = confirm_delay_seconds if esc_delay_seconds is None else float(esc_delay_seconds)
+    for pausa_result in pausa_results:
+        text = (getattr(pausa_result, "text", "") or "").strip()
+        if not text or not _resembles(bot, text, "PAUSA"):
+            continue
+        time.sleep(float(confirm_delay_seconds))
+        try:
+            confirm_results = image_tools.get_text_in_relative_area(
+                reader,
+                window,
+                search_area=search_area,
+            )
+        except Exception:
+            continue
+        if any(_resembles(bot, (getattr(item, "text", "") or "").strip(), "PAUSA") for item in confirm_results):
+            window_tools.sendkey("esc", delay=esc_delay, window=window)
+            return True
+    return False
 
 
 def ensure_auto_battle_running(

@@ -1210,7 +1210,7 @@ class RSL_Bot_GrimForest:
         return bool(objects and self.resembles((getattr(objects[0], "text", "") or "").strip(), "Auto", threshold=0.7))
 
     def get_battle_outcome(self, timeout_seconds: float | None = None, poll_interval_seconds: float | None = None):
-        timeout = float(timeout_seconds or self.setup.get("stage_battle_timeout_seconds", 420.0))
+        timeout = float(timeout_seconds or self.setup.get("stage_battle_timeout_seconds", 4200.0))
         interval = float(poll_interval_seconds or self.setup.get("stage_battle_poll_interval_seconds", 2.0))
         confirmation_delay = float(self.setup.get("stage_battle_outcome_confirm_delay_seconds", 10.0))
         started_at = time.time()
@@ -1218,6 +1218,10 @@ class RSL_Bot_GrimForest:
         auto_battle_tools.reset_auto_battle_watchdog(self)
         while self.main_loop_running and (time.time() - started_at) < timeout:
             _ensure_within_run_deadline(self, "waiting for Grim Forest battle result")
+
+            auto_battle_tools.handle_pausa_popup(self)
+
+
             result = self._battle_result_text()
             if result:
                 time.sleep(confirmation_delay)
@@ -1349,8 +1353,10 @@ class RSL_Bot_GrimForest:
 
             if self.battle_outcome == "Derrota":
                 self._record_last_defeat_candidate(self.current_run_difficulty, selected)
-                self.exit_grim_forest_to_main_menu(reason="battle_lost")
-                break
+                self.log.info(
+                    "[Grim Forest] Lost encounter recorded; continuing search without leaving the mode."
+                )
+                continue
             if self.post_battle_menu_status == "game_modes":
                 break
             if self.post_battle_menu_status == "unknown":

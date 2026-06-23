@@ -429,6 +429,8 @@ class RSL_Bot_Hydra:
         while self.main_loop_running and self.battle_status != "Done":
             _ensure_within_run_deadline(self, "waiting for hydra encounter result")
             auto_battle_tools.ensure_auto_battle_running(self)
+            
+            auto_battle_tools.handle_pausa_popup(self)
 
             if manual_run_enabled:
                 if self.battle_status == "Starting":

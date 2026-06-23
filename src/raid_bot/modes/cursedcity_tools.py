@@ -178,7 +178,7 @@ class RSL_Bot_CursedCity:
             "detector_imgsz": DEFAULT_DETECTOR_IMGSZ,
             "stage_select_delay_seconds": 3.0,
             "stage_start_retries": 3,
-            "stage_battle_timeout_seconds": 420.0,
+            "stage_battle_timeout_seconds": 4200.0,
             "stage_battle_poll_interval_seconds": 2.0,
             "stage_battle_outcome_confirm_delay_seconds": 10.0,
         }
@@ -666,26 +666,17 @@ class RSL_Bot_CursedCity:
         return bool(text and self.resembles(text, "Auto", threshold=0.7))
 
     def get_battle_outcome(self, timeout_seconds: float | None = None, poll_interval_seconds: float | None = None):
-        timeout_seconds = float(timeout_seconds or self.setup.get("stage_battle_timeout_seconds", 420.0))
         poll_interval_seconds = float(poll_interval_seconds or self.setup.get("stage_battle_poll_interval_seconds", 2.0))
         confirm_delay = float(self.setup.get("stage_battle_outcome_confirm_delay_seconds", 10.0))
-        started_at = time.time()
-        auto_seen = False
         auto_battle_tools.reset_auto_battle_watchdog(self)
-        while self.main_loop_running and (time.time() - started_at) < timeout_seconds:
+        while self.main_loop_running:
             _ensure_within_run_deadline(self, "waiting for Cursed City battle result")
+            auto_battle_tools.handle_pausa_popup(self)
             result = self._battle_result_text()
             if result:
                 time.sleep(confirm_delay)
                 if self._battle_result_text() == result:
                     return result
-            if self._is_auto_battle_visible():
-                auto_seen = True
-            menu_text = self._read_menu_name()
-            if auto_seen and menu_text and self.resembles(menu_text, MENU_TITLE, threshold=0.55):
-                return None
-            if self._is_in_game_modes_menu(menu_text):
-                return None
             auto_battle_tools.ensure_auto_battle_running(
                 self,
                 auto_button_area=self.search_areas["stage_auto_battle_button"],
@@ -795,18 +786,19 @@ class RSL_Bot_CursedCity:
 
             outcome = self.get_battle_outcome()
             self.log.info("[Cursed City] Battle outcome: %s", outcome if outcome else "unknown")
+            if outcome is None:
+                continue
             menu_status = self.return_to_mode_root_after_battle(max_attempts=4)
+            if outcome == "Derrota":
+                self._record_last_defeat_candidate(effective_difficulty, selected)
+                self.log.info(
+                    "[Cursed City] Lost encounter recorded; continuing search without leaving the mode."
+                )
+                continue
             if menu_status == "game_modes":
                 break
             if menu_status == "unknown":
                 self.exit_cursed_city_to_main_menu(reason="unknown_menu_after_battle")
-                break
-            if outcome == "Derrota":
-                self._record_last_defeat_candidate(effective_difficulty, selected)
-                self.exit_cursed_city_to_main_menu(reason="battle_lost")
-                break
-            if outcome != "Victoria":
-                self.exit_cursed_city_to_main_menu(reason="battle_outcome_unknown_or_timeout")
                 break
 
         return True

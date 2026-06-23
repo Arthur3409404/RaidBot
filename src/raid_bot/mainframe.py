@@ -45,6 +45,8 @@ RESTART_REPLACE_PID_ENV = "RAID_BOT_REPLACE_PID"
 DISCORD_GUILD_NAME = "Discord_Sandbox"
 DISCORD_CHANNEL_NAME = "raid_sandbox"
 PLARIUM_LAUNCH_ARGS = ["-gameid=101", "-tray-start"]
+EXPECTED_RAID_WINDOW_SIZE = (1296, 1063)
+RAID_WINDOW_SIZE_TOLERANCE = 32
 CONNECTIVITY_ONLINE_POLL_SECONDS = 5.0
 CONNECTIVITY_OUTAGE_CONFIRM_SECONDS = 60.0
 CONNECTIVITY_RETRY_INTERVAL_SECONDS = 10 * 60
@@ -260,6 +262,43 @@ def _wait_for_raid_window(timeout_seconds: float = 180.0) -> bool:
             return True
         time.sleep(2)
     return bool(gw.getWindowsWithTitle(RAID_WINDOW_TITLE))
+
+
+def _is_window_size_within_expected_range(width: int, height: int) -> bool:
+    expected_width, expected_height = EXPECTED_RAID_WINDOW_SIZE
+    return (
+        abs(int(width) - expected_width) <= RAID_WINDOW_SIZE_TOLERANCE
+        and abs(int(height) - expected_height) <= RAID_WINDOW_SIZE_TOLERANCE
+    )
+
+
+def _validate_raid_window_size(window, *, log=None, context: str = "startup") -> bool:
+    if not window:
+        message = f"Raid window size check failed during {context}: window not found."
+        if log:
+            log.error(message)
+        else:
+            print(message, flush=True)
+        return False
+
+    actual_width = int(getattr(window, "width", 0) or 0)
+    actual_height = int(getattr(window, "height", 0) or 0)
+    expected_width, expected_height = EXPECTED_RAID_WINDOW_SIZE
+
+    if _is_window_size_within_expected_range(actual_width, actual_height):
+        return True
+
+    message = (
+        f"Raid window size check failed during {context}: "
+        f"found {actual_width}x{actual_height}, expected around "
+        f"{expected_width}x{expected_height} "
+        f"(tolerance +/-{RAID_WINDOW_SIZE_TOLERANCE}px)."
+    )
+    if log:
+        log.error(message)
+    else:
+        print(message, flush=True)
+    return False
 
 
 def _launch_raid_and_wait_until_window(
@@ -1976,6 +2015,12 @@ class RSL_Bot_Mainframe:
         windows = gw.getWindowsWithTitle(RAID_WINDOW_TITLE)
         if windows:
             win = windows[0]
+            if not _validate_raid_window_size(win, log=self.log, context="restart"):
+                raise RuntimeError(
+                    "Raid window size check failed during restart. "
+                    f"Expected around {EXPECTED_RAID_WINDOW_SIZE[0]}x{EXPECTED_RAID_WINDOW_SIZE[1]} "
+                    f"(tolerance +/-{RAID_WINDOW_SIZE_TOLERANCE}px)."
+                )
             self.window = window_tools.WindowObject(
                 (win.left, win.top, win.width, win.height),
                 title_substring=RAID_WINDOW_TITLE,
@@ -2602,6 +2647,9 @@ def main() -> int:
 
     windows = gw.getWindowsWithTitle(RAID_WINDOW_TITLE)
     win = windows[0]
+
+    if not _validate_raid_window_size(win, context="startup"):
+        return 1
 
     win.moveTo(10, 10)
     time.sleep(10)

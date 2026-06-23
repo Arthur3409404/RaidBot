@@ -712,7 +712,9 @@ class RSL_Bot_Dungeons:
         auto_battle_tools.reset_auto_battle_watchdog(self)
         while self.main_loop_running and (self.battle_status != 'Done'):
             _ensure_within_run_deadline(self, "waiting for dungeon encounter result")
-            
+
+            auto_battle_tools.handle_pausa_popup(self)
+
             self.get_battle_outcome()
             auto_battle_tools.ensure_auto_battle_running(self)
 

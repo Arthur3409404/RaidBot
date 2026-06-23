@@ -338,6 +338,7 @@ class RSL_Bot_ClassicArena:
             battle_results = image_tools.get_text_in_relative_area(
                 self.reader, self.window, search_area=self.search_areas["battle_result"]
             )
+
             for battle_result in battle_results:
                 text = (getattr(battle_result, "text", "") or "").strip()
                 if not text:
@@ -346,6 +347,10 @@ class RSL_Bot_ClassicArena:
                     return "VICTORIA"
                 if self.resembles(text, "DERROTA"):
                     return "DERROTA"
+                if self.resembles(text, "PAUSA"):
+                    return "DERROTA"
+            
+            
         except Exception:
             pass
 
@@ -418,6 +423,8 @@ class RSL_Bot_ClassicArena:
             _ensure_within_run_deadline(self, "waiting for classic arena battle result")
             auto_battle_tools.ensure_auto_battle_running(self)
             try:
+                auto_battle_tools.handle_pausa_popup(self)
+
                 battle_finished = image_tools.get_text_in_relative_area(
                     self.reader, self.window, search_area=self.search_areas["battle_finished"]
                 )[0]
@@ -1086,6 +1093,9 @@ class RSL_Bot_TagTeamArena:
             _ensure_within_run_deadline(self, "waiting for tag team battle result")
             auto_battle_tools.ensure_auto_battle_running(self)
             try:
+                auto_battle_tools.handle_pausa_popup(self)
+
+
                 finished = image_tools.get_text_in_relative_area(
                     self.reader, self.window, self.search_areas["battle_finished"]
                 )[0]
@@ -1741,6 +1751,9 @@ class RSL_Bot_LiveArena:
 
         while self.main_loop_running and (self.battle_status == 'Done'):
             _ensure_within_run_deadline(self, "closing live arena result screen")
+
+            auto_battle_tools.handle_pausa_popup(self)
+
             battle_finished = image_tools.get_text_in_relative_area(
                 self.reader, self.window, search_area=self.search_areas['battle_status_finished']
             )[0]

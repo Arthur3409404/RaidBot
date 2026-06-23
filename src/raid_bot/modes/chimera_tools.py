@@ -176,6 +176,10 @@ class RSL_Bot_Chimera():
         auto_battle_tools.reset_auto_battle_watchdog(self)
         while self.main_loop_running and (self.battle_status != 'Done'):
             _ensure_within_run_deadline(self, "waiting for chimera encounter result")
+            
+            auto_battle_tools.handle_pausa_popup(self)
+
+
             self.update_battle_status()
             auto_battle_tools.ensure_auto_battle_running(self)
 
