@@ -22,8 +22,6 @@ from raid_bot.mainframe import (
     RAID_WINDOW_TITLE,
     RESTART_HELPER_ARG,
     RSL_Bot_Mainframe,
-    RESTART_NOTIFY_ENV,
-    RESTART_REPLACE_PID_ENV,
     _validate_raid_window_size,
     run_restart_helper,
 )
@@ -63,11 +61,13 @@ def _is_pid_running(pid: int) -> bool:
         ["tasklist", "/FI", f"PID eq {pid}", "/FO", "CSV", "/NH"],
         stdout=subprocess.PIPE,
         stderr=subprocess.DEVNULL,
-        text=True,
         check=False,
     )
-    output = (result.stdout or "").strip()
-    return bool(output and not output.startswith("INFO:"))
+    output = result.stdout or b""
+    if isinstance(output, str):
+        output = output.encode("utf-8", errors="replace")
+    output = output.strip()
+    return bool(output and not output.startswith(b"INFO:"))
 
 
 def _kill_pid_tree(pid: int) -> None:
@@ -115,34 +115,14 @@ def _read_running_instance_pid() -> int | None:
     return None
 
 
-def _should_replace_existing_restart_pid(existing_pid: int) -> bool:
-    if os.environ.get(RESTART_NOTIFY_ENV) != "1":
-        return False
-
-    expected_pid = os.environ.get(RESTART_REPLACE_PID_ENV, "").strip()
-    if not expected_pid:
-        return True
-
-    try:
-        int(expected_pid)
-        return True
-    except ValueError:
-        return False
-
-
 def main():
     if len(sys.argv) >= 3 and sys.argv[1] == RESTART_HELPER_ARG:
         return run_restart_helper(int(sys.argv[2]))
 
     existing_pid = _read_running_instance_pid()
     if existing_pid:
-        if _should_replace_existing_restart_pid(existing_pid):
-            print(f"Restart launch replacing previous RaidBot PID {existing_pid}.")
-            _kill_pid_tree(existing_pid)
-            _wait_for_pid_exit(existing_pid)
-        else:
-            print(f"RaidBot is already running (PID {existing_pid}). Exiting duplicate launch.")
-            return 1
+        _kill_pid_tree(existing_pid)
+        _wait_for_pid_exit(existing_pid)
 
     close_discord_desktop_app()
     _write_pid_file()

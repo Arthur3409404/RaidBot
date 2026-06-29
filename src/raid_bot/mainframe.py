@@ -116,11 +116,13 @@ def _is_process_running(pid: int) -> bool:
         ["tasklist", "/FI", f"PID eq {pid}", "/FO", "CSV", "/NH"],
         stdout=subprocess.PIPE,
         stderr=subprocess.DEVNULL,
-        text=True,
         check=False,
     )
-    output = (result.stdout or "").strip()
-    return bool(output and not output.startswith("INFO:"))
+    output = result.stdout or b""
+    if isinstance(output, str):
+        output = output.encode("utf-8", errors="replace")
+    output = output.strip()
+    return bool(output and not output.startswith(b"INFO:"))
 
 
 def _wait_for_process_exit(pid: int, timeout_seconds: float = 20.0) -> bool:
@@ -209,14 +211,6 @@ def _read_running_instance_pid() -> int | None:
     if _is_process_running(pid):
         return pid
     return None
-
-
-def _is_restart_replacement_launch() -> bool:
-    return os.environ.get(RESTART_NOTIFY_ENV) == "1"
-
-
-def _is_entrypoint_relaunch() -> bool:
-    return os.environ.get(_ENTRYPOINT_RELAUNCH_MARKER) == "1"
 
 
 def _terminate_processes(process_names: list[str]) -> None:
@@ -437,6 +431,7 @@ from raid_bot.modes import (
     grimforest_tools,
     hydra_tools,
 )
+from raid_bot.modes import session_encounter_state
 from raid_bot.utils import file_tools, image_tools, window_tools
 from raid_bot.utils.champion_identifier import (
     UnavailableChampionIdentifier,
@@ -648,6 +643,20 @@ class RSL_Bot_Mainframe:
                 f"[{self._format_utc_timestamp()}] Mainframe started",
                 f"account={self.account_name} profile={self.profile_account_name} param_file={self.param_file}",
             ]
+        )
+        self._update_daily_report(
+            {
+                "account": self.account_name,
+                "profile_account": self.profile_account_name,
+                "metadata": {
+                    "primary_account": self.account_name,
+                    "profile_account": self.profile_account_name,
+                    "params_file": self.param_file,
+                },
+            }
+        )
+        session_encounter_state.set_session_lost_encounter_persistence_hook(
+            self._persist_daily_session_avoid_state
         )
         self._last_dungeon_override_signature = None
         self._last_known_dungeon_tournament = None
@@ -1003,6 +1012,102 @@ class RSL_Bot_Mainframe:
         except Exception as exc:
             self.log.warning("Failed to append daily log entry: %s", exc)
 
+    def _update_daily_report(self, updates: dict) -> None:
+        if not updates:
+            return
+
+        def _merge_dict(target: dict, source: dict) -> None:
+            for key, value in source.items():
+                if isinstance(value, dict):
+                    nested = target.get(key)
+                    if not isinstance(nested, dict):
+                        nested = {}
+                        target[key] = nested
+                    _merge_dict(nested, value)
+                    continue
+
+                if isinstance(value, (int, float)) and isinstance(target.get(key), (int, float)):
+                    target[key] = target[key] + value
+                    continue
+
+                target[key] = value
+
+        def _mutator(day_entry: dict) -> None:
+            _merge_dict(day_entry, updates)
+
+        try:
+            file_tools.update_daily_log_document(self.daily_log_path, _mutator)
+        except Exception as exc:
+            self.log.warning("Failed to update daily report: %s", exc)
+
+    def _load_daily_session_avoid_state(self) -> None:
+        try:
+            document = file_tools.load_daily_log_document(self.daily_log_path)
+        except Exception as exc:
+            self.log.warning("Failed to load daily avoid state: %s", exc)
+            session_encounter_state.reset_session_lost_encounters()
+            return
+
+        today_key = datetime.now(UTC_TZ).strftime("%Y_%m_%d")
+        day_entry = {}
+        if isinstance(document, dict):
+            days = document.get("days")
+            if isinstance(days, dict):
+                entry = days.get(today_key)
+                if isinstance(entry, dict):
+                    day_entry = entry
+
+        enemy_avoid = {}
+        if isinstance(day_entry, dict):
+            state = day_entry.get("state")
+            if isinstance(state, dict):
+                maybe_enemy_avoid = state.get("enemy_avoid")
+                if isinstance(maybe_enemy_avoid, dict):
+                    enemy_avoid = maybe_enemy_avoid
+
+        snapshot = {
+            "cursed_city": enemy_avoid.get("cursed_city", []) if isinstance(enemy_avoid, dict) else [],
+            "grim_forest": enemy_avoid.get("grim_forest", []) if isinstance(enemy_avoid, dict) else [],
+        }
+        session_encounter_state.set_session_lost_encounter_snapshot(snapshot)
+        self._persist_daily_session_avoid_state(snapshot)
+
+    def _persist_daily_session_avoid_state(self, snapshot: dict[str, set[str]]) -> None:
+        payload = {
+            "state": {
+                "enemy_avoid": {
+                    area: sorted(values)
+                    for area, values in snapshot.items()
+                    if area in {"cursed_city", "grim_forest"}
+                }
+            }
+        }
+        self._update_daily_report(payload)
+
+    def _get_current_daily_report_entry(self) -> tuple[str, dict]:
+        day_key = datetime.now(UTC_TZ).strftime("%Y_%m_%d")
+        try:
+            document = file_tools.load_daily_log_document(self.daily_log_path)
+        except Exception as exc:
+            self.log.warning("Failed to load current daily report entry: %s", exc)
+            return day_key, {"date": day_key}
+
+        entry = {}
+        if isinstance(document, dict):
+            days = document.get("days")
+            if isinstance(days, dict):
+                maybe_entry = days.get(day_key)
+                if isinstance(maybe_entry, dict):
+                    entry = maybe_entry
+
+        if not entry:
+            entry = {"date": day_key}
+        elif "date" not in entry:
+            entry = dict(entry)
+            entry["date"] = day_key
+
+        return day_key, entry
+
     def _format_stat_line(self, label: str, value) -> str:
         return f"{label}={value}"
 
@@ -1168,8 +1273,130 @@ class RSL_Bot_Mainframe:
 
         return lines
 
+    def _build_daily_mode_summary_payload(self, mode_key: str) -> dict:
+        if mode_key in {"classic_arena", "tagteam_arena", "live_arena"}:
+            bot = self.group_to_bot.get(mode_key)
+            battles_done = int(getattr(bot, "battles_done", 0) or 0) if bot is not None else 0
+            battles_won = int(getattr(bot, "battles_won", 0) or 0) if bot is not None else 0
+            return {
+                "summary": {
+                    "pvp": {
+                        mode_key: {
+                            "battles": battles_done,
+                            "wins": battles_won,
+                            "losses": max(0, battles_done - battles_won),
+                        }
+                    }
+                }
+            }
+
+        if mode_key == "factionwars":
+            bot = self.factionwars_bot
+            battles_done = int(getattr(bot, "battles_done", 0) or 0)
+            battles_won = int(getattr(bot, "battles_won", 0) or 0)
+            farm_stages = getattr(bot, "farm_stages", {})
+            progress_mode_factions = getattr(bot, "progress_mode_factions", None)
+            return {
+                "summary": {
+                    "faction_wars": {
+                        "battles": battles_done,
+                        "wins": battles_won,
+                        "losses": max(0, battles_done - battles_won),
+                        "farm_stages": farm_stages if isinstance(farm_stages, dict) else {},
+                        "progress_mode_factions": list(progress_mode_factions or []),
+                    }
+                }
+            }
+
+        if mode_key == "dungeons":
+            bot = self.dungeon_bot
+            encounter = str(getattr(bot, "dungeon", "unknown") or "unknown").strip().lower()
+            summary_key = "daily_shogun" if encounter == "shogun" else encounter
+            difficulty = getattr(bot, "difficulty", "unknown")
+            level = getattr(bot, "level", None)
+            event_level = getattr(bot, "eventdungeon_level", None)
+            resolved_level = event_level if encounter == "event_dungeon" else level
+            battles_done = int(getattr(bot, "battles_done", 0) or 0)
+            battles_won = int(getattr(bot, "battles_won", 0) or 0)
+            return {
+                "summary": {
+                    "dungeons": {
+                        summary_key: {
+                            "encounter": encounter,
+                            "difficulty": difficulty,
+                            "level": resolved_level,
+                            "battles": battles_done,
+                            "wins": battles_won,
+                            "losses": max(0, battles_done - battles_won),
+                            "energy_spent": int(getattr(bot, "energy_spent_this_run", 0) or 0),
+                            "last_run_energy_cost": getattr(bot, "last_run_energy_cost", None),
+                            "iron_twins_keys_used": int(
+                                getattr(bot, "iron_twins_keys_used_this_run", 0) or 0
+                            ),
+                        }
+                    }
+                }
+            }
+
+        if mode_key == "cursedcity":
+            bot = self.cursedcity_bot
+            return {
+                "summary": {
+                    "keys": {
+                        "cursed_city": {
+                            "difficulty": getattr(bot, "current_run_difficulty", None),
+                            "starting_keys": int(getattr(bot, "starting_available_keys", 0) or 0),
+                            "ending_keys": int(getattr(bot, "available_keys", 0) or 0),
+                            "used_keys": int(getattr(bot, "keys_used_this_run", 0) or 0),
+                        }
+                    }
+                }
+            }
+
+        if mode_key == "grimforest":
+            bot = self.grimforest_bot
+            return {
+                "summary": {
+                    "keys": {
+                        "grim_forest": {
+                            "difficulty": getattr(bot, "current_run_difficulty", None),
+                            "starting_keys": int(getattr(bot, "starting_available_keys", 0) or 0),
+                            "ending_keys": int(getattr(bot, "available_keys", 0) or 0),
+                            "used_keys": int(getattr(bot, "keys_used_this_run", 0) or 0),
+                            "completed_battles": int(getattr(bot, "completed_battles", 0) or 0),
+                        }
+                    }
+                }
+            }
+
+        if mode_key == "doomtower":
+            bot = self.doomtower_bot
+            battles_done = int(getattr(bot, "battles_done", 0) or 0)
+            battles_won = int(getattr(bot, "battles_won", 0) or 0)
+            return {
+                "summary": {
+                    "keys": {
+                        "doom_tower": {
+                            "difficulty": getattr(bot, "current_difficulty", None),
+                            "starting_silver_keys": int(getattr(bot, "starting_silver_keys", 0) or 0),
+                            "ending_silver_keys": int(getattr(bot, "num_of_silver_keys", 0) or 0),
+                            "silver_keys_used": int(getattr(bot, "silver_keys_used_this_run", 0) or 0),
+                            "starting_gold_keys": int(getattr(bot, "starting_gold_keys", 0) or 0),
+                            "ending_gold_keys": int(getattr(bot, "num_of_gold_keys", 0) or 0),
+                            "gold_keys_used": int(getattr(bot, "gold_keys_used_this_run", 0) or 0),
+                            "battles": battles_done,
+                            "wins": battles_won,
+                            "losses": max(0, battles_done - battles_won),
+                        }
+                    }
+                }
+            }
+
+        return {}
+
     def _log_daily_mode_summary(self, mode_key: str) -> None:
         self._append_daily_log_lines(self._format_mode_daily_summary(mode_key))
+        self._update_daily_report(self._build_daily_mode_summary_payload(mode_key))
 
     # =========================
     # Parameter management
@@ -1635,7 +1862,30 @@ class RSL_Bot_Mainframe:
         )
 
     def build_status_lines(self) -> list[str]:
-        return runtime_reporting.build_status_lines(self.get_status_snapshot())
+        day_key, entry = self._get_current_daily_report_entry()
+        return runtime_reporting.build_daily_entry_messages(day_key, entry)
+
+    def show_stats(self) -> list[str]:
+        caption = "[Bot Status] Daily statistics plot generated."
+        try:
+            output_path = runtime_reporting.build_daily_stats_figure(self.daily_log_path)
+            if hasattr(self.discord_override, "send_image"):
+                self.discord_override.send_image(str(output_path), caption=caption)
+            return [caption]
+        except Exception as exc:
+            self.log.warning("Failed to generate daily statistics plot: %s", exc)
+            return [f"[Bot Status] Failed to generate daily statistics plot: {exc}"]
+
+    def add_current_cursed_city_encounter_to_avoid(self) -> list[str]:
+        bot = getattr(self, "cursedcity_bot", None)
+        if bot is None or not hasattr(bot, "add_visible_encounter_to_avoid_list"):
+            return ["[Bot Status] Cursed City helper is not available."]
+
+        encounter_text = bot.add_visible_encounter_to_avoid_list()
+        if not encounter_text:
+            return ["[Bot Status] No readable Cursed City encounter name was found."]
+
+        return [f"[Bot Status] Added Cursed City avoid entry: `{encounter_text}`"]
 
     def build_modes_lines(self) -> list[str]:
         return runtime_reporting.build_modes_lines(self.params.get("run", {}))
@@ -1972,24 +2222,18 @@ class RSL_Bot_Mainframe:
         raise SystemExit(0)
 
     def _handoff_full_application_restart_with_fallback(self, trigger: str):
-        current_trigger = trigger
         while self.running:
             try:
-                self._handoff_full_application_restart(current_trigger)
+                self._handoff_full_application_restart(trigger)
             except SystemExit:
                 raise
             except Exception as handoff_error:
                 self.last_loop_error = str(handoff_error)
                 self.log.exception(
-                    "Restart handoff failed after trigger '%s'.", current_trigger
+                    "Restart handoff failed after trigger '%s'. Retrying automatically.",
+                    trigger,
                 )
-                wait_result = self.wait_for_restart_command(
-                    allow_connectivity_recovery=True
-                )
-                if wait_result == "connectivity_recovered":
-                    current_trigger = "connectivity recovered after failed handoff"
-                else:
-                    current_trigger = "retry after failed handoff"
+                time.sleep(5)
 
         raise RuntimeError("Runtime stopped before restart handoff could complete.")
 
@@ -2250,6 +2494,7 @@ class RSL_Bot_Mainframe:
             for obj in objs:
                 if self.resembles(obj.text, "Ring de Guardianes"):
                     window_tools.click_at(obj.mean_pos_x, obj.mean_pos_y, delay=2)
+                    self._update_daily_report({"summary": {"guardian_ring": {"successful_entries": 1}}})
                     for idx in range(1, 6):
                         window_tools.click_center(
                             self.window,
@@ -2289,6 +2534,7 @@ class RSL_Bot_Mainframe:
                                         self.window,
                                         self.search_areas["buy_mystery_shard"],
                                     )
+                                    self._update_daily_report({"summary": {"market": {"mystery_shards_bought": 1}}})
                                 break
 
                         window_tools.move_right(self.window, strength=1.)
@@ -2560,6 +2806,9 @@ class RSL_Bot_Mainframe:
         self.main_loop_stopped = True
 
     def start_main_loop(self):
+        # Keep the lost-encounter cache session-only so it never survives a restart.
+        session_encounter_state.reset_session_lost_encounters()
+        self._load_daily_session_avoid_state()
         self._announce_restart_success_if_requested()
 
         while True:
@@ -2572,41 +2821,19 @@ class RSL_Bot_Mainframe:
                 self._handoff_full_application_restart_with_fallback(trigger)
             except Exception as exc:
                 self.last_loop_error = str(exc)
-                error_time = datetime.now(BERLIN_TZ).strftime("%Y-%m-%d %H:%M:%S")
                 self.log.exception("Fatal error in main loop.")
-                self.discord_override.send_message(
-                    f"[Bot Error] Main process crashed at {error_time} CEST.\nError: {exc}"
-                )
-
                 try:
-                    screenshot_path = self.capture_error_screenshot()
-                    self.discord_override.send_image(
-                        screenshot_path,
-                        caption=f"[Bot Error] Raid window screenshot at {error_time} CEST",
+                    self.discord_override.send_message(
+                        "Error logged - automatic restart in progress"
                     )
-                except Exception as screenshot_error:
-                    self.log.error("Failed to capture/send screenshot: %s", screenshot_error)
+                except Exception:
+                    self.log.exception("Failed to send automatic restart notification.")
 
                 self.main_loop_running = False
                 self.main_loop_stopped = True
-                allow_auto_connectivity_recovery = (
-                    self._is_likely_network_exception(exc)
-                    or bool(
-                        self.connectivity_supervisor and self.connectivity_supervisor.is_paused()
-                    )
+                self._handoff_full_application_restart_with_fallback(
+                    "main loop exception"
                 )
-                wait_result = self.wait_for_restart_command(
-                    allow_connectivity_recovery=allow_auto_connectivity_recovery
-                )
-
-                if wait_result == "connectivity_recovered":
-                    self._handoff_full_application_restart_with_fallback(
-                        "connectivity recovered after main loop exception"
-                    )
-                else:
-                    self._handoff_full_application_restart_with_fallback(
-                        "post-crash restart command"
-                    )
 
             # If run loop exited without restart, wait briefly and resume.
             time.sleep(2)
@@ -2619,19 +2846,8 @@ def main() -> int:
 
     existing_pid = _read_running_instance_pid()
     if existing_pid:
-        replacement_reason = None
-        if _is_restart_replacement_launch():
-            replacement_reason = "Restart launch"
-        elif _is_entrypoint_relaunch():
-            replacement_reason = "Raid_Bot.py entrypoint relaunch"
-
-        if replacement_reason:
-            print(f"{replacement_reason} replacing previous RaidBot PID {existing_pid}.")
-            _kill_process_tree_by_pid(existing_pid)
-            _wait_for_process_exit(existing_pid, timeout_seconds=10.0)
-        else:
-            print(f"RaidBot is already running (PID {existing_pid}). Exiting duplicate launch.")
-            return 1
+        _kill_process_tree_by_pid(existing_pid)
+        _wait_for_process_exit(existing_pid, timeout_seconds=10.0)
 
     _write_current_pid_file()
     atexit.register(_remove_current_pid_file)

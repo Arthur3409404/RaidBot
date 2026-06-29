@@ -28,11 +28,13 @@ def _is_process_running_by_name(process_name: str) -> bool:
         ["tasklist", "/FI", f"IMAGENAME eq {process_name}", "/FO", "CSV", "/NH"],
         stdout=subprocess.PIPE,
         stderr=subprocess.DEVNULL,
-        text=True,
         check=False,
     )
-    output = (result.stdout or "").strip()
-    return bool(output and not output.startswith("INFO:"))
+    output = result.stdout or b""
+    if isinstance(output, str):
+        output = output.encode("utf-8", errors="replace")
+    output = output.strip()
+    return bool(output and not output.startswith(b"INFO:"))
 
 
 def close_discord_desktop_app() -> bool:

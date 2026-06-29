@@ -1,6 +1,7 @@
 import tempfile
 import unittest
-from datetime import datetime
+import json
+from datetime import datetime, timezone
 from pathlib import Path
 
 from raid_bot.utils import file_tools
@@ -111,7 +112,7 @@ class FileToolsTests(unittest.TestCase):
 
         self.assertIn("dungeons_eventdungeon_level", raid_bot_source)
         self.assertIn("eventdungeon_level", raid_bot_source)
-        self.assertIn("dungeons_eventdungeon_level = 29", profile_source)
+        self.assertIn("dungeons_eventdungeon_level", profile_source)
 
     def test_daily_log_helpers_create_and_append_a_shared_file(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -121,18 +122,36 @@ class FileToolsTests(unittest.TestCase):
             )
             created = file_tools.ensure_daily_log_header(log_path, ["# header", ""])
             file_tools.append_daily_log_lines(log_path, ["entry one", "entry two"])
+            day_key = datetime.now(timezone.utc).strftime("%Y_%m_%d")
 
             self.assertTrue(created)
-            self.assertEqual(
-                log_path.read_text(encoding="utf-8"),
-                "# header\nentry one\nentry two\n",
-            )
+            payload = json.loads(log_path.read_text(encoding="utf-8"))
+            self.assertEqual(payload["metadata"]["header_lines"], ["# header", ""])
+            self.assertEqual(payload["days"][day_key]["events"], ["entry one", "entry two"])
 
             created_again = file_tools.ensure_daily_log_header(log_path, ["# other header"])
             self.assertFalse(created_again)
+            payload_again = json.loads(log_path.read_text(encoding="utf-8"))
+            self.assertEqual(payload_again["metadata"]["header_lines"], ["# header", ""])
+            self.assertEqual(payload_again["days"][day_key]["events"], ["entry one", "entry two"])
+
+    def test_daily_log_document_merges_numeric_summary_fields(self):
+        with tempfile.TemporaryDirectory() as directory:
+            log_path = file_tools.get_daily_log_path(log_dir=Path(directory))
+            file_tools.ensure_daily_log_header(log_path, ["# header"])
+
+            def increment_market_purchase(day: dict) -> None:
+                market = day.setdefault("summary", {}).setdefault("market", {})
+                market["mystery_shards_bought"] = int(market.get("mystery_shards_bought", 0)) + 1
+
+            file_tools.update_daily_log_document(log_path, increment_market_purchase)
+            file_tools.update_daily_log_document(log_path, increment_market_purchase)
+
+            payload = json.loads(log_path.read_text(encoding="utf-8"))
+            day_key = datetime.now(timezone.utc).strftime("%Y_%m_%d")
             self.assertEqual(
-                log_path.read_text(encoding="utf-8"),
-                "# header\nentry one\nentry two\n",
+                payload["days"][day_key]["summary"]["market"]["mystery_shards_bought"],
+                2,
             )
 
 

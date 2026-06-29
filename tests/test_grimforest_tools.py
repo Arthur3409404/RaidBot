@@ -31,6 +31,7 @@ _install_stub_module(
 )
 
 from raid_bot.modes import cursedcity_tools, grimforest_tools
+from raid_bot.modes import session_encounter_state
 
 
 class SimulatedLossBot(grimforest_tools.RSL_Bot_GrimForest):
@@ -315,6 +316,41 @@ class GrimForestToolsTests(unittest.TestCase):
         self.assertEqual(len(moves), 6)
         self.assertEqual(detect.call_count, 4)
 
+    def test_cursed_city_scans_current_view_before_first_snake_move(self):
+        bot = cursedcity_tools.RSL_Bot_CursedCity(window=object())
+        candidate = {"score": 1.0, "bbox_rel": {"x": 0.1, "y": 0.1, "width": 0.1, "height": 0.1}}
+
+        with patch.object(bot, "detect_cursed_city_candidates", return_value=[candidate]) as detect:
+            with patch.object(cursedcity_tools.window_tools, "move_right") as move_right:
+                with patch.object(cursedcity_tools.window_tools, "move_down") as move_down:
+                    with patch.object(cursedcity_tools.window_tools, "move_left") as move_left:
+                        with patch.object(cursedcity_tools.window_tools, "move_up") as move_up:
+                            self.assertEqual(bot.detect_candidates_with_random_reposition("hard"), [candidate])
+
+        self.assertEqual(detect.call_count, 1)
+        move_right.assert_not_called()
+        move_down.assert_not_called()
+        move_left.assert_not_called()
+        move_up.assert_not_called()
+
+    def test_cursed_city_rejected_candidate_continues_snake_without_reset(self):
+        bot = cursedcity_tools.RSL_Bot_CursedCity(
+            window=object(),
+            setup={"grid_search_size_steps": 2},
+        )
+
+        moves = []
+        with patch.object(bot, "detect_cursed_city_candidates", side_effect=[[], [{"score": 1.0, "bbox_rel": {}}], [], []]):
+            with patch.object(cursedcity_tools.window_tools, "move_right", side_effect=lambda *_, **__: moves.append("right")):
+                with patch.object(cursedcity_tools.window_tools, "move_down", side_effect=lambda *_, **__: moves.append("down")):
+                    with patch.object(cursedcity_tools.window_tools, "move_left", side_effect=lambda *_, **__: moves.append("left")):
+                        with patch.object(cursedcity_tools.window_tools, "move_up", side_effect=lambda *_, **__: moves.append("up")):
+                            self.assertEqual(len(bot.detect_candidates_with_random_reposition("hard")), 1)
+                            bot._move_random_direction_once()
+                            self.assertEqual(bot.detect_candidates_with_random_reposition("hard"), [])
+
+        self.assertEqual(moves[:3], ["left", "left", "down"])
+
     def test_grim_forest_stride_three_starts_opposite_previous_failed_start(self):
         with tempfile.TemporaryDirectory() as directory:
             bot = grimforest_tools.RSL_Bot_GrimForest(
@@ -349,6 +385,43 @@ class GrimForestToolsTests(unittest.TestCase):
         self.assertEqual(bot._spiral_stride_for_difficulty("hard"), 1)
         self.assertIsNone(bot.last_no_candidate_start_direction_by_difficulty["hard"])
 
+    def test_grim_forest_scans_current_view_before_first_snake_move(self):
+        with tempfile.TemporaryDirectory() as directory:
+            bot = grimforest_tools.RSL_Bot_GrimForest(window=object(), setup=self._setup_paths(directory))
+
+        candidate = {"score": 1.0, "bbox_rel": {"x": 0.1, "y": 0.1, "width": 0.1, "height": 0.1}}
+        with patch.object(bot, "detect_grim_forest_candidates", return_value=[candidate]) as detect:
+            with patch.object(grimforest_tools.window_tools, "move_right") as move_right:
+                with patch.object(grimforest_tools.window_tools, "move_down") as move_down:
+                    with patch.object(grimforest_tools.window_tools, "move_left") as move_left:
+                        with patch.object(grimforest_tools.window_tools, "move_up") as move_up:
+                            self.assertEqual(bot.detect_candidates_with_random_reposition("hard"), [candidate])
+
+        self.assertEqual(detect.call_count, 1)
+        move_right.assert_not_called()
+        move_down.assert_not_called()
+        move_left.assert_not_called()
+        move_up.assert_not_called()
+
+    def test_grim_forest_rejected_candidate_continues_snake_without_reset(self):
+        with tempfile.TemporaryDirectory() as directory:
+            bot = grimforest_tools.RSL_Bot_GrimForest(
+                window=object(),
+                setup=self._setup_paths(directory, grid_search_size_steps=2),
+            )
+
+        moves = []
+        with patch.object(bot, "detect_grim_forest_candidates", side_effect=[[], [{"score": 1.0, "bbox_rel": {}}], [], []]):
+            with patch.object(grimforest_tools.window_tools, "move_right", side_effect=lambda *_, **__: moves.append("right")):
+                with patch.object(grimforest_tools.window_tools, "move_down", side_effect=lambda *_, **__: moves.append("down")):
+                    with patch.object(grimforest_tools.window_tools, "move_left", side_effect=lambda *_, **__: moves.append("left")):
+                        with patch.object(grimforest_tools.window_tools, "move_up", side_effect=lambda *_, **__: moves.append("up")):
+                            self.assertEqual(len(bot.detect_candidates_with_random_reposition("hard")), 1)
+                            bot._move_random_direction_once()
+                            self.assertEqual(bot.detect_candidates_with_random_reposition("hard"), [])
+
+        self.assertEqual(moves[:3], ["left", "left", "down"])
+
     def test_grim_forest_hard_rejects_mimeto_encounter_after_candidate_click(self):
         with tempfile.TemporaryDirectory() as directory:
             bot = grimforest_tools.RSL_Bot_GrimForest(
@@ -364,6 +437,24 @@ class GrimForestToolsTests(unittest.TestCase):
                     self.assertFalse(bot.select_grim_forest_candidate(candidate))
 
         click_at.assert_called_once()
+        sendkey.assert_called_once_with("esc", delay=1.0, window=bot.window)
+
+    def test_grim_forest_session_lost_encounter_skips_candidate_once(self):
+        session_encounter_state.reset_session_lost_encounters()
+        session_encounter_state.add_session_lost_encounter("grim_forest", "Mimeto Dificil")
+        with tempfile.TemporaryDirectory() as directory:
+            bot = grimforest_tools.RSL_Bot_GrimForest(
+                window=object(),
+                setup=self._setup_paths(directory, stage_select_delay_seconds=0),
+            )
+        bot.current_run_difficulty = "hard"
+        candidate = {"center_abs_x": 100, "center_abs_y": 200}
+
+        with patch.object(grimforest_tools.window_tools, "click_at"):
+            with patch.object(grimforest_tools.window_tools, "sendkey") as sendkey:
+                with patch.object(bot, "_read_menu_name", return_value="Mimeto Dificil"):
+                    self.assertFalse(bot.select_grim_forest_candidate(candidate))
+
         sendkey.assert_called_once_with("esc", delay=1.0, window=bot.window)
 
     def test_grim_forest_normal_allows_mimeto_encounter_name(self):
@@ -382,12 +473,109 @@ class GrimForestToolsTests(unittest.TestCase):
 
         sendkey.assert_not_called()
 
+    def test_grim_forest_candidate_view_escapes_when_menu_remains_grim_forest(self):
+        with tempfile.TemporaryDirectory() as directory:
+            bot = grimforest_tools.RSL_Bot_GrimForest(
+                window=object(),
+                setup=self._setup_paths(directory, stage_select_delay_seconds=0),
+            )
+        bot.current_run_difficulty = "hard"
+        candidate = {"center_abs_x": 100, "center_abs_y": 200}
+
+        with patch.object(grimforest_tools.window_tools, "click_at"):
+            with patch.object(grimforest_tools.window_tools, "sendkey") as sendkey:
+                with patch.object(bot, "_read_menu_name", return_value="Bosque Lúgubre"):
+                    self.assertFalse(bot.select_grim_forest_candidate(candidate))
+
+        sendkey.assert_called_once_with("esc", delay=1.0, window=bot.window)
+
+    def test_grim_forest_continues_to_next_candidate_after_rejecting_first_one(self):
+        with tempfile.TemporaryDirectory() as directory:
+            bot = grimforest_tools.RSL_Bot_GrimForest(
+                reader=object(),
+                window=types.SimpleNamespace(left=0, top=0, width=1000, height=1000),
+                setup=self._setup_paths(directory, stage_select_delay_seconds=0),
+            )
+        bot.main_loop_running = True
+        bot.running = True
+        bot.current_run_difficulty = "hard"
+        bot.detect_candidates_with_random_reposition = lambda difficulty=None: [
+            {"center_abs_x": 100, "center_abs_y": 200, "index": 1},
+            {"center_abs_x": 300, "center_abs_y": 400, "index": 2},
+        ]
+
+        select_calls = []
+
+        def fake_select(candidate):
+            select_calls.append(candidate["index"])
+            return candidate["index"] == 2
+
+        bot.select_grim_forest_candidate = fake_select
+        bot.has_grim_forest_keys_remaining = lambda retries=3: True
+        bot._perform_startup_check = lambda: True
+        bot.update_available_keys = lambda: 30
+        bot.set_difficulty = lambda requested: requested
+        bot._plan_and_commit_run_difficulty = lambda: "hard"
+        bot.click_grim_forest_start_button = lambda retries=None: "battle_started"
+        bot.get_battle_outcome = lambda timeout_seconds=None, poll_interval_seconds=None: "Victoria"
+        bot.return_to_mode_root_after_battle = lambda max_attempts=4: "mode"
+        bot.select_post_battle_stat_reward = lambda: None
+        bot._move_random_direction_once = lambda: None
+        bot.exit_grim_forest_to_main_menu = lambda reason: True
+
+        original_deadline_check = grimforest_tools._ensure_within_run_deadline
+        grimforest_tools._ensure_within_run_deadline = lambda *args, **kwargs: None
+        try:
+            self.assertTrue(bot.run_grimforest(main_loop_running=True, max_run_duration_seconds=1))
+        finally:
+            grimforest_tools._ensure_within_run_deadline = original_deadline_check
+
+        self.assertEqual(select_calls, [1, 2])
+
+    def test_grim_forest_exit_to_main_menu_uses_escape_key(self):
+        with tempfile.TemporaryDirectory() as directory:
+            bot = grimforest_tools.RSL_Bot_GrimForest(
+                window=object(),
+                setup=self._setup_paths(directory),
+            )
+
+        with patch.object(bot, "_read_menu_name", side_effect=["Bosque Lúgubre", "Modos de juego"]):
+            with patch.object(grimforest_tools.window_tools, "sendkey") as sendkey:
+                with patch.object(grimforest_tools.window_tools, "click_center") as click_center:
+                    self.assertTrue(bot.exit_grim_forest_to_main_menu("test"))
+
+        click_center.assert_called_once_with(bot.window, bot.search_areas["go_to_higher_menu"], delay=1.8)
+        sendkey.assert_not_called()
+
     def test_cursed_city_rejects_forbidden_encounter_names(self):
         bot = cursedcity_tools.RSL_Bot_CursedCity(window=object())
 
         self.assertTrue(bot._is_forbidden_encounter_name("Borgoth the Scarab King"))
         self.assertTrue(bot._is_forbidden_encounter_name("Siroth"))
         self.assertFalse(bot._is_forbidden_encounter_name("Amius"))
+
+    def test_cursed_city_previous_loss_is_loaded_and_filters_same_location(self):
+        with tempfile.TemporaryDirectory() as directory:
+            setup = {"last_defeat_path": str(Path(directory) / "cursed_last_defeat.json")}
+            previous = {
+                "score": 0.91,
+                "bbox_rel": {"x": 0.20, "y": 0.25, "width": 0.10, "height": 0.10},
+                "center_abs_x": 100,
+                "center_abs_y": 120,
+            }
+
+            writer = cursedcity_tools.RSL_Bot_CursedCity(setup=setup)
+            writer._record_last_defeat_candidate("hard", previous)
+
+            reader = cursedcity_tools.RSL_Bot_CursedCity(setup=setup)
+            far_candidate = dict(previous)
+            far_candidate["bbox_rel"] = {"x": 0.75, "y": 0.75, "width": 0.10, "height": 0.10}
+
+            filtered = reader._filter_candidates_against_last_defeat([previous, far_candidate], "hard")
+            self.assertEqual(filtered, [far_candidate])
+            payload = json.loads(Path(setup["last_defeat_path"]).read_text(encoding="utf-8"))
+            self.assertEqual(payload["hard"]["outcome"], "Derrota")
+            self.assertEqual(payload["hard"]["bbox_rel"], previous["bbox_rel"])
 
     def test_legacy_random_reposition_config_still_controls_spiral_limit(self):
         cursed = cursedcity_tools.RSL_Bot_CursedCity(

@@ -187,6 +187,10 @@ class RSL_Bot_DoomTower():
         self.current_difficulty = None
         self.battles_done = 0
         self.battles_won = 0
+        self.starting_silver_keys = 0
+        self.starting_gold_keys = 0
+        self.silver_keys_used_this_run = 0
+        self.gold_keys_used_this_run = 0
         self.battle_status = 'Starting'
         self.doomtower_completed = False
         self.doomtower_climb_status_hard = False
@@ -204,6 +208,10 @@ class RSL_Bot_DoomTower():
     # ------------------------- Reset -------------------------
     def reset_run_state(self):
         self.battle_status = 'Starting'
+        self.starting_silver_keys = 0
+        self.starting_gold_keys = 0
+        self.silver_keys_used_this_run = 0
+        self.gold_keys_used_this_run = 0
 
     # ------------------------- Debug -------------------------
     def _window_region(self):
@@ -1196,6 +1204,8 @@ class RSL_Bot_DoomTower():
             silver_keys=getattr(self, "num_of_silver_keys", None),
             gold_keys=getattr(self, "num_of_gold_keys", None),
         )
+        self.starting_silver_keys = int(getattr(self, "num_of_silver_keys", 0) or 0)
+        self.starting_gold_keys = int(getattr(self, "num_of_gold_keys", 0) or 0)
 
         loop_index = 0
         while self.main_loop_running:
@@ -1261,6 +1271,14 @@ class RSL_Bot_DoomTower():
             silver_keys=getattr(self, "num_of_silver_keys", None),
             gold_keys=getattr(self, "num_of_gold_keys", None),
             loops=loop_index,
+        )
+        self.silver_keys_used_this_run = max(
+            0,
+            int(getattr(self, "starting_silver_keys", 0) or 0) - int(getattr(self, "num_of_silver_keys", 0) or 0),
+        )
+        self.gold_keys_used_this_run = max(
+            0,
+            int(getattr(self, "starting_gold_keys", 0) or 0) - int(getattr(self, "num_of_gold_keys", 0) or 0),
         )
 
     

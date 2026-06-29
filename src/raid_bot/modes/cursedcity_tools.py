@@ -4,8 +4,8 @@
 from __future__ import annotations
 
 import difflib
+import json
 import logging
-import random
 import time
 from dataclasses import dataclass
 from functools import lru_cache
@@ -18,6 +18,7 @@ import raid_bot.utils.auto_battle_tools as auto_battle_tools
 import raid_bot.utils.image_tools as image_tools
 import raid_bot.utils.map_tools as map_tools
 import raid_bot.utils.window_tools as window_tools
+from raid_bot.modes import session_encounter_state
 
 
 MENU_TITLE = "Ciudad Maldita"
@@ -27,6 +28,9 @@ DEFAULT_DETECTOR_MODEL_PATH = Path("data") / "models" / "grimforest_detector" / 
 DEFAULT_DETECTOR_CONFIDENCE = 0.25
 DEFAULT_DETECTOR_IMGSZ = 640
 FORBIDDEN_ENCOUNTER_NAMES = ("borgoth", "siroth")
+SESSION_LOST_ENCOUNTER_MATCH_THRESHOLD = 0.88
+SESSION_LOST_ENCOUNTER_ESC_COOLDOWN_SECONDS = 2.5
+DEFAULT_LAST_DEFEAT_PATH = Path("data") / "tmp" / "cursed_city_last_defeat.json"
 
 
 @dataclass(frozen=True)
@@ -113,17 +117,27 @@ def _ensure_within_run_deadline(bot, context: str):
         raise TimeoutError(f"{bot.__class__.__name__} exceeded max runtime of {hours:.1f}h while {context}.")
 
 
-def _spiral_direction_for_step(step_index: int, start_direction_index: int = 0) -> str:
-    directions = ("right", "down", "left", "up")
-    remaining = max(0, int(step_index))
-    segment_length = 1
-    direction_index = int(start_direction_index) % len(directions)
-    while remaining >= segment_length:
-        remaining -= segment_length
-        direction_index = (direction_index + 1) % len(directions)
-        if direction_index % 2 == 0:
-            segment_length += 1
-    return directions[direction_index]
+def _build_grid_search_directions(
+    grid_size: int,
+    *,
+    anchor_horizontal_direction: str = "left",
+    anchor_vertical_direction: str = "down",
+    row_start_direction: str = "right",
+    row_transition_direction: str = "up",
+) -> list[str]:
+    directions: list[str] = []
+    grid_size = max(0, int(grid_size))
+
+    directions.extend([anchor_horizontal_direction] * grid_size)
+    directions.extend([anchor_vertical_direction] * grid_size)
+
+    current_row_direction = row_start_direction
+    for row_index in range(grid_size):
+        directions.extend([current_row_direction] * grid_size)
+        if row_index < grid_size - 1:
+            directions.append(row_transition_direction)
+            current_row_direction = "left" if current_row_direction == "right" else "right"
+    return directions
 
 
 class RSL_Bot_CursedCity:
@@ -167,16 +181,24 @@ class RSL_Bot_CursedCity:
             "difficulty_dropdown_open_delay_seconds": 0.8,
             "difficulty_switch_confirm_delay_seconds": 2.5,
             "post_entry_wait_seconds": 5.0,
+            "initial_candidate_zoom_out_steps": 3,
+            "initial_candidate_zoom_out_amount_per_step": -600,
+            "initial_candidate_zoom_out_delay_seconds": 0.75,
             "candidate_detection_retries_per_view": 2,
             "max_random_repositions_when_no_candidates": 6,
             "max_spiral_repositions_when_no_candidates": 6,
             "max_failed_selection_repositions": 3,
+            "grid_search_size_steps": 5,
+            "grid_search_width_steps": 5,
+            "grid_search_height_steps": 5,
             "target_hex": "CEC329",
             "expected_structure_count": 5,
             "detector_model_path": str(DEFAULT_DETECTOR_MODEL_PATH),
             "detector_confidence": DEFAULT_DETECTOR_CONFIDENCE,
             "detector_imgsz": DEFAULT_DETECTOR_IMGSZ,
+            "last_defeat_path": str(DEFAULT_LAST_DEFEAT_PATH),
             "stage_select_delay_seconds": 3.0,
+            "stage_name_read_delay_seconds": 5.0,
             "stage_start_retries": 3,
             "stage_battle_timeout_seconds": 4200.0,
             "stage_battle_poll_interval_seconds": 2.0,
@@ -194,6 +216,7 @@ class RSL_Bot_CursedCity:
             ]
 
         self.target_bgr_as_rgb = self._hex_to_bgr_as_rgb(str(self.setup.get("target_hex", "CEC329")))
+        self.last_defeat_path = Path(str(self.setup.get("last_defeat_path", DEFAULT_LAST_DEFEAT_PATH)))
         self.max_run_duration_seconds = MAX_RUN_DURATION_SECONDS
         self._run_deadline = None
         self._difficulty_toggle = 0
@@ -213,22 +236,48 @@ class RSL_Bot_CursedCity:
     def resembles(text, target, threshold=0.8):
         return difflib.SequenceMatcher(None, (text or "").lower(), (target or "").lower()).ratio() >= threshold
 
+    @staticmethod
+    def _read_json_file(path: Path, fallback: dict) -> dict:
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            return payload if isinstance(payload, dict) else dict(fallback)
+        except (OSError, ValueError):
+            return dict(fallback)
+
+    @staticmethod
+    def _write_json_file(path: Path, payload: dict):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        temp_path = path.with_suffix(path.suffix + ".tmp")
+        temp_path.write_text(json.dumps(payload, indent=2, ensure_ascii=True), encoding="utf-8")
+        temp_path.replace(path)
+
+    def _load_last_defeat_state(self) -> dict:
+        stored = self._read_json_file(self.last_defeat_path, {"hard": None, "normal": None})
+        return {
+            "hard": stored.get("hard") if isinstance(stored.get("hard"), dict) else None,
+            "normal": stored.get("normal") if isinstance(stored.get("normal"), dict) else None,
+        }
+
     def reset_run_state(self):
         self.running = True
         self.main_loop_running = True
         self.current_difficulty = None
         self.current_run_difficulty = None
+        self.current_encounter_name = None
         self.available_keys = 0
+        self.starting_available_keys = 0
+        self.keys_used_this_run = 0
         self.key_counter = None
         self.mode_transitioned_out = False
-        self.last_defeat_by_difficulty = getattr(self, "last_defeat_by_difficulty", {"hard": None, "normal": None})
+        self.last_defeat_by_difficulty = self._load_last_defeat_state()
         self.no_candidate_failures_by_difficulty = getattr(
             self,
             "no_candidate_failures_by_difficulty",
             {"hard": 0, "normal": 0},
         )
-        self.spiral_reposition_index = 0
-        self.spiral_start_direction_index = random.randrange(4)
+        self.initial_candidate_zoom_out_done = False
+        self.grid_search_directions = []
+        self.grid_search_direction_index = 0
 
     def _read_menu_name(self) -> str | None:
         try:
@@ -499,6 +548,17 @@ class RSL_Bot_CursedCity:
         normalized = str(text or "").strip().lower()
         return any(name in normalized for name in FORBIDDEN_ENCOUNTER_NAMES)
 
+    def _session_lost_encounter_threshold(self) -> float:
+        return float(self.setup.get("session_lost_encounter_match_threshold", SESSION_LOST_ENCOUNTER_MATCH_THRESHOLD))
+
+    def _session_lost_encounter_cooldown_seconds(self) -> float:
+        return float(
+            self.setup.get(
+                "session_lost_encounter_esc_cooldown_seconds",
+                SESSION_LOST_ENCOUNTER_ESC_COOLDOWN_SECONDS,
+            )
+        )
+
     def _read_visible_encounter_text(self) -> str | None:
         texts: list[str] = []
         for obj in self._read_text_objects("stage_lower_half_text_scan"):
@@ -514,21 +574,54 @@ class RSL_Bot_CursedCity:
             return None
         return " ".join(texts).strip() or None
 
-    def _max_spiral_repositions_when_no_candidates(self) -> int:
-        return max(0, int(self.setup.get("max_spiral_repositions_when_no_candidates", 6)))
+    def add_visible_encounter_to_avoid_list(self) -> str | None:
+        """Read the current encounter text from the live window and add it to today's avoid list."""
+        encounter_text = self._read_visible_encounter_text()
+        normalized = session_encounter_state.normalize_encounter_name(encounter_text)
+        if not normalized:
+            self.log.info("[Cursed City] No readable encounter text found to add to avoid list.")
+            return None
+
+        if session_encounter_state.add_session_lost_encounter("cursed_city", encounter_text):
+            self.current_encounter_name = encounter_text
+            self.log.info(
+                "[Cursed City] Added current encounter to avoid list: raw=%r normalized=%r.",
+                encounter_text,
+                normalized,
+            )
+            return encounter_text
+
+        return None
+
+    def _skip_session_lost_encounter_if_needed(self, encounter_text: str | None) -> bool:
+        matched, normalized, canonical, should_press = session_encounter_state.should_escape_session_lost_encounter(
+            "cursed_city",
+            encounter_text,
+            threshold=self._session_lost_encounter_threshold(),
+            cooldown_seconds=self._session_lost_encounter_cooldown_seconds(),
+        )
+        self.log.info(
+            "[Cursed City] Encounter OCR: raw=%r normalized=%r session_match=%s canonical=%r",
+            encounter_text,
+            normalized,
+            matched,
+            canonical,
+        )
+        if not matched:
+            if encounter_text:
+                self.current_encounter_name = encounter_text
+            return False
+        if should_press:
+            self.log.info("[Cursed City] Session lost encounter matched; pressing ESC once.")
+            window_tools.sendkey("esc", delay=1.0, window=self.window)
+            self.log.info("[Cursed City] ESC pressed=%s for encounter=%r.", True, canonical)
+        else:
+            self.log.info("[Cursed City] ESC suppressed by cooldown for encounter=%r.", canonical)
+        return True
 
     def _difficulty_state_key(self, difficulty: str | None) -> str | None:
         key = self._normalize_difficulty_value(difficulty)
         return key if key in {"hard", "normal"} else None
-
-    def _spiral_stride_for_difficulty(self, difficulty: str | None) -> int:
-        key = self._difficulty_state_key(difficulty)
-        failures = int(self.no_candidate_failures_by_difficulty.get(key, 0) or 0) if key else 0
-        if failures >= 3:
-            return 3
-        if failures >= 1:
-            return 2
-        return 1
 
     def _record_candidate_scan_result(self, difficulty: str | None, found: bool):
         key = self._difficulty_state_key(difficulty)
@@ -541,42 +634,84 @@ class RSL_Bot_CursedCity:
             self.no_candidate_failures_by_difficulty.get(key, 0) or 0
         ) + 1
 
-    def _move_spiral_direction_once(self):
-        direction_name = _spiral_direction_for_step(
-            self.spiral_reposition_index,
-            self.spiral_start_direction_index,
+    def _grid_search_size_steps(self) -> int:
+        if "grid_search_size_steps" in self.setup:
+            return max(0, int(self.setup.get("grid_search_size_steps", 5) or 0))
+        return max(
+            0,
+            int(
+                max(
+                    int(self.setup.get("grid_search_width_steps", 5) or 0),
+                    int(self.setup.get("grid_search_height_steps", 5) or 0),
+                )
+            ),
         )
-        self.spiral_reposition_index += 1
+
+    def _zoom_out_before_initial_candidate_detection(self):
+        if self.initial_candidate_zoom_out_done:
+            return
+        self.initial_candidate_zoom_out_done = True
+
+        steps = max(0, int(self.setup.get("initial_candidate_zoom_out_steps", 3) or 0))
+        if steps <= 0:
+            return
+
+        self.log.info("[Cursed City] Zooming out before grid candidate detection (%s steps).", steps)
+        try:
+            window_tools.zoom_out(
+                self.window,
+                steps=steps,
+                amount_per_step=int(self.setup.get("initial_candidate_zoom_out_amount_per_step", -600)),
+                delay=float(self.setup.get("initial_candidate_zoom_out_delay_seconds", 0.75)),
+            )
+        except Exception:
+            self.log.debug("[Cursed City] Initial zoom-out failed; continuing with candidate detection.", exc_info=True)
+
+    def _reset_grid_search_path(self):
+        grid_size = self._grid_search_size_steps()
+        self.grid_search_directions = _build_grid_search_directions(grid_size)
+        self.grid_search_direction_index = 0
+
+    def _move_direction_once(self, direction_name: str):
         move_fn = {
             "up": window_tools.move_up,
             "down": window_tools.move_down,
             "left": window_tools.move_left,
             "right": window_tools.move_right,
         }[direction_name]
-        self.log.info("[Cursed City] No candidates. Moving in spiral: %s", direction_name)
+        self.log.info("[Cursed City] No candidates. Moving in grid search: %s", direction_name)
         move_fn(self.window, strength=float(self.setup.get("pan_strength", 1.0)))
 
     def _move_random_direction_once(self):
-        self._move_spiral_direction_once()
+        self._zoom_out_before_initial_candidate_detection()
+        if self.grid_search_direction_index >= len(self.grid_search_directions):
+            self._reset_grid_search_path()
+        if self.grid_search_direction_index >= len(self.grid_search_directions):
+            return
+        direction_name = self.grid_search_directions[self.grid_search_direction_index]
+        self.grid_search_direction_index += 1
+        self._move_direction_once(direction_name)
 
     def detect_candidates_with_random_reposition(self, difficulty: str | None = None):
-        max_moves = self._max_spiral_repositions_when_no_candidates()
-        stride = self._spiral_stride_for_difficulty(difficulty)
-        moves_done = 0
-        while True:
+        self._zoom_out_before_initial_candidate_detection()
+        if self.grid_search_direction_index >= len(self.grid_search_directions):
+            self._reset_grid_search_path()
+        candidates = self.detect_cursed_city_candidates()
+        candidates = self._filter_candidates_against_last_defeat(candidates, difficulty or "")
+        if candidates:
+            self._record_candidate_scan_result(difficulty, found=True)
+            return candidates
+        while self.grid_search_direction_index < len(self.grid_search_directions) and self.main_loop_running:
             _ensure_within_run_deadline(self, "detecting Cursed City candidates")
+            direction_name = self.grid_search_directions[self.grid_search_direction_index]
+            self.grid_search_direction_index += 1
+            self._move_direction_once(direction_name)
             candidates = self.detect_cursed_city_candidates()
             candidates = self._filter_candidates_against_last_defeat(candidates, difficulty or "")
             if candidates:
                 self._record_candidate_scan_result(difficulty, found=True)
                 return candidates
-            if moves_done >= max_moves or not self.main_loop_running:
-                self._record_candidate_scan_result(difficulty, found=False)
-                break
-            moves_to_make = min(stride, max_moves - moves_done)
-            for _ in range(moves_to_make):
-                self._move_random_direction_once()
-                moves_done += 1
+        self._record_candidate_scan_result(difficulty, found=False)
         return []
 
     def select_cursed_city_candidate(self, candidate: dict) -> bool:
@@ -591,11 +726,17 @@ class RSL_Bot_CursedCity:
             float(candidate.get("score", 0.0) or 0.0),
         )
         window_tools.click_at(click_x, click_y, delay=2.5, window=self.window)
+        time.sleep(float(self.setup.get("stage_name_read_delay_seconds", 5.0)))
         encounter_text = self._read_visible_encounter_text()
+        if encounter_text is None:
+            self.log.debug("[Cursed City] Encounter OCR failed after candidate click; preserving fallback behavior.")
+        if self._skip_session_lost_encounter_if_needed(encounter_text):
+            return False
         if self._is_forbidden_encounter_name(encounter_text):
             self.log.info("[Cursed City] Skipping forbidden encounter: %s.", encounter_text)
             window_tools.sendkey("esc", delay=1.0, window=self.window)
             return False
+        self.current_encounter_name = encounter_text
         return not self.is_in_cursed_city_mode()
 
     def _find_empezar_button_in_lower_half(self):
@@ -714,9 +855,27 @@ class RSL_Bot_CursedCity:
 
     def _record_last_defeat_candidate(self, difficulty: str, candidate: dict):
         key = str(difficulty or "").strip().lower()
-        if key in {"hard", "normal"}:
-            self.last_defeat_by_difficulty[key] = dict(candidate)
-            self.log.info("[Cursed City] Remembered defeat location for '%s' in runtime state.", key)
+        if key not in {"hard", "normal"} or not isinstance(candidate, dict):
+            return
+        record = dict(candidate)
+        record["difficulty"] = key
+        record["outcome"] = "Derrota"
+        record["recorded_at"] = time.strftime("%Y-%m-%dT%H:%M:%S")
+        self.last_defeat_by_difficulty[key] = record
+        self._write_json_file(self.last_defeat_path, self.last_defeat_by_difficulty)
+        self.log.info("[Cursed City] Stored defeat location for '%s'.", key)
+
+    def _record_session_lost_encounter(self, encounter_text: str | None):
+        normalized = session_encounter_state.normalize_encounter_name(encounter_text)
+        if not normalized:
+            self.log.debug("[Cursed City] Skipping session lost encounter storage because OCR was empty.")
+            return
+        if session_encounter_state.add_session_lost_encounter("cursed_city", encounter_text):
+            self.log.info(
+                "[Cursed City] Added session lost encounter: raw=%r normalized=%r.",
+                encounter_text,
+                normalized,
+            )
 
     def run_cursedcity(self, main_loop_running=True, max_run_duration_seconds=MAX_RUN_DURATION_SECONDS):
         _start_run_deadline(self, max_run_duration_seconds)
@@ -736,6 +895,7 @@ class RSL_Bot_CursedCity:
             self.current_run_difficulty,
             planned_difficulty,
         )
+        self.starting_available_keys = self.update_available_keys()
 
         failed_selection_cycles = 0
         max_failed_selection_repositions = max(1, int(self.setup.get("max_failed_selection_repositions", 3)))
@@ -746,6 +906,7 @@ class RSL_Bot_CursedCity:
                 self.exit_cursed_city_to_main_menu(reason="no_keys_remaining")
                 break
 
+            self.current_encounter_name = None
             effective_difficulty = self.current_run_difficulty or self.current_difficulty or ""
             candidates = self.detect_candidates_with_random_reposition(difficulty=effective_difficulty)
             if not candidates:
@@ -790,6 +951,7 @@ class RSL_Bot_CursedCity:
                 continue
             menu_status = self.return_to_mode_root_after_battle(max_attempts=4)
             if outcome == "Derrota":
+                self._record_session_lost_encounter(self.current_encounter_name)
                 self._record_last_defeat_candidate(effective_difficulty, selected)
                 self.log.info(
                     "[Cursed City] Lost encounter recorded; continuing search without leaving the mode."
@@ -801,6 +963,7 @@ class RSL_Bot_CursedCity:
                 self.exit_cursed_city_to_main_menu(reason="unknown_menu_after_battle")
                 break
 
+        self.keys_used_this_run = max(0, int(self.starting_available_keys or 0) - int(self.available_keys or 0))
         return True
 
     def test(self):

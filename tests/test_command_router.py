@@ -17,6 +17,12 @@ class FakeBotRuntime:
     def build_status_lines(self):
         return ["status output"]
 
+    def show_stats(self):
+        return ["stats output"]
+
+    def add_current_cursed_city_encounter_to_avoid(self):
+        return ["added cursed city"]
+
     def build_modes_lines(self):
         return ["modes output"]
 
@@ -71,6 +77,11 @@ class CommandRouterTests(unittest.TestCase):
 
     def test_status_and_parameter_commands_delegate_without_changing_messages(self):
         self.assertEqual(self.router.route("status").messages, ["status output"])
+        self.assertEqual(self.router.route("show_stats").messages, ["stats output"])
+        self.assertEqual(
+            self.router.route("cursedcity_avoid_current").messages,
+            ["added cursed city"],
+        )
         self.assertEqual(
             self.router.route("params dungeons hard").messages,
             ["params output: dungeons hard"],

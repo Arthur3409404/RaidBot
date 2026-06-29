@@ -33,6 +33,8 @@ class DiscordRemoteOverride:
         "restart",
         "help",
         "status",
+        "show_stats",
+        "stats",
         "modes",
         "params",
         "get",

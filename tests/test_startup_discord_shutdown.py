@@ -12,13 +12,13 @@ class StartupDiscordShutdownTests(unittest.TestCase):
     def test_close_discord_desktop_app_only_terminates_running_discord_processes(self):
         killed_processes: list[str] = []
 
-        def fake_run(cmd, stdout=None, stderr=None, text=None, check=None):
+        def fake_run(cmd, stdout=None, stderr=None, check=None):
             if cmd[:2] == ["tasklist", "/FI"]:
                 process_name = cmd[2].split(" eq ", 1)[1]
                 if process_name == "Discord.exe":
-                    return types.SimpleNamespace(stdout='"Discord.exe","1234"\r\n')
+                    return types.SimpleNamespace(stdout=b'"Discord.exe","1234"\r\n')
                 return types.SimpleNamespace(
-                    stdout="INFO: No tasks are running which match the specified criteria.\r\n"
+                    stdout=b"INFO: No tasks are running which match the specified criteria.\r\n"
                 )
 
             if cmd[:2] == ["taskkill", "/F"] and cmd[2] == "/IM":
@@ -34,6 +34,13 @@ class StartupDiscordShutdownTests(unittest.TestCase):
 
         self.assertTrue(result)
         self.assertEqual(killed_processes, ["Discord.exe"])
+
+    def test_tasklist_helpers_handle_non_utf8_output(self):
+        def fake_run(cmd, stdout=None, stderr=None, check=None):
+            return types.SimpleNamespace(stdout=b'"Discord.exe","\x81"\r\n')
+
+        with patch.object(runtime_startup.subprocess, "run", side_effect=fake_run):
+            self.assertTrue(runtime_startup._is_process_running_by_name("Discord.exe"))
 
     def test_launchers_call_shared_helper_before_startup(self):
         repo_root = Path(__file__).resolve().parents[1]

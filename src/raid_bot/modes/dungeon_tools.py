@@ -3,6 +3,7 @@ import numpy as np
 import time
 import re
 import difflib
+import unicodedata
 from datetime import timedelta
 
 
@@ -220,8 +221,23 @@ class RSL_Bot_Dungeons:
         return None
 
     def resembles(self, text, target, threshold=0.8):
-        ratio = difflib.SequenceMatcher(None, text.lower(), target.lower()).ratio()
+        ratio = difflib.SequenceMatcher(
+            None,
+            self._normalize_text(text),
+            self._normalize_text(target),
+        ).ratio()
         return ratio >= threshold
+
+    def _normalize_text(self, text):
+        if not text:
+            return ""
+        normalized = unicodedata.normalize("NFKD", str(text))
+        normalized = "".join(ch for ch in normalized if not unicodedata.combining(ch))
+        normalized = re.sub(r"[^a-zA-Z0-9]+", " ", normalized).lower()
+        return re.sub(r"\s+", " ", normalized).strip()
+
+    def _contains_gemelos(self, text):
+        return bool(re.search(r"\bgemelos\b", self._normalize_text(text)))
 
     def normalize_difficulty(self, value, default="normal", context="dungeon"):
         normalized = str(value or "").strip().lower()
@@ -614,7 +630,13 @@ class RSL_Bot_Dungeons:
 
             try:
                 for obj in objects:
-                    if self.resembles(obj.text ,name_string):
+                    print(obj.text)
+                    if encounter_name == "iron_twins":
+                        if self._contains_gemelos(obj.text):
+                            window_tools.click_at(obj.mean_pos_x, obj.mean_pos_y, delay = 4)
+                            obj_found = True
+                            break
+                    elif self.resembles(obj.text ,name_string):
                         window_tools.click_at(obj.mean_pos_x, obj.mean_pos_y, delay = 4)
                         obj_found = True
                         break
@@ -789,6 +811,8 @@ class RSL_Bot_Dungeons:
         self.last_run_energy_cost = None
         self.last_energy_encounter = None
         self.energy_spent_this_run = 0
+        self.starting_iron_twins_keys = None
+        self.iron_twins_keys_used_this_run = 0
 
         while self.main_loop_running and (self.running):
             _ensure_within_run_deadline(self, "running dungeon loop")
@@ -798,6 +822,8 @@ class RSL_Bot_Dungeons:
 
             # Stop if not enough energy
             self.check_iron_twins_keys_and_energy()
+            if self.starting_iron_twins_keys is None:
+                self.starting_iron_twins_keys = int(self.iron_twins_keys or 0)
             encounter = None
 
             # Decide which encounter to run
@@ -826,4 +852,8 @@ class RSL_Bot_Dungeons:
 
             self.print_status()
 
+        self.iron_twins_keys_used_this_run = max(
+            0,
+            int(self.starting_iron_twins_keys or 0) - int(self.iron_twins_keys or 0),
+        )
         return self.energy_spent_this_run

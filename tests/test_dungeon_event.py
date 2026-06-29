@@ -164,6 +164,39 @@ class EventDungeonTests(unittest.TestCase):
         self.assertAlmostEqual(click_area[0] + click_area[2] / 2.0, 0.873)
         self.assertAlmostEqual(click_area[1] + click_area[3] / 2.0, 0.22)
 
+    def test_iron_twins_matches_split_gemelos_text(self):
+        split_prefix = DummyText("Fortaleza de los", mean_pos_x=180, mean_pos_y=180)
+        gemelos_only = DummyText("Gemelos", mean_pos_x=310, mean_pos_y=180)
+
+        def fake_get_text_in_relative_area(*args, **kwargs):
+            search_area = kwargs.get("search_area")
+            if search_area is None and len(args) >= 3:
+                search_area = args[2]
+            if search_area == self.bot.search_areas["pov"]:
+                return [split_prefix, gemelos_only]
+            if search_area == self.bot.search_areas["dungeons_etapa_window"]:
+                return []
+            return []
+
+        with patch.object(dungeon_tools.image_tools, "get_text_in_relative_area", side_effect=fake_get_text_in_relative_area), patch.object(
+            dungeon_tools.window_tools, "click_at"
+        ) as click_at, patch.object(dungeon_tools.window_tools, "click_center") as click_center, patch.object(
+            dungeon_tools.window_tools, "move_right"
+        ) as move_right, patch.object(
+            dungeon_tools.window_tools, "move_left"
+        ) as move_left, patch.object(
+            dungeon_tools.window_tools, "move_up"
+        ) as move_up, patch.object(
+            dungeon_tools.window_tools, "move_down"
+        ) as move_down, patch.object(
+            dungeon_tools.time, "sleep", return_value=None
+        ):
+            result = self.bot.select_encounter("iron_twins", max_attempts=1)
+
+        self.assertTrue(result)
+        click_at.assert_called_once_with(310, 180, delay=4)
+        click_center.assert_called_once()
+
     def test_event_dungeon_does_not_open_or_require_team_setup(self):
         with patch.object(dungeon_tools.image_tools, "get_text_in_relative_area") as get_text, patch.object(
             dungeon_tools.image_tools, "get_similarities_in_relative_area"

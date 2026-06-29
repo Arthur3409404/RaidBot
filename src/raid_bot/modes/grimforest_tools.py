@@ -6,7 +6,6 @@ from __future__ import annotations
 import difflib
 import json
 import logging
-import random
 import time
 import unicodedata
 from dataclasses import dataclass
@@ -20,6 +19,7 @@ import raid_bot.utils.auto_battle_tools as auto_battle_tools
 import raid_bot.utils.image_tools as image_tools
 import raid_bot.utils.map_tools as map_tools
 import raid_bot.utils.window_tools as window_tools
+from raid_bot.modes import session_encounter_state
 
 
 MENU_TITLE = "Bosque Lugubre"
@@ -57,6 +57,9 @@ DEFAULT_GROUP_THRESHOLDS = {
     "threshold_T6": 0.38305471264914087,
     "threshold_avoid": 0.7144083658862909,
 }
+PERMANENT_FORBIDDEN_HARD_ENCOUNTER_NAMES = ("Mimeto Dificil",)
+SESSION_LOST_ENCOUNTER_MATCH_THRESHOLD = 0.88
+SESSION_LOST_ENCOUNTER_ESC_COOLDOWN_SECONDS = 2.5
 
 
 @dataclass(frozen=True)
@@ -566,17 +569,27 @@ def _ensure_within_run_deadline(bot, context: str):
         raise TimeoutError(f"{bot.__class__.__name__} exceeded max runtime of {hours:.1f}h while {context}.")
 
 
-def _spiral_direction_for_step(step_index: int, start_direction_index: int = 0) -> str:
-    directions = ("right", "down", "left", "up")
-    remaining = max(0, int(step_index))
-    segment_length = 1
-    direction_index = int(start_direction_index) % len(directions)
-    while remaining >= segment_length:
-        remaining -= segment_length
-        direction_index = (direction_index + 1) % len(directions)
-        if direction_index % 2 == 0:
-            segment_length += 1
-    return directions[direction_index]
+def _build_grid_search_directions(
+    grid_size: int,
+    *,
+    anchor_horizontal_direction: str = "left",
+    anchor_vertical_direction: str = "down",
+    row_start_direction: str = "right",
+    row_transition_direction: str = "up",
+) -> list[str]:
+    directions: list[str] = []
+    grid_size = max(0, int(grid_size))
+
+    directions.extend([anchor_horizontal_direction] * grid_size)
+    directions.extend([anchor_vertical_direction] * grid_size)
+
+    current_row_direction = row_start_direction
+    for row_index in range(grid_size):
+        directions.extend([current_row_direction] * grid_size)
+        if row_index < grid_size - 1:
+            directions.append(row_transition_direction)
+            current_row_direction = "left" if current_row_direction == "right" else "right"
+    return directions
 
 
 class RSL_Bot_GrimForest:
@@ -620,6 +633,9 @@ class RSL_Bot_GrimForest:
             "candidate_detection_retries_per_view": 1,
             "max_random_repositions_when_no_candidates": 20,
             "max_spiral_repositions_when_no_candidates": 20,
+            "grid_search_size_steps": 9,
+            "grid_search_width_steps": 9,
+            "grid_search_height_steps": 9,
             "target_hex": "CEC329",
             "dark_tolerance": 40,
             "reference_dir": str(Path("data") / "assets" / "images" / "grimforest"),
@@ -650,6 +666,7 @@ class RSL_Bot_GrimForest:
             "detector_imgsz": 640,
             "detector_training_metrics": dict(LATEST_YOLO_TRAINING_METRICS),
             "stage_select_delay_seconds": 3.0,
+            "stage_name_read_delay_seconds": 5.0,
             "stage_start_retries": 3,
             "stage_battle_timeout_seconds": 420.0,
             "stage_battle_poll_interval_seconds": 2.0,
@@ -696,20 +713,24 @@ class RSL_Bot_GrimForest:
         self.main_loop_running = True
         self.current_difficulty = None
         self.current_run_difficulty = None
+        self.current_encounter_name = None
         self.available_keys = 0
+        self.starting_available_keys = 0
+        self.keys_used_this_run = 0
         self.key_counter = None
         self.mode_transitioned_out = False
         self.detected_candidates = []
         self.selected_candidate = None
         self.selection_succeeded = False
+        self._grimforest_candidate_rejected_after_click = False
         self.stage_start_status = None
         self.battle_outcome = None
         self.post_battle_menu_status = None
         self.post_battle_stat_choice = None
         self.initial_candidate_zoom_out_done = False
         self.random_reposition_count = 0
-        self.spiral_reposition_index = 0
-        self.spiral_start_direction_index = random.randrange(4)
+        self.grid_search_directions = []
+        self.grid_search_direction_index = 0
         self.exit_reason = None
         self.completed_battles = 0
         self.last_defeat_by_difficulty = self._load_last_defeat_state()
@@ -717,11 +738,6 @@ class RSL_Bot_GrimForest:
             self,
             "no_candidate_failures_by_difficulty",
             {"hard": 0, "normal": 0},
-        )
-        self.last_no_candidate_start_direction_by_difficulty = getattr(
-            self,
-            "last_no_candidate_start_direction_by_difficulty",
-            {"hard": None, "normal": None},
         )
 
     @staticmethod
@@ -757,6 +773,29 @@ class RSL_Bot_GrimForest:
         self.last_defeat_by_difficulty[key] = record
         self._write_json_file(self.last_defeat_path, self.last_defeat_by_difficulty)
         self.log.info("[Grim Forest] Stored last defeat location for '%s'.", key)
+
+    def _session_lost_encounter_threshold(self) -> float:
+        return float(self.setup.get("session_lost_encounter_match_threshold", SESSION_LOST_ENCOUNTER_MATCH_THRESHOLD))
+
+    def _session_lost_encounter_cooldown_seconds(self) -> float:
+        return float(
+            self.setup.get(
+                "session_lost_encounter_esc_cooldown_seconds",
+                SESSION_LOST_ENCOUNTER_ESC_COOLDOWN_SECONDS,
+            )
+        )
+
+    def _record_session_lost_encounter(self, encounter_text: str | None):
+        normalized = session_encounter_state.normalize_encounter_name(encounter_text)
+        if not normalized:
+            self.log.debug("[Grim Forest] Skipping session lost encounter storage because OCR was empty.")
+            return
+        if session_encounter_state.add_session_lost_encounter("grim_forest", encounter_text):
+            self.log.info(
+                "[Grim Forest] Added session lost encounter: raw=%r normalized=%r.",
+                encounter_text,
+                normalized,
+            )
 
     def _plan_and_commit_run_difficulty(self) -> str:
         configured = self._normalize_difficulty_value(self.setup.get("difficulty", "hard")) or "hard"
@@ -870,7 +909,44 @@ class RSL_Bot_GrimForest:
     def _is_forbidden_hard_encounter_name(self, menu_text: str | None) -> bool:
         if self._normalize_difficulty_value(self.current_run_difficulty) != "hard":
             return False
+        normalized = session_encounter_state.normalize_encounter_name(menu_text)
+        if any(normalized == session_encounter_state.normalize_encounter_name(name) for name in PERMANENT_FORBIDDEN_HARD_ENCOUNTER_NAMES):
+            return True
         return "mimeto" in self._normalize_menu_fragment(menu_text)
+
+    def _skip_session_lost_encounter_if_needed(self, encounter_text: str | None) -> bool:
+        matched, normalized, canonical, should_press = session_encounter_state.should_escape_session_lost_encounter(
+            "grim_forest",
+            encounter_text,
+            threshold=self._session_lost_encounter_threshold(),
+            cooldown_seconds=self._session_lost_encounter_cooldown_seconds(),
+        )
+        self.log.info(
+            "[Grim Forest] Encounter OCR: raw=%r normalized=%r session_match=%s canonical=%r",
+            encounter_text,
+            normalized,
+            matched,
+            canonical,
+        )
+        if not matched:
+            if encounter_text:
+                self.current_encounter_name = encounter_text
+            return False
+        if should_press:
+            self.log.info("[Grim Forest] Session lost encounter matched; pressing ESC once.")
+            window_tools.sendkey("esc", delay=1.0, window=self.window)
+            self.log.info("[Grim Forest] ESC pressed=%s for encounter=%r.", True, canonical)
+        else:
+            self.log.info("[Grim Forest] ESC suppressed by cooldown for encounter=%r.", canonical)
+        return True
+
+    def _reject_candidate_after_click(self, reason: str, menu_text: str | None = None) -> bool:
+        self.log.info("[Grim Forest] Rejecting clicked candidate: %s.", reason)
+        window_tools.sendkey("esc", delay=1.0, window=self.window)
+        if menu_text:
+            self.current_encounter_name = menu_text
+        self._grimforest_candidate_rejected_after_click = True
+        return False
 
     def _perform_startup_check(self) -> bool:
         wait_seconds = float(self.setup.get("post_entry_wait_seconds", 5.0) or 0.0)
@@ -1019,21 +1095,9 @@ class RSL_Bot_GrimForest:
             self.log.info("[Grim Forest] Skipped %s candidate(s) matching last defeat location.", len(candidates) - len(filtered))
         return filtered
 
-    def _max_spiral_repositions_when_no_candidates(self) -> int:
-        return max(0, int(self.setup.get("max_spiral_repositions_when_no_candidates", 20)))
-
     def _difficulty_state_key(self, difficulty: str | None) -> str | None:
         key = self._normalize_difficulty_value(difficulty)
         return key if key in {"hard", "normal"} else None
-
-    def _spiral_stride_for_difficulty(self, difficulty: str | None) -> int:
-        key = self._difficulty_state_key(difficulty)
-        failures = int(self.no_candidate_failures_by_difficulty.get(key, 0) or 0) if key else 0
-        if failures >= 3:
-            return 3
-        if failures >= 1:
-            return 2
-        return 1
 
     def _record_candidate_scan_result(self, difficulty: str | None, found: bool):
         key = self._difficulty_state_key(difficulty)
@@ -1041,32 +1105,30 @@ class RSL_Bot_GrimForest:
             return
         if found:
             self.no_candidate_failures_by_difficulty[key] = 0
-            self.last_no_candidate_start_direction_by_difficulty[key] = None
             return
         self.no_candidate_failures_by_difficulty[key] = int(
             self.no_candidate_failures_by_difficulty.get(key, 0) or 0
         ) + 1
-        self.last_no_candidate_start_direction_by_difficulty[key] = self.spiral_start_direction_index
 
-    def _prepare_spiral_start_for_difficulty(self, difficulty: str | None, stride: int):
-        self.spiral_reposition_index = 0
-        self.spiral_start_direction_index = random.randrange(4)
-
-        key = self._difficulty_state_key(difficulty)
-        if stride < 3 or not key:
-            return
-
-        previous_start = self.last_no_candidate_start_direction_by_difficulty.get(key)
-        if previous_start is None:
-            return
-        self.spiral_start_direction_index = (int(previous_start) + 2) % 4
-
-    def _move_spiral_direction_once(self):
-        direction = _spiral_direction_for_step(
-            self.spiral_reposition_index,
-            self.spiral_start_direction_index,
+    def _grid_search_size_steps(self) -> int:
+        if "grid_search_size_steps" in self.setup:
+            return max(0, int(self.setup.get("grid_search_size_steps", 9) or 0))
+        return max(
+            0,
+            int(
+                max(
+                    int(self.setup.get("grid_search_width_steps", 9) or 0),
+                    int(self.setup.get("grid_search_height_steps", 9) or 0),
+                )
+            ),
         )
-        self.spiral_reposition_index += 1
+
+    def _reset_grid_search_path(self):
+        grid_size = self._grid_search_size_steps()
+        self.grid_search_directions = _build_grid_search_directions(grid_size)
+        self.grid_search_direction_index = 0
+
+    def _move_direction_once(self, direction: str):
         move = {
             "up": window_tools.move_up,
             "down": window_tools.move_down,
@@ -1074,11 +1136,18 @@ class RSL_Bot_GrimForest:
             "right": window_tools.move_right,
         }[direction]
         self.random_reposition_count += 1
-        self.log.info("[Grim Forest] No candidates. Moving in spiral: %s.", direction)
+        self.log.info("[Grim Forest] No candidates. Moving in grid search: %s.", direction)
         move(self.window, strength=float(self.setup.get("pan_strength", 1.0)))
 
     def _move_random_direction_once(self):
-        self._move_spiral_direction_once()
+        self._zoom_out_before_initial_candidate_detection()
+        if self.grid_search_direction_index >= len(self.grid_search_directions):
+            self._reset_grid_search_path()
+        if self.grid_search_direction_index >= len(self.grid_search_directions):
+            return
+        direction = self.grid_search_directions[self.grid_search_direction_index]
+        self.grid_search_direction_index += 1
+        self._move_direction_once(direction)
 
     def _zoom_out_before_initial_candidate_detection(self):
         if self.initial_candidate_zoom_out_done:
@@ -1101,26 +1170,27 @@ class RSL_Bot_GrimForest:
             self.log.debug("[Grim Forest] Initial zoom-out failed; continuing with candidate detection.", exc_info=True)
 
     def detect_candidates_with_random_reposition(self, difficulty: str | None = None) -> list[dict]:
-        max_moves = self._max_spiral_repositions_when_no_candidates()
-        stride = self._spiral_stride_for_difficulty(difficulty)
-        self._prepare_spiral_start_for_difficulty(difficulty, stride)
         self._zoom_out_before_initial_candidate_detection()
-        moves_done = 0
-        while True:
+        if self.grid_search_direction_index >= len(self.grid_search_directions):
+            self._reset_grid_search_path()
+        candidates = self._filter_candidates_against_last_defeat(
+            self.detect_grim_forest_candidates(), difficulty or ""
+        )
+        if candidates:
+            self._record_candidate_scan_result(difficulty, found=True)
+            return candidates
+        while self.grid_search_direction_index < len(self.grid_search_directions) and self.main_loop_running:
             _ensure_within_run_deadline(self, "detecting Grim Forest candidates")
+            direction = self.grid_search_directions[self.grid_search_direction_index]
+            self.grid_search_direction_index += 1
+            self._move_direction_once(direction)
             candidates = self._filter_candidates_against_last_defeat(
                 self.detect_grim_forest_candidates(), difficulty or ""
             )
             if candidates:
                 self._record_candidate_scan_result(difficulty, found=True)
                 return candidates
-            if moves_done >= max_moves or not self.main_loop_running:
-                self._record_candidate_scan_result(difficulty, found=False)
-                break
-            moves_to_make = min(stride, max_moves - moves_done)
-            for _ in range(moves_to_make):
-                self._move_random_direction_once()
-                moves_done += 1
+        self._record_candidate_scan_result(difficulty, found=False)
         return []
 
     def select_grim_forest_candidate(self, candidate: dict) -> bool:
@@ -1131,13 +1201,22 @@ class RSL_Bot_GrimForest:
             delay=2.5,
             window=self.window,
         )
+        time.sleep(float(self.setup.get("stage_name_read_delay_seconds", 5.0)))
         menu_text = self._read_menu_name()
+        if menu_text is None:
+            self.log.debug("[Grim Forest] Encounter OCR failed after candidate click; preserving fallback behavior.")
+            return self._reject_candidate_after_click("ocr_failed_after_click")
         if self.is_in_grim_forest_mode(menu_text):
+            return self._reject_candidate_after_click("still_in_grim_forest_after_click", menu_text)
+        if self._skip_session_lost_encounter_if_needed(menu_text):
+            self._grimforest_candidate_rejected_after_click = True
             return False
         if self._is_forbidden_hard_encounter_name(menu_text):
             self.log.info("[Grim Forest] Skipping forbidden hard encounter: %s.", menu_text)
             window_tools.sendkey("esc", delay=1.0, window=self.window)
+            self._grimforest_candidate_rejected_after_click = True
             return False
+        self.current_encounter_name = menu_text
         return True
 
     def _find_start_button_in_lower_half(self):
@@ -1317,6 +1396,7 @@ class RSL_Bot_GrimForest:
         confirmed_difficulty = self.set_difficulty(planned_difficulty)
         self.current_run_difficulty = confirmed_difficulty if confirmed_difficulty in {"normal", "hard"} else planned_difficulty
         self.log.info("[Grim Forest] Running with difficulty '%s' (requested '%s').", self.current_run_difficulty, planned_difficulty)
+        self.starting_available_keys = self.update_available_keys()
 
         while self.main_loop_running and self.running:
             _ensure_within_run_deadline(self, "running Grim Forest loop")
@@ -1324,18 +1404,27 @@ class RSL_Bot_GrimForest:
                 self.exit_grim_forest_to_main_menu(reason="no_keys_remaining")
                 break
 
+            self.current_encounter_name = None
+            self._grimforest_candidate_rejected_after_click = False
             candidates = self.detect_candidates_with_random_reposition(difficulty=self.current_run_difficulty)
             if not candidates:
                 self.exit_grim_forest_to_main_menu(reason="no_candidates_detected_after_random_repositions")
                 break
 
-            selected = next(
-                (candidate for candidate in candidates if self.main_loop_running and self.select_grim_forest_candidate(candidate)),
-                None,
-            )
+            selected = None
+            for candidate in candidates:
+                if not self.main_loop_running:
+                    break
+                if self.select_grim_forest_candidate(candidate):
+                    selected = candidate
+                    break
+
             self.selected_candidate = selected
             self.selection_succeeded = selected is not None
             if selected is None:
+                if self._grimforest_candidate_rejected_after_click:
+                    self._move_random_direction_once()
+                    continue
                 self.exit_grim_forest_to_main_menu(reason="no_candidate_selected")
                 break
 
@@ -1352,6 +1441,7 @@ class RSL_Bot_GrimForest:
             self.completed_battles += 1
 
             if self.battle_outcome == "Derrota":
+                self._record_session_lost_encounter(self.current_encounter_name)
                 self._record_last_defeat_candidate(self.current_run_difficulty, selected)
                 self.log.info(
                     "[Grim Forest] Lost encounter recorded; continuing search without leaving the mode."
@@ -1366,6 +1456,7 @@ class RSL_Bot_GrimForest:
                 self.exit_grim_forest_to_main_menu(reason="battle_outcome_unknown_or_timeout")
                 break
 
+        self.keys_used_this_run = max(0, int(self.starting_available_keys or 0) - int(self.available_keys or 0))
         return True
 
     def test(self):

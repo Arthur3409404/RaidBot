@@ -4,14 +4,15 @@
 from __future__ import annotations
 
 import ast
+import json
 import logging
 import shutil
 from collections import defaultdict
 from copy import deepcopy
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 
 DEFAULT_PARAM_GROUP_PREFIXES = (
@@ -43,6 +44,7 @@ PARAMS_FILE_STEM = "params_mainframe"
 LEGACY_PARAM_PATH = Path("data") / "params_mainframe.txt"
 PROFILES_DIR = Path("data") / "profiles"
 DAILY_LOGS_DIR = Path("data") / "logs" / "daily"
+DAILY_LOG_FILENAME = "raidbot_daily_report.json"
 DEFAULT_PARAMS_EXTENSION = ".txt"
 
 logger = logging.getLogger(__name__)
@@ -132,34 +134,137 @@ def _build_profile_param_path(
 
 
 def get_daily_log_path(log_date: datetime | None = None, log_dir: str | Path = DAILY_LOGS_DIR) -> Path:
-    """Return the shared daily log file for the given date."""
-    current_date = log_date or datetime.now()
+    """Return the shared JSON daily report file."""
     daily_dir = Path(log_dir)
     daily_dir.mkdir(parents=True, exist_ok=True)
-    return daily_dir / f"{current_date:%Y_%m_%d}.log"
+    return daily_dir / DAILY_LOG_FILENAME
+
+
+def _utc_day_key(log_date: datetime | None = None) -> str:
+    current_date = log_date or datetime.now(timezone.utc)
+    if current_date.tzinfo is None:
+        current_date = current_date.replace(tzinfo=timezone.utc)
+    else:
+        current_date = current_date.astimezone(timezone.utc)
+    return f"{current_date:%Y_%m_%d}"
+
+
+def _utc_timestamp() -> str:
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
+def _default_daily_day_entry(day_key: str) -> dict[str, Any]:
+    return {
+        "date": day_key,
+        "created_at_utc": _utc_timestamp(),
+        "updated_at_utc": _utc_timestamp(),
+        "account": None,
+        "profile_account": None,
+        "events": [],
+        "summary": {},
+    }
+
+
+def _default_daily_report_document(header_lines: list[str] | None = None) -> dict[str, Any]:
+    document: dict[str, Any] = {
+        "version": 1,
+        "metadata": {
+            "created_at_utc": _utc_timestamp(),
+            "header_lines": list(header_lines or []),
+        },
+        "days": {},
+    }
+    return document
+
+
+def _load_json_document(path: Path, fallback: dict[str, Any]) -> dict[str, Any]:
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        return payload if isinstance(payload, dict) else dict(fallback)
+    except (OSError, ValueError, json.JSONDecodeError):
+        return dict(fallback)
+
+
+def _write_json_document(path: Path, payload: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temp_path = path.with_suffix(path.suffix + ".tmp")
+    temp_path.write_text(
+        json.dumps(payload, indent=2, ensure_ascii=True, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    temp_path.replace(path)
+
+
+def load_daily_log_document(log_path: str | Path) -> dict[str, Any]:
+    """Load the shared JSON daily report document."""
+    path = Path(log_path)
+    return _load_json_document(path, _default_daily_report_document())
+
+
+def save_daily_log_document(log_path: str | Path, document: dict[str, Any]) -> None:
+    """Persist the shared JSON daily report document atomically."""
+    path = Path(log_path)
+    _write_json_document(path, document)
+
+
+def update_daily_log_document(
+    log_path: str | Path,
+    mutator: Callable[[dict[str, Any]], None],
+    *,
+    day_key: str | None = None,
+) -> dict[str, Any]:
+    """Load, mutate, and save the shared JSON daily report document."""
+    path = Path(log_path)
+    document = load_daily_log_document(path)
+    if not isinstance(document, dict):
+        document = _default_daily_report_document()
+
+    days = document.setdefault("days", {})
+    if not isinstance(days, dict):
+        days = {}
+        document["days"] = days
+
+    key = day_key or _utc_day_key()
+    day_entry = days.get(key)
+    if not isinstance(day_entry, dict):
+        day_entry = _default_daily_day_entry(key)
+        days[key] = day_entry
+
+    mutator(day_entry)
+    day_entry["date"] = key
+    day_entry["updated_at_utc"] = _utc_timestamp()
+    save_daily_log_document(path, document)
+    return day_entry
 
 
 def ensure_daily_log_header(log_path: str | Path, header_lines: list[str]) -> bool:
-    """Create the daily log with an initial header if it does not yet exist."""
+    """Create the JSON daily report if it does not yet exist."""
     path = Path(log_path)
     path.parent.mkdir(parents=True, exist_ok=True)
     if path.exists():
         return False
-    path.write_text("\n".join(header_lines).rstrip() + "\n", encoding="utf-8")
+    save_daily_log_document(path, _default_daily_report_document(header_lines))
     return True
 
 
 def append_daily_log_lines(log_path: str | Path, lines: list[str] | tuple[str, ...] | str) -> None:
-    """Append one or more lines to the shared daily log."""
-    path = Path(log_path)
-    path.parent.mkdir(parents=True, exist_ok=True)
+    """Append one or more text events to today's JSON daily report."""
     if isinstance(lines, str):
         payload = [lines]
     else:
         payload = list(lines)
-    with path.open("a", encoding="utf-8") as handle:
+
+    def _mutator(day_entry: dict[str, Any]) -> None:
+        events = day_entry.setdefault("events", [])
+        if not isinstance(events, list):
+            events = []
+            day_entry["events"] = events
         for line in payload:
-            handle.write(f"{str(line).rstrip()}\n")
+            text = str(line).rstrip()
+            if text:
+                events.append(text)
+
+    update_daily_log_document(log_path, _mutator)
 
 
 def _update_params_file_with_overrides(

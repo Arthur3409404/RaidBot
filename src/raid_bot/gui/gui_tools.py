@@ -169,11 +169,13 @@ class BotGUI:
             ["tasklist", "/FI", f"PID eq {pid}", "/FO", "CSV", "/NH"],
             stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL,
-            text=True,
             check=False,
         )
-        output = (result.stdout or "").strip()
-        return bool(output and not output.startswith("INFO:"))
+        output = result.stdout or b""
+        if isinstance(output, str):
+            output = output.encode("utf-8", errors="replace")
+        output = output.strip()
+        return bool(output and not output.startswith(b"INFO:"))
 
     def _read_pid_file(self) -> int | None:
         if not os.path.exists(self.PID_FILE):

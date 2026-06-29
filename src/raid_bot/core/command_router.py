@@ -67,6 +67,12 @@ class BotCommandRouter:
     def _register_default_commands(self) -> None:
         self.register("help", self._cmd_help, aliases=("commands", "?"))
         self.register("status", self._cmd_status)
+        self.register("show_stats", self._cmd_show_stats, aliases=("stats",))
+        self.register(
+            "cursedcity_avoid_current",
+            self._cmd_cursedcity_avoid_current,
+            aliases=("cc_avoid_current",),
+        )
         self.register("modes", self._cmd_modes)
         self.register("params", self._cmd_params)
         self.register("get", self._cmd_get)
@@ -83,6 +89,12 @@ class BotCommandRouter:
 
     def _cmd_status(self, args: list[str], raw: str) -> CommandResult:
         return CommandResult(messages=self.bot.build_status_lines())
+
+    def _cmd_show_stats(self, args: list[str], raw: str) -> CommandResult:
+        return CommandResult(messages=self.bot.show_stats())
+
+    def _cmd_cursedcity_avoid_current(self, args: list[str], raw: str) -> CommandResult:
+        return CommandResult(messages=self.bot.add_current_cursed_city_encounter_to_avoid())
 
     def _cmd_modes(self, args: list[str], raw: str) -> CommandResult:
         return CommandResult(messages=self.bot.build_modes_lines())

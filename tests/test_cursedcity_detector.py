@@ -5,6 +5,7 @@ import numpy as np
 
 from raid_bot.detector_ai.yolo_detector import Detection
 from raid_bot.modes import cursedcity_tools
+from raid_bot.modes import session_encounter_state
 
 
 class DummyDetector:
@@ -57,6 +58,31 @@ class CursedCityDetectorTests(unittest.TestCase):
                 boxes = cursedcity_tools.detect_cursedcity_like_structures(mask)
 
         self.assertEqual(boxes, [])
+
+    def test_session_lost_encounter_skips_cursed_city_candidate_once(self):
+        session_encounter_state.reset_session_lost_encounters()
+        session_encounter_state.add_session_lost_encounter("cursed_city", "Frost Spider")
+        bot = cursedcity_tools.RSL_Bot_CursedCity(window=object())
+        candidate = {"center_abs_x": 100, "center_abs_y": 120}
+
+        with patch.object(cursedcity_tools.window_tools, "click_at"):
+            with patch.object(cursedcity_tools.window_tools, "sendkey") as sendkey:
+                with patch.object(bot, "_read_visible_encounter_text", return_value="Frost Sp1der"):
+                    self.assertFalse(bot.select_cursed_city_candidate(candidate))
+
+        sendkey.assert_called_once_with("esc", delay=1.0, window=bot.window)
+
+    def test_visible_encounter_can_be_added_to_cursed_city_avoid_list(self):
+        session_encounter_state.reset_session_lost_encounters()
+        bot = cursedcity_tools.RSL_Bot_CursedCity(window=object())
+
+        with patch.object(bot, "_read_visible_encounter_text", return_value="Frost Spider"):
+            encounter = bot.add_visible_encounter_to_avoid_list()
+
+        self.assertEqual(encounter, "Frost Spider")
+        self.assertTrue(
+            session_encounter_state.is_session_lost_encounter("cursed_city", "Frost Spider")
+        )
 
 
 if __name__ == "__main__":
