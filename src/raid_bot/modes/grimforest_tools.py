@@ -614,6 +614,7 @@ class RSL_Bot_GrimForest:
             "stage_auto_battle_button": [0.026, 0.899, 0.058, 0.07],
             "stage_battle_result": [0.389, 0.148, 0.204, 0.071],
             "stage_battle_result_2": [0.38, 0.085, 0.224, 0.059],
+            "recoger_y_equipar": [0.4, 0.7, 0.2, 0.1],
             "post_battle_level_prompt": [0.3955, 0.6881, 0.1912, 0.0643],
             "post_battle_stat_options": [0.1782, 0.5794, 0.6306, 0.0851],
             "post_battle_stat_confirm": [0.4386, 0.7750, 0.1098, 0.0435],
@@ -633,9 +634,9 @@ class RSL_Bot_GrimForest:
             "candidate_detection_retries_per_view": 1,
             "max_random_repositions_when_no_candidates": 20,
             "max_spiral_repositions_when_no_candidates": 20,
-            "grid_search_size_steps": 9,
-            "grid_search_width_steps": 9,
-            "grid_search_height_steps": 9,
+            "grid_search_size_steps": 20,
+            "grid_search_width_steps": 20,
+            "grid_search_height_steps": 20,
             "target_hex": "CEC329",
             "dark_tolerance": 40,
             "reference_dir": str(Path("data") / "assets" / "images" / "grimforest"),
@@ -673,7 +674,6 @@ class RSL_Bot_GrimForest:
             "stage_battle_outcome_confirm_delay_seconds": 10.0,
             "pan_strength": 1.0,
             "run_state_path": str(Path("data") / "tmp" / "grim_forest_run_state.json"),
-            "last_defeat_path": str(Path("data") / "tmp" / "grim_forest_last_defeat.json"),
         }
         provided_setup = dict(setup or {})
         if setup:
@@ -689,7 +689,6 @@ class RSL_Bot_GrimForest:
         self.reference_dir = Path(str(self.setup["reference_dir"]))
         self.target_bgr_as_rgb = self._hex_to_bgr_as_rgb(str(self.setup["target_hex"]))
         self.run_state_path = Path(str(self.setup["run_state_path"]))
-        self.last_defeat_path = Path(str(self.setup["last_defeat_path"]))
         self.max_run_duration_seconds = MAX_RUN_DURATION_SECONDS
         self._run_deadline = None
         self.reset_run_state()
@@ -733,7 +732,6 @@ class RSL_Bot_GrimForest:
         self.grid_search_direction_index = 0
         self.exit_reason = None
         self.completed_battles = 0
-        self.last_defeat_by_difficulty = self._load_last_defeat_state()
         self.no_candidate_failures_by_difficulty = getattr(
             self,
             "no_candidate_failures_by_difficulty",
@@ -754,25 +752,6 @@ class RSL_Bot_GrimForest:
         temp_path = path.with_suffix(path.suffix + ".tmp")
         temp_path.write_text(json.dumps(payload, indent=2, ensure_ascii=True), encoding="utf-8")
         temp_path.replace(path)
-
-    def _load_last_defeat_state(self) -> dict:
-        stored = self._read_json_file(self.last_defeat_path, {"hard": None, "normal": None})
-        return {
-            "hard": stored.get("hard") if isinstance(stored.get("hard"), dict) else None,
-            "normal": stored.get("normal") if isinstance(stored.get("normal"), dict) else None,
-        }
-
-    def _record_last_defeat_candidate(self, difficulty: str, candidate: dict | None):
-        key = str(difficulty or "").strip().lower()
-        if key not in {"hard", "normal"} or not isinstance(candidate, dict):
-            return
-        record = dict(candidate)
-        record["difficulty"] = key
-        record["outcome"] = "Derrota"
-        record["recorded_at"] = datetime.now().isoformat(timespec="seconds")
-        self.last_defeat_by_difficulty[key] = record
-        self._write_json_file(self.last_defeat_path, self.last_defeat_by_difficulty)
-        self.log.info("[Grim Forest] Stored last defeat location for '%s'.", key)
 
     def _session_lost_encounter_threshold(self) -> float:
         return float(self.setup.get("session_lost_encounter_match_threshold", SESSION_LOST_ENCOUNTER_MATCH_THRESHOLD))
@@ -1070,31 +1049,6 @@ class RSL_Bot_GrimForest:
             time.sleep(0.8)
         return []
 
-    @staticmethod
-    def _bbox_overlap_ratio(a: dict, b: dict) -> float:
-        ax1, ay1 = float(a.get("x", 0.0)), float(a.get("y", 0.0))
-        ax2, ay2 = ax1 + float(a.get("width", 0.0)), ay1 + float(a.get("height", 0.0))
-        bx1, by1 = float(b.get("x", 0.0)), float(b.get("y", 0.0))
-        bx2, by2 = bx1 + float(b.get("width", 0.0)), by1 + float(b.get("height", 0.0))
-        intersection = max(0.0, min(ax2, bx2) - max(ax1, bx1)) * max(0.0, min(ay2, by2) - max(ay1, by1))
-        denominator = min(max(0.0, (ax2 - ax1) * (ay2 - ay1)), max(0.0, (bx2 - bx1) * (by2 - by1)))
-        return float(intersection / denominator) if denominator > 0 else 0.0
-
-    def _filter_candidates_against_last_defeat(self, candidates: list[dict], difficulty: str):
-        previous = self.last_defeat_by_difficulty.get(str(difficulty or "").lower())
-        previous_bbox = previous.get("bbox_rel") if isinstance(previous, dict) else None
-        if not isinstance(previous_bbox, dict):
-            return list(candidates)
-        filtered = [
-            candidate
-            for candidate in candidates
-            if not isinstance(candidate.get("bbox_rel"), dict)
-            or self._bbox_overlap_ratio(previous_bbox, candidate["bbox_rel"]) < 0.50
-        ]
-        if len(filtered) != len(candidates):
-            self.log.info("[Grim Forest] Skipped %s candidate(s) matching last defeat location.", len(candidates) - len(filtered))
-        return filtered
-
     def _difficulty_state_key(self, difficulty: str | None) -> str | None:
         key = self._normalize_difficulty_value(difficulty)
         return key if key in {"hard", "normal"} else None
@@ -1112,13 +1066,13 @@ class RSL_Bot_GrimForest:
 
     def _grid_search_size_steps(self) -> int:
         if "grid_search_size_steps" in self.setup:
-            return max(0, int(self.setup.get("grid_search_size_steps", 9) or 0))
+            return max(0, int(self.setup.get("grid_search_size_steps", 20) or 0))
         return max(
             0,
             int(
                 max(
-                    int(self.setup.get("grid_search_width_steps", 9) or 0),
-                    int(self.setup.get("grid_search_height_steps", 9) or 0),
+                    int(self.setup.get("grid_search_width_steps", 20) or 0),
+                    int(self.setup.get("grid_search_height_steps", 20) or 0),
                 )
             ),
         )
@@ -1173,9 +1127,7 @@ class RSL_Bot_GrimForest:
         self._zoom_out_before_initial_candidate_detection()
         if self.grid_search_direction_index >= len(self.grid_search_directions):
             self._reset_grid_search_path()
-        candidates = self._filter_candidates_against_last_defeat(
-            self.detect_grim_forest_candidates(), difficulty or ""
-        )
+        candidates = self.detect_grim_forest_candidates()
         if candidates:
             self._record_candidate_scan_result(difficulty, found=True)
             return candidates
@@ -1184,9 +1136,7 @@ class RSL_Bot_GrimForest:
             direction = self.grid_search_directions[self.grid_search_direction_index]
             self.grid_search_direction_index += 1
             self._move_direction_once(direction)
-            candidates = self._filter_candidates_against_last_defeat(
-                self.detect_grim_forest_candidates(), difficulty or ""
-            )
+            candidates = self.detect_grim_forest_candidates()
             if candidates:
                 self._record_candidate_scan_result(difficulty, found=True)
                 return candidates
@@ -1337,6 +1287,12 @@ class RSL_Bot_GrimForest:
         return "unknown"
 
     def select_post_battle_stat_reward(self) -> str | None:
+        claim_texts = self._read_text_objects("recoger_y_equipar")
+        claim_text = " ".join((getattr(obj, "text", "") or "").lower() for obj in claim_texts)
+        if "recoger" in claim_text or "equipar" in claim_text:
+            self.log.info("[Grim Forest] Clearing post-battle collect/equip prompt: %s.", claim_text)
+            window_tools.click_center(self.window, self.search_areas["recoger_y_equipar"], delay=5.0)
+
         prompts = self._read_text_objects("post_battle_level_prompt")
         prompt_text = " ".join((getattr(obj, "text", "") or "").lower() for obj in prompts)
         has_level_prompt = "nivel" in prompt_text
@@ -1442,7 +1398,6 @@ class RSL_Bot_GrimForest:
 
             if self.battle_outcome == "Derrota":
                 self._record_session_lost_encounter(self.current_encounter_name)
-                self._record_last_defeat_candidate(self.current_run_difficulty, selected)
                 self.log.info(
                     "[Grim Forest] Lost encounter recorded; continuing search without leaving the mode."
                 )

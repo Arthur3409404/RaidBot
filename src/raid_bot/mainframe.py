@@ -1544,17 +1544,19 @@ class RSL_Bot_Mainframe:
                 cached_event = self._last_known_dungeon_tournament
                 if cached_event and cached_event.start_date <= today <= cached_event.end_date:
                     active_event = cached_event
+                    cached_source = getattr(cached_event, "source", "calendar")
                     self.log.warning(
                         (
-                            "Fastidious calendar lookup failed (%s): %s. "
+                            "%s calendar lookup failed (%s): %s. "
                             "Reusing cached active tournament '%s'."
                         ),
+                        cached_source.title(),
                         reason,
                         exc,
                         cached_event.name,
                     )
                 else:
-                    self.log.warning("Fastidious calendar lookup failed (%s): %s", reason, exc)
+                    self.log.warning("Tournament calendar lookup failed (%s): %s", reason, exc)
 
         self._dungeon_fusion_active = bool(active_event)
         if active_event:
@@ -1588,11 +1590,13 @@ class RSL_Bot_Mainframe:
 
         self._last_dungeon_override_signature = signature
         if active_event:
+            source_name = getattr(active_event, "source", "calendar").title()
             self.log.info(
                 (
-                    "Active dungeon tournament on Fastidious calendar (%s, %s to %s). "
+                    "Active dungeon tournament on %s calendar (%s, %s to %s). "
                     "Forcing dungeons to difficulty='%s', dungeon='%s'."
                 ),
+                source_name,
                 active_event.name,
                 active_event.start_date.isoformat(),
                 active_event.end_date.isoformat(),
@@ -1613,7 +1617,7 @@ class RSL_Bot_Mainframe:
         else:
             self.log.info(
                 (
-                    "No active Fastidious dungeon tournament (%s). "
+                    "No active dungeon tournament on any calendar (%s). "
                     "Using configured dungeon params: difficulty='%s', dungeon='%s', level='%s'."
                 ),
                 reason,

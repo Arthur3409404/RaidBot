@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import difflib
-import json
 import logging
 import time
 from dataclasses import dataclass
@@ -30,9 +29,6 @@ DEFAULT_DETECTOR_IMGSZ = 640
 FORBIDDEN_ENCOUNTER_NAMES = ("borgoth", "siroth")
 SESSION_LOST_ENCOUNTER_MATCH_THRESHOLD = 0.88
 SESSION_LOST_ENCOUNTER_ESC_COOLDOWN_SECONDS = 2.5
-DEFAULT_LAST_DEFEAT_PATH = Path("data") / "tmp" / "cursed_city_last_defeat.json"
-
-
 @dataclass(frozen=True)
 class BoundingBox:
     x: int
@@ -188,15 +184,14 @@ class RSL_Bot_CursedCity:
             "max_random_repositions_when_no_candidates": 6,
             "max_spiral_repositions_when_no_candidates": 6,
             "max_failed_selection_repositions": 3,
-            "grid_search_size_steps": 5,
-            "grid_search_width_steps": 5,
-            "grid_search_height_steps": 5,
+            "grid_search_size_steps": 9,
+            "grid_search_width_steps": 9,
+            "grid_search_height_steps": 9,
             "target_hex": "CEC329",
             "expected_structure_count": 5,
             "detector_model_path": str(DEFAULT_DETECTOR_MODEL_PATH),
             "detector_confidence": DEFAULT_DETECTOR_CONFIDENCE,
             "detector_imgsz": DEFAULT_DETECTOR_IMGSZ,
-            "last_defeat_path": str(DEFAULT_LAST_DEFEAT_PATH),
             "stage_select_delay_seconds": 3.0,
             "stage_name_read_delay_seconds": 5.0,
             "stage_start_retries": 3,
@@ -216,7 +211,6 @@ class RSL_Bot_CursedCity:
             ]
 
         self.target_bgr_as_rgb = self._hex_to_bgr_as_rgb(str(self.setup.get("target_hex", "CEC329")))
-        self.last_defeat_path = Path(str(self.setup.get("last_defeat_path", DEFAULT_LAST_DEFEAT_PATH)))
         self.max_run_duration_seconds = MAX_RUN_DURATION_SECONDS
         self._run_deadline = None
         self._difficulty_toggle = 0
@@ -236,28 +230,6 @@ class RSL_Bot_CursedCity:
     def resembles(text, target, threshold=0.8):
         return difflib.SequenceMatcher(None, (text or "").lower(), (target or "").lower()).ratio() >= threshold
 
-    @staticmethod
-    def _read_json_file(path: Path, fallback: dict) -> dict:
-        try:
-            payload = json.loads(path.read_text(encoding="utf-8"))
-            return payload if isinstance(payload, dict) else dict(fallback)
-        except (OSError, ValueError):
-            return dict(fallback)
-
-    @staticmethod
-    def _write_json_file(path: Path, payload: dict):
-        path.parent.mkdir(parents=True, exist_ok=True)
-        temp_path = path.with_suffix(path.suffix + ".tmp")
-        temp_path.write_text(json.dumps(payload, indent=2, ensure_ascii=True), encoding="utf-8")
-        temp_path.replace(path)
-
-    def _load_last_defeat_state(self) -> dict:
-        stored = self._read_json_file(self.last_defeat_path, {"hard": None, "normal": None})
-        return {
-            "hard": stored.get("hard") if isinstance(stored.get("hard"), dict) else None,
-            "normal": stored.get("normal") if isinstance(stored.get("normal"), dict) else None,
-        }
-
     def reset_run_state(self):
         self.running = True
         self.main_loop_running = True
@@ -269,7 +241,6 @@ class RSL_Bot_CursedCity:
         self.keys_used_this_run = 0
         self.key_counter = None
         self.mode_transitioned_out = False
-        self.last_defeat_by_difficulty = self._load_last_defeat_state()
         self.no_candidate_failures_by_difficulty = getattr(
             self,
             "no_candidate_failures_by_difficulty",
@@ -512,38 +483,6 @@ class RSL_Bot_CursedCity:
             time.sleep(0.8)
         return []
 
-    @staticmethod
-    def _bbox_overlap_ratio(a: dict, b: dict) -> float:
-        ax1 = float(a.get("x", 0.0) or 0.0)
-        ay1 = float(a.get("y", 0.0) or 0.0)
-        ax2 = ax1 + float(a.get("width", 0.0) or 0.0)
-        ay2 = ay1 + float(a.get("height", 0.0) or 0.0)
-        bx1 = float(b.get("x", 0.0) or 0.0)
-        by1 = float(b.get("y", 0.0) or 0.0)
-        bx2 = bx1 + float(b.get("width", 0.0) or 0.0)
-        by2 = by1 + float(b.get("height", 0.0) or 0.0)
-        inter = max(0.0, min(ax2, bx2) - max(ax1, bx1)) * max(0.0, min(ay2, by2) - max(ay1, by1))
-        denom = min(max(0.0, (ax2 - ax1) * (ay2 - ay1)), max(0.0, (bx2 - bx1) * (by2 - by1)))
-        return float(inter / denom) if denom > 0 else 0.0
-
-    def _filter_candidates_against_last_defeat(self, candidates: list[dict], difficulty: str):
-        defeat_entry = self.last_defeat_by_difficulty.get(str(difficulty or "").lower())
-        if not isinstance(defeat_entry, dict):
-            return list(candidates)
-        defeat_bbox = defeat_entry.get("bbox_rel")
-        if not isinstance(defeat_bbox, dict):
-            return list(candidates)
-        filtered = [
-            candidate
-            for candidate in candidates
-            if not isinstance(candidate.get("bbox_rel"), dict)
-            or self._bbox_overlap_ratio(defeat_bbox, candidate["bbox_rel"]) < 0.50
-        ]
-        skipped = len(candidates) - len(filtered)
-        if skipped:
-            self.log.info("[Cursed City] Skipped %s candidate(s) matching last defeat location.", skipped)
-        return filtered
-
     def _is_forbidden_encounter_name(self, text: str | None) -> bool:
         normalized = str(text or "").strip().lower()
         return any(name in normalized for name in FORBIDDEN_ENCOUNTER_NAMES)
@@ -636,13 +575,13 @@ class RSL_Bot_CursedCity:
 
     def _grid_search_size_steps(self) -> int:
         if "grid_search_size_steps" in self.setup:
-            return max(0, int(self.setup.get("grid_search_size_steps", 5) or 0))
+            return max(0, int(self.setup.get("grid_search_size_steps", 9) or 0))
         return max(
             0,
             int(
                 max(
-                    int(self.setup.get("grid_search_width_steps", 5) or 0),
-                    int(self.setup.get("grid_search_height_steps", 5) or 0),
+                    int(self.setup.get("grid_search_width_steps", 9) or 0),
+                    int(self.setup.get("grid_search_height_steps", 9) or 0),
                 )
             ),
         )
@@ -697,7 +636,6 @@ class RSL_Bot_CursedCity:
         if self.grid_search_direction_index >= len(self.grid_search_directions):
             self._reset_grid_search_path()
         candidates = self.detect_cursed_city_candidates()
-        candidates = self._filter_candidates_against_last_defeat(candidates, difficulty or "")
         if candidates:
             self._record_candidate_scan_result(difficulty, found=True)
             return candidates
@@ -707,7 +645,6 @@ class RSL_Bot_CursedCity:
             self.grid_search_direction_index += 1
             self._move_direction_once(direction_name)
             candidates = self.detect_cursed_city_candidates()
-            candidates = self._filter_candidates_against_last_defeat(candidates, difficulty or "")
             if candidates:
                 self._record_candidate_scan_result(difficulty, found=True)
                 return candidates
@@ -853,18 +790,6 @@ class RSL_Bot_CursedCity:
         self.mode_transitioned_out = self._is_in_game_modes_menu(self._read_menu_name())
         return self.mode_transitioned_out
 
-    def _record_last_defeat_candidate(self, difficulty: str, candidate: dict):
-        key = str(difficulty or "").strip().lower()
-        if key not in {"hard", "normal"} or not isinstance(candidate, dict):
-            return
-        record = dict(candidate)
-        record["difficulty"] = key
-        record["outcome"] = "Derrota"
-        record["recorded_at"] = time.strftime("%Y-%m-%dT%H:%M:%S")
-        self.last_defeat_by_difficulty[key] = record
-        self._write_json_file(self.last_defeat_path, self.last_defeat_by_difficulty)
-        self.log.info("[Cursed City] Stored defeat location for '%s'.", key)
-
     def _record_session_lost_encounter(self, encounter_text: str | None):
         normalized = session_encounter_state.normalize_encounter_name(encounter_text)
         if not normalized:
@@ -952,7 +877,6 @@ class RSL_Bot_CursedCity:
             menu_status = self.return_to_mode_root_after_battle(max_attempts=4)
             if outcome == "Derrota":
                 self._record_session_lost_encounter(self.current_encounter_name)
-                self._record_last_defeat_candidate(effective_difficulty, selected)
                 self.log.info(
                     "[Cursed City] Lost encounter recorded; continuing search without leaving the mode."
                 )

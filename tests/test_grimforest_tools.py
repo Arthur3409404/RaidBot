@@ -83,7 +83,6 @@ class GrimForestToolsTests(unittest.TestCase):
     def _setup_paths(self, directory, **extra):
         setup = {
             "run_state_path": str(Path(directory) / "run_state.json"),
-            "last_defeat_path": str(Path(directory) / "last_defeat.json"),
             "post_entry_wait_seconds": 0,
         }
         setup.update(extra)
@@ -185,44 +184,33 @@ class GrimForestToolsTests(unittest.TestCase):
             bot = grimforest_tools.RSL_Bot_GrimForest(setup=setup)
             self.assertEqual(bot._plan_and_commit_run_difficulty(), "normal")
 
-    def test_previous_loss_is_loaded_and_filters_same_location(self):
-        with tempfile.TemporaryDirectory() as directory:
-            setup = self._setup_paths(directory)
-            previous = SimulatedLossBot.candidate
-            writer = grimforest_tools.RSL_Bot_GrimForest(setup=setup)
-            writer._record_last_defeat_candidate("hard", previous)
-
-            reader = grimforest_tools.RSL_Bot_GrimForest(setup=setup)
-            far_candidate = dict(previous)
-            far_candidate["bbox_rel"] = {"x": 0.75, "y": 0.75, "width": 0.10, "height": 0.10}
-            filtered = reader._filter_candidates_against_last_defeat([previous, far_candidate], "hard")
-            self.assertEqual(filtered, [far_candidate])
-
-    def test_failed_run_saves_previous_loss(self):
+    def test_failed_run_adds_grim_forest_encounter_to_session_avoid_list(self):
         with tempfile.TemporaryDirectory() as directory:
             setup = self._setup_paths(directory, alternate_difficulty=False, difficulty="hard")
             bot = SimulatedLossBot(reader=object(), window=object(), setup=setup)
 
             self.assertTrue(bot.run_grimforest())
             self.assertEqual(bot.exit_reason, "battle_lost")
-            payload = json.loads(Path(setup["last_defeat_path"]).read_text(encoding="utf-8"))
-            self.assertEqual(payload["hard"]["outcome"], "Derrota")
-            self.assertEqual(payload["hard"]["bbox_rel"], SimulatedLossBot.candidate["bbox_rel"])
+            self.assertTrue(
+                session_encounter_state.is_session_lost_encounter("grim_forest", bot.current_encounter_name)
+            )
 
-    def test_failed_run_saves_loss_even_after_returning_to_game_modes(self):
+    def test_failed_run_adds_encounter_even_after_returning_to_game_modes(self):
         with tempfile.TemporaryDirectory() as directory:
             setup = self._setup_paths(directory, alternate_difficulty=False, difficulty="hard")
             bot = SimulatedLossBot(reader=object(), window=object(), setup=setup)
             bot.return_to_mode_root_after_battle = lambda max_attempts=4: "game_modes"
 
             self.assertTrue(bot.run_grimforest())
-            payload = json.loads(Path(setup["last_defeat_path"]).read_text(encoding="utf-8"))
-            self.assertEqual(payload["hard"]["outcome"], "Derrota")
+            self.assertTrue(
+                session_encounter_state.is_session_lost_encounter("grim_forest", bot.current_encounter_name)
+            )
 
     def test_cursed_city_uses_six_step_expanding_spiral_by_default(self):
         with patch.object(cursedcity_tools.random, "randrange", return_value=0):
             bot = cursedcity_tools.RSL_Bot_CursedCity(window=object())
         self.assertEqual(bot._max_spiral_repositions_when_no_candidates(), 6)
+        self.assertEqual(bot._grid_search_size_steps(), 9)
 
         moves = []
         with patch.object(cursedcity_tools.window_tools, "move_right", side_effect=lambda *_, **__: moves.append("right")):
@@ -255,6 +243,7 @@ class GrimForestToolsTests(unittest.TestCase):
                 bot = grimforest_tools.RSL_Bot_GrimForest(window=object(), setup=self._setup_paths(directory))
 
         self.assertEqual(bot._max_spiral_repositions_when_no_candidates(), 20)
+        self.assertEqual(bot._grid_search_size_steps(), 20)
 
         moves = []
         with patch.object(grimforest_tools.window_tools, "move_right", side_effect=lambda *_, **__: moves.append("right")):
@@ -553,29 +542,6 @@ class GrimForestToolsTests(unittest.TestCase):
         self.assertTrue(bot._is_forbidden_encounter_name("Borgoth the Scarab King"))
         self.assertTrue(bot._is_forbidden_encounter_name("Siroth"))
         self.assertFalse(bot._is_forbidden_encounter_name("Amius"))
-
-    def test_cursed_city_previous_loss_is_loaded_and_filters_same_location(self):
-        with tempfile.TemporaryDirectory() as directory:
-            setup = {"last_defeat_path": str(Path(directory) / "cursed_last_defeat.json")}
-            previous = {
-                "score": 0.91,
-                "bbox_rel": {"x": 0.20, "y": 0.25, "width": 0.10, "height": 0.10},
-                "center_abs_x": 100,
-                "center_abs_y": 120,
-            }
-
-            writer = cursedcity_tools.RSL_Bot_CursedCity(setup=setup)
-            writer._record_last_defeat_candidate("hard", previous)
-
-            reader = cursedcity_tools.RSL_Bot_CursedCity(setup=setup)
-            far_candidate = dict(previous)
-            far_candidate["bbox_rel"] = {"x": 0.75, "y": 0.75, "width": 0.10, "height": 0.10}
-
-            filtered = reader._filter_candidates_against_last_defeat([previous, far_candidate], "hard")
-            self.assertEqual(filtered, [far_candidate])
-            payload = json.loads(Path(setup["last_defeat_path"]).read_text(encoding="utf-8"))
-            self.assertEqual(payload["hard"]["outcome"], "Derrota")
-            self.assertEqual(payload["hard"]["bbox_rel"], previous["bbox_rel"])
 
     def test_legacy_random_reposition_config_still_controls_spiral_limit(self):
         cursed = cursedcity_tools.RSL_Bot_CursedCity(

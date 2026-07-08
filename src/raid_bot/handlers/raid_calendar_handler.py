@@ -1,17 +1,18 @@
 # -*- coding: utf-8 -*-
-"""Fastidious raid calendar helpers for dungeon tournament overrides."""
+"""Raid calendar helpers for dungeon tournament overrides."""
 
 from __future__ import annotations
 
 from collections import Counter
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 import re
 
 import requests
 from bs4 import BeautifulSoup
 
 
+GESTAL_FUSION_PLANNER_URL = "https://gestal.gg/raid/fusion-planner"
 FASTIDIOUS_CALENDAR_URL = "https://fastidious.gg/raid/calendar"
 
 _DUNGEON_TOURNAMENTS = {
@@ -20,6 +21,17 @@ _DUNGEON_TOURNAMENTS = {
     "dragon tournament": "dragon",
     "spider tournament": "spider",
 }
+
+_GESTAL_TOURNAMENT_PATTERN = re.compile(
+    (
+        r'\{\\"id\\":\\"(?P<id>\d+)\\",'
+        r'\\"name\\":\\"(?P<name>[^"]+?)\\",'
+        r'\\"kind\\":\\"tournament\\",'
+        r'\\"startsAt\\":\\"(?P<starts>[^"]+?)\\",'
+        r'\\"endsAt\\":\\"(?P<ends>[^"]+?)\\"'
+    ),
+    re.DOTALL,
+)
 
 _DATE_RANGE_PATTERN = re.compile(
     (
@@ -38,6 +50,7 @@ class DungeonTournamentEvent:
     dungeon: str
     start_date: date
     end_date: date
+    source: str = "gestal"
 
 
 def _extract_reference_years(html: str) -> list[int]:
@@ -102,7 +115,65 @@ def _resolve_date_range(
     return best_pair
 
 
-def fetch_dungeon_tournament_events(
+def _parse_event_date(value: str) -> date:
+    normalized = value.replace("Z", "+00:00")
+    return datetime.fromisoformat(normalized).date()
+
+
+def _deduplicate_events(events: list[DungeonTournamentEvent]) -> list[DungeonTournamentEvent]:
+    deduplicated: list[DungeonTournamentEvent] = []
+    seen: set[tuple[str, str, date, date]] = set()
+    for event in events:
+        key = (event.name, event.dungeon, event.start_date, event.end_date)
+        if key in seen:
+            continue
+        seen.add(key)
+        deduplicated.append(event)
+    return deduplicated
+
+
+def _fetch_gestal_dungeon_tournament_events(
+    *,
+    today: date | None = None,
+    url: str = GESTAL_FUSION_PLANNER_URL,
+    timeout_seconds: float = 8.0,
+) -> list[DungeonTournamentEvent]:
+    if today is None:
+        today = date.today()
+
+    response = requests.get(
+        url,
+        timeout=timeout_seconds,
+        headers={"User-Agent": "RaidBot/1.0"},
+    )
+    response.raise_for_status()
+
+    events: list[DungeonTournamentEvent] = []
+    for match in _GESTAL_TOURNAMENT_PATTERN.finditer(response.text):
+        event_name = match.group("name")
+        dungeon_name = _DUNGEON_TOURNAMENTS.get(event_name.lower())
+        if not dungeon_name:
+            continue
+
+        start_date = _parse_event_date(match.group("starts"))
+        end_date = _parse_event_date(match.group("ends"))
+        if end_date < start_date:
+            continue
+
+        events.append(
+            DungeonTournamentEvent(
+                name=event_name,
+                dungeon=dungeon_name,
+                start_date=start_date,
+                end_date=end_date,
+                source="gestal",
+            )
+        )
+
+    return events
+
+
+def _fetch_fastidious_dungeon_tournament_events(
     *,
     today: date | None = None,
     url: str = FASTIDIOUS_CALENDAR_URL,
@@ -150,37 +221,75 @@ def fetch_dungeon_tournament_events(
                 dungeon=dungeon_name,
                 start_date=start_date,
                 end_date=end_date,
+                source="fastidious",
             )
         )
 
     return events
 
 
+def fetch_dungeon_tournament_events(
+    *,
+    today: date | None = None,
+    url: str = GESTAL_FUSION_PLANNER_URL,
+    backup_url: str = FASTIDIOUS_CALENDAR_URL,
+    timeout_seconds: float = 8.0,
+) -> list[DungeonTournamentEvent]:
+    if today is None:
+        today = date.today()
+
+    events: list[DungeonTournamentEvent] = []
+    for fetcher, source_url in (
+        (_fetch_gestal_dungeon_tournament_events, url),
+        (_fetch_fastidious_dungeon_tournament_events, backup_url),
+    ):
+        try:
+            events.extend(
+                fetcher(
+                    today=today,
+                    url=source_url,
+                    timeout_seconds=timeout_seconds,
+                )
+            )
+        except Exception:
+            continue
+
+    return _deduplicate_events(events)
+
+
 def get_active_dungeon_tournament(
     *,
     today: date | None = None,
-    url: str = FASTIDIOUS_CALENDAR_URL,
+    url: str = GESTAL_FUSION_PLANNER_URL,
+    backup_url: str = FASTIDIOUS_CALENDAR_URL,
     timeout_seconds: float = 8.0,
 ) -> DungeonTournamentEvent | None:
     if today is None:
         today = date.today()
 
-    events = fetch_dungeon_tournament_events(
-        today=today,
-        url=url,
-        timeout_seconds=timeout_seconds,
-    )
-    active = [event for event in events if event.start_date <= today <= event.end_date]
-    if not active:
-        return None
+    for fetcher, source_url in (
+        (_fetch_gestal_dungeon_tournament_events, url),
+        (_fetch_fastidious_dungeon_tournament_events, backup_url),
+    ):
+        try:
+            events = fetcher(today=today, url=source_url, timeout_seconds=timeout_seconds)
+        except Exception:
+            continue
 
-    active.sort(key=lambda event: (event.start_date, event.end_date), reverse=True)
-    return active[0]
+        active = [event for event in events if event.start_date <= today <= event.end_date]
+        if not active:
+            continue
+
+        active.sort(key=lambda event: (event.start_date, event.end_date), reverse=True)
+        return active[0]
+
+    return None
 
 
 __all__ = [
     "DungeonTournamentEvent",
     "FASTIDIOUS_CALENDAR_URL",
+    "GESTAL_FUSION_PLANNER_URL",
     "fetch_dungeon_tournament_events",
     "get_active_dungeon_tournament",
 ]
